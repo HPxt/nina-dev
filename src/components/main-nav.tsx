@@ -39,12 +39,12 @@ export function MainNav({ userRole }: { userRole: Role }) {
 
         return (
           <SidebarMenuItem key={item.href}>
-            <Link href={item.href} passHref legacyBehavior>
-              <SidebarMenuButton isActive={isActive} tooltip={item.label}>
+            <SidebarMenuButton asChild isActive={isActive} tooltip={item.label}>
+              <Link href={item.href}>
                 <item.icon />
                 <span>{item.label}</span>
-              </SidebarMenuButton>
-            </Link>
+              </Link>
+            </SidebarMenuButton>
           </SidebarMenuItem>
         );
       })}
