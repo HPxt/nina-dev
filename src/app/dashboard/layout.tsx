@@ -22,10 +22,6 @@ export default function DashboardLayout({
     <SidebarProvider>
       <Sidebar>
         <SidebarHeader>
-           <Link href="/dashboard" className="flex items-center gap-2">
-            <Icons.logo className="h-8 w-8 text-primary" />
-            <span className="font-headline text-xl">Nina 1.0</span>
-          </Link>
         </SidebarHeader>
         <SidebarContent>
           <MainNav userRole={currentUser.role} />
