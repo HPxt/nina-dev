@@ -31,7 +31,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { CsvUploadDialog } from "@/components/csv-upload-dialog";
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo } from "react";
 import { useCollection, useFirestore, useMemoFirebase, useUser } from "@/firebase";
 import { collection, doc } from "firebase/firestore";
 import { setDocumentNonBlocking } from "@/firebase/non-blocking-updates";
@@ -77,12 +77,12 @@ export default function AdminPage() {
   
   const uniqueValues = useMemo(() => {
     if (!employees) return { positions: [], axes: [], areas: [], segments: [], leaders: [], cities: [] };
-    const positions = [...new Set(employees.map(e => e.position).filter(Boolean))] as string[];
-    const axes = [...new Set(employees.map(e => e.axis).filter(Boolean))] as string[];
-    const areas = [...new Set(employees.map(e => e.area).filter(Boolean))] as string[];
-    const segments = [...new Set(employees.map(e => e.segment).filter(Boolean))] as string[];
-    const leaders = [...new Set(employees.map(e => e.leader).filter(Boolean))] as string[];
-    const cities = [...new Set(employees.map(e => e.city).filter(Boolean))] as string[];
+    const positions = [...new Set(employees.map(e => e.position).filter(p => p && p.trim() !== ''))] as string[];
+    const axes = [...new Set(employees.map(e => e.axis).filter(a => a && a.trim() !== ''))] as string[];
+    const areas = [...new Set(employees.map(e => e.area).filter(a => a && a.trim() !== ''))] as string[];
+    const segments = [...new Set(employees.map(e => e.segment).filter(s => s && s.trim() !== ''))] as string[];
+    const leaders = [...new Set(employees.map(e => e.leader).filter(l => l && l.trim() !== ''))] as string[];
+    const cities = [...new Set(employees.map(e => e.city).filter(c => c && c.trim() !== ''))] as string[];
     return { positions, axes, areas, segments, leaders, cities };
   }, [employees]);
 
@@ -182,49 +182,49 @@ export default function AdminPage() {
                       <SelectTrigger><SelectValue placeholder="Cargo" /></SelectTrigger>
                       <SelectContent>
                         <SelectItem value="">Todos os Cargos</SelectItem>
-                        {uniqueValues.positions.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}
+                        {uniqueValues.positions.map((p, i) => <SelectItem key={`${p}-${i}`} value={p}>{p}</SelectItem>)}
                       </SelectContent>
                   </Select>
                   <Select value={filters.axis} onValueChange={(value) => handleFilterChange('axis', value)}>
                       <SelectTrigger><SelectValue placeholder="Eixo" /></SelectTrigger>
                       <SelectContent>
                         <SelectItem value="">Todos os Eixos</SelectItem>
-                        {uniqueValues.axes.map(v => <SelectItem key={v} value={v}>{v}</SelectItem>)}
+                        {uniqueValues.axes.map((v,i) => <SelectItem key={`${v}-${i}`} value={v}>{v}</SelectItem>)}
                       </SelectContent>
                   </Select>
                    <Select value={filters.area} onValueChange={(value) => handleFilterChange('area', value)}>
                       <SelectTrigger><SelectValue placeholder="Área" /></SelectTrigger>
                       <SelectContent>
                          <SelectItem value="">Todas as Áreas</SelectItem>
-                        {uniqueValues.areas.map(v => <SelectItem key={v} value={v}>{v}</SelectItem>)}
+                        {uniqueValues.areas.map((v,i) => <SelectItem key={`${v}-${i}`} value={v}>{v}</SelectItem>)}
                       </SelectContent>
                   </Select>
                    <Select value={filters.segment} onValueChange={(value) => handleFilterChange('segment', value)}>
                       <SelectTrigger><SelectValue placeholder="Segmento" /></SelectTrigger>
                       <SelectContent>
                         <SelectItem value="">Todos os Segmentos</SelectItem>
-                        {uniqueValues.segments.map(v => <SelectItem key={v} value={v}>{v}</SelectItem>)}
+                        {uniqueValues.segments.map((v,i) => <SelectItem key={`${v}-${i}`} value={v}>{v}</SelectItem>)}
                       </SelectContent>
                   </Select>
                    <Select value={filters.leader} onValueChange={(value) => handleFilterChange('leader', value)}>
                       <SelectTrigger><SelectValue placeholder="Líder" /></SelectTrigger>
                       <SelectContent>
                          <SelectItem value="">Todos os Líderes</SelectItem>
-                        {uniqueValues.leaders.map(v => <SelectItem key={v} value={v}>{v}</SelectItem>)}
+                        {uniqueValues.leaders.map((v,i) => <SelectItem key={`${v}-${i}`} value={v}>{v}</SelectItem>)}
                       </SelectContent>
                   </Select>
                    <Select value={filters.city} onValueChange={(value) => handleFilterChange('city', value)}>
                       <SelectTrigger><SelectValue placeholder="Cidade" /></SelectTrigger>
                       <SelectContent>
                         <SelectItem value="">Todas as Cidades</SelectItem>
-                        {uniqueValues.cities.map(v => <SelectItem key={v} value={v}>{v}</SelectItem>)}
+                        {uniqueValues.cities.map((v,i) => <SelectItem key={`${v}-${i}`} value={v}>{v}</SelectItem>)}
                       </SelectContent>
                   </Select>
                    <Select value={filters.role} onValueChange={(value) => handleFilterChange('role', value)}>
                       <SelectTrigger><SelectValue placeholder="Função" /></SelectTrigger>
                       <SelectContent>
                         <SelectItem value="">Todas as Funções</SelectItem>
-                        {roles.map(r => <SelectItem key={r} value={r}>{r}</SelectItem>)}
+                        {roles.map((r,i) => <SelectItem key={`${r}-${i}`} value={r}>{r}</SelectItem>)}
                       </SelectContent>
                   </Select>
                   <Button variant="ghost" onClick={clearFilters} className="lg:col-start-5">
