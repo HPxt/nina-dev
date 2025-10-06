@@ -2,16 +2,11 @@
 
 import { usePathname } from "next/navigation";
 import { PageHeader } from "./page-header";
-import { teamMembers } from "@/lib/data";
 
 const titles: { [key: string]: { title: string; description?: string } } = {
   "/dashboard": {
     title: "Dashboard de Liderança",
     description: "Acompanhe as métricas e o engajamento da sua equipe.",
-  },
-  "/dashboard/team": {
-    title: "Equipe",
-    description: "Visualize e gerencie os membros da sua equipe.",
   },
   "/dashboard/individual-tracking": {
     title: "Acompanhamento Individual",
@@ -32,14 +27,6 @@ const titles: { [key: string]: { title: string; description?: string } } = {
 };
 
 function getPageDetails(pathname: string): { title: string; description?: string } {
-  if (pathname.startsWith("/dashboard/team/")) {
-    const id = pathname.split("/").pop();
-    const member = teamMembers.find((m) => m.id === id);
-    return {
-      title: member ? member.name : "Detalhes do Membro",
-      description: "Informações detalhadas e histórico do membro da equipe.",
-    };
-  }
   return titles[pathname] || { title: "Nina 1.0" };
 }
 

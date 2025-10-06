@@ -24,8 +24,6 @@ import {
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import Link from "next/link";
-import { ArrowRight } from "lucide-react";
 
 export default function LeadershipDashboard() {
   const getBadgeVariant = (status: "Em dia" | "Atenção" | "Atrasado") => {
@@ -118,7 +116,6 @@ export default function LeadershipDashboard() {
                 <TableHead className="hidden md:table-cell">Equipe</TableHead>
                 <TableHead className="hidden sm:table-cell">Última 1:1</TableHead>
                 <TableHead>Status</TableHead>
-                <TableHead className="text-right">Ações</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -146,14 +143,6 @@ export default function LeadershipDashboard() {
                     <Badge variant={getBadgeVariant(member.oneOnOneStatus)}>
                       {member.oneOnOneStatus}
                     </Badge>
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <Button asChild variant="ghost" size="icon">
-                      <Link href={`/dashboard/team/${member.id}`}>
-                        <ArrowRight className="h-4 w-4" />
-                        <span className="sr-only">Ver detalhes</span>
-                      </Link>
-                    </Button>
                   </TableCell>
                 </TableRow>
               ))}

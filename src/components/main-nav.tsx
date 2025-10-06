@@ -4,7 +4,6 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   LayoutDashboard,
-  Users,
   ShieldAlert,
   Settings,
   ClipboardList,
@@ -19,7 +18,6 @@ import {
 
 const navItems = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/dashboard/team", label: "Equipe", icon: Users },
   { href: "/dashboard/individual-tracking", label: "Acompanhamento", icon: ClipboardList, roles: ["Líder", "Diretor", "Admin"] },
   { href: "/dashboard/pdi", label: "Plano de Desenvolvimento", icon: ClipboardCheck, roles: ["Líder", "Diretor", "Admin"] },
   { href: "/dashboard/risk-analysis", label: "Análise de Risco", icon: ShieldAlert, roles: ["Líder", "Diretor", "Admin"] },
