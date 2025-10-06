@@ -1,6 +1,5 @@
 import { MainNav } from "@/components/main-nav";
 import { UserNav } from "@/components/user-nav";
-import { Icons } from "@/components/icons";
 import {
   SidebarProvider,
   Sidebar,
@@ -10,8 +9,7 @@ import {
   SidebarInset,
 } from "@/components/ui/sidebar";
 import { currentUser } from "@/lib/data";
-import Link from "next/link";
-import { PageHeader } from "@/components/page-header";
+import { PageHeaderController } from "@/components/page-header-controller";
 
 export default function DashboardLayout({
   children,
@@ -31,7 +29,7 @@ export default function DashboardLayout({
         </SidebarFooter>
       </Sidebar>
       <SidebarInset>
-        <PageHeader />
+        <PageHeaderController />
         <main className="flex-1 p-4 md:p-6 lg:p-8">{children}</main>
       </SidebarInset>
     </SidebarProvider>

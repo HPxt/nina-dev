@@ -1,31 +1,30 @@
 "use client";
 
-import { usePathname } from "next/navigation";
 import { SidebarTrigger } from "./ui/sidebar";
 
-const titles: { [key: string]: string } = {
-  "/dashboard": "Dashboard de Liderança",
-  "/dashboard/team": "Equipe",
-  "/dashboard/risk-analysis": "Análise de Risco",
-  "/dashboard/admin": "Gerenciamento de Admin",
+type PageHeaderProps = {
+  title: string;
+  description?: string;
+  actions?: React.ReactNode;
 };
 
-function getTitle(pathname: string): string {
-  if (pathname.startsWith('/dashboard/team/')) {
-    return "Detalhes do Membro";
-  }
-  return titles[pathname] || "Nina 1.0";
-}
-
-export function PageHeader() {
-  const pathname = usePathname();
-
+export function PageHeader({ title, description, actions }: PageHeaderProps) {
   return (
-    <header className="sticky top-0 z-10 flex h-14 items-center gap-4 border-b bg-background px-4 sm:static sm:h-auto sm:border-0 sm:bg-transparent sm:px-6">
-      <SidebarTrigger className="md:hidden" />
-      <h1 className="font-headline text-2xl font-bold">
-        {getTitle(pathname)}
-      </h1>
+    <header className="flex flex-col gap-4 px-4 pt-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+      <div className="flex items-center gap-4">
+        <SidebarTrigger className="md:hidden" />
+        <div>
+          <h1 className="font-headline text-2xl font-bold text-foreground sm:text-3xl">
+            {title}
+          </h1>
+          {description && (
+            <p className="font-body text-sm text-muted-foreground">
+              {description}
+            </p>
+          )}
+        </div>
+      </div>
+      {actions && <div>{actions}</div>}
     </header>
   );
 }
