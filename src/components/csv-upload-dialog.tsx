@@ -13,8 +13,6 @@ import { Button } from "./ui/button";
 import { useState, useCallback } from "react";
 import { useDropzone } from "react-dropzone";
 import { FileUp, FileCheck2, AlertCircle } from "lucide-react";
-import { ScrollArea } from "./ui/scroll-area";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "./ui/table";
 import { useFirestore } from "@/firebase";
 import { doc } from "firebase/firestore";
 import { setDocumentNonBlocking } from "@/firebase/non-blocking-updates";
@@ -139,7 +137,7 @@ export function CsvUploadDialog({ open, onOpenChange }: { open: boolean; onOpenC
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="max-w-4xl">
+      <DialogContent className="max-w-xl">
         <DialogHeader>
           <DialogTitle>Upload de Funcionários via CSV</DialogTitle>
           <DialogDescription>
@@ -179,28 +177,6 @@ export function CsvUploadDialog({ open, onOpenChange }: { open: boolean; onOpenC
                 <div className="flex items-center gap-2 rounded-md border border-destructive/50 bg-destructive/10 p-3 text-sm text-destructive">
                     <AlertCircle className="h-4 w-4 shrink-0" />
                     <p>{error}</p>
-                </div>
-            )}
-            
-            {data.length > 0 && (
-                <div>
-                    <h3 className="mb-2 font-medium">Pré-visualização dos dados</h3>
-                    <ScrollArea className="h-64 w-full rounded-md border">
-                        <Table>
-                            <TableHeader>
-                                <TableRow>
-                                {EXPECTED_COLUMNS.map(col => <TableHead key={col}>{col}</TableHead>)}
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {data.map((row, i) => (
-                                    <TableRow key={i}>
-                                        {EXPECTED_COLUMNS.map(col => <TableCell key={col}>{row[col]}</TableCell>)}
-                                    </TableRow>
-                                ))}
-                            </TableBody>
-                        </Table>
-                    </ScrollArea>
                 </div>
             )}
         </div>
