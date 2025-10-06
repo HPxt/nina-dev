@@ -1,0 +1,332 @@
+{
+  "entities": {
+    "Employee": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Employee",
+      "type": "object",
+      "description": "Represents an employee in the organization.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the employee."
+        },
+        "firstName": {
+          "type": "string",
+          "description": "First name of the employee."
+        },
+        "lastName": {
+          "type": "string",
+          "description": "Last name of the employee."
+        },
+        "email": {
+          "type": "string",
+          "description": "Email address of the employee.",
+          "format": "email"
+        },
+        "roleId": {
+          "type": "string",
+          "description": "Reference to Role. (Relationship: Role 1:N Employee)"
+        },
+        "teamId": {
+          "type": "string",
+          "description": "Reference to Team. (Relationship: Team 1:N Employee)"
+        },
+        "riskScore": {
+          "type": "number",
+          "description": "Risk score of the employee based on health, satisfaction, and performance."
+        }
+      },
+      "required": [
+        "id",
+        "firstName",
+        "lastName",
+        "email",
+        "roleId",
+        "teamId"
+      ]
+    },
+    "Role": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Role",
+      "type": "object",
+      "description": "Represents a role within the organization (e.g., Collaborator, Leader, Director, Admin).",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the role."
+        },
+        "name": {
+          "type": "string",
+          "description": "Name of the role."
+        },
+        "permissions": {
+          "type": "array",
+          "description": "List of permissions associated with the role.",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "id",
+        "name"
+      ]
+    },
+    "Team": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Team",
+      "type": "object",
+      "description": "Represents a team within the organization.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the team."
+        },
+        "name": {
+          "type": "string",
+          "description": "Name of the team."
+        }
+      },
+      "required": [
+        "id",
+        "name"
+      ]
+    },
+    "Interaction": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Interaction",
+      "type": "object",
+      "description": "Represents an interaction with an employee.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the interaction."
+        },
+        "employeeId": {
+          "type": "string",
+          "description": "Reference to Employee. (Relationship: Employee 1:N Interaction)"
+        },
+        "timestamp": {
+          "type": "string",
+          "description": "Timestamp of the interaction.",
+          "format": "date-time"
+        },
+        "type": {
+          "type": "string",
+          "description": "Type of interaction (e.g., Meeting, Email, Phone Call)."
+        },
+        "notes": {
+          "type": "string",
+          "description": "Notes about the interaction."
+        }
+      },
+      "required": [
+        "id",
+        "employeeId",
+        "timestamp",
+        "type"
+      ]
+    },
+    "PDIAction": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "PDIAction",
+      "type": "object",
+      "description": "Represents an action within an employee's Personal Development Plan (PDI).",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the PDI action."
+        },
+        "employeeId": {
+          "type": "string",
+          "description": "Reference to Employee. (Relationship: Employee 1:N PDIAction)"
+        },
+        "description": {
+          "type": "string",
+          "description": "Description of the PDI action."
+        },
+        "startDate": {
+          "type": "string",
+          "description": "Start date of the PDI action.",
+          "format": "date-time"
+        },
+        "endDate": {
+          "type": "string",
+          "description": "End date of the PDI action.",
+          "format": "date-time"
+        },
+        "status": {
+          "type": "string",
+          "description": "Status of the PDI action (e.g., To Do, In Progress, Completed)."
+        }
+      },
+      "required": [
+        "id",
+        "employeeId",
+        "description",
+        "startDate",
+        "endDate",
+        "status"
+      ]
+    },
+    "Meeting": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Meeting",
+      "type": "object",
+      "description": "Represents a 1:1 meeting between a leader and an employee.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the meeting."
+        },
+        "leaderId": {
+          "type": "string",
+          "description": "Reference to Employee (Leader). (Relationship: Employee 1:N Meeting)"
+        },
+        "employeeId": {
+          "type": "string",
+          "description": "Reference to Employee. (Relationship: Employee 1:N Meeting)"
+        },
+        "scheduledTime": {
+          "type": "string",
+          "description": "Scheduled time of the meeting.",
+          "format": "date-time"
+        },
+        "actualTime": {
+          "type": "string",
+          "description": "Actual time of the meeting (if different from scheduled).",
+          "format": "date-time"
+        },
+        "notes": {
+          "type": "string",
+          "description": "Notes from the meeting."
+        }
+      },
+      "required": [
+        "id",
+        "leaderId",
+        "employeeId",
+        "scheduledTime"
+      ]
+    }
+  },
+  "auth": {
+    "providers": [
+      "password",
+      "anonymous"
+    ]
+  },
+  "firestore": {
+    "structure": [
+      {
+        "path": "/employees/{employeeId}",
+        "definition": {
+          "entityName": "Employee",
+          "schema": {
+            "$ref": "#/backend/entities/Employee"
+          },
+          "description": "Stores employee data.  Accessed by admins and potentially leaders for their direct reports. Includes denormalized data from Roles and Teams if needed to ensure authorization independence at the employee level.",
+          "params": [
+            {
+              "name": "employeeId",
+              "description": "Unique identifier for the employee."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/employees/{employeeId}/interactions/{interactionId}",
+        "definition": {
+          "entityName": "Interaction",
+          "schema": {
+            "$ref": "#/backend/entities/Interaction"
+          },
+          "description": "Stores interactions for a specific employee. Accessible by the employee, their leader, and admins.",
+          "params": [
+            {
+              "name": "employeeId",
+              "description": "Unique identifier for the employee."
+            },
+            {
+              "name": "interactionId",
+              "description": "Unique identifier for the interaction."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/employees/{employeeId}/pdiActions/{pdiActionId}",
+        "definition": {
+          "entityName": "PDIAction",
+          "schema": {
+            "$ref": "#/backend/entities/PDIAction"
+          },
+          "description": "Stores PDI actions for a specific employee.  Accessible by the employee, their leader, and admins.",
+          "params": [
+            {
+              "name": "employeeId",
+              "description": "Unique identifier for the employee."
+            },
+            {
+              "name": "pdiActionId",
+              "description": "Unique identifier for the PDI action."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/employees/{employeeId}/meetings/{meetingId}",
+        "definition": {
+          "entityName": "Meeting",
+          "schema": {
+            "$ref": "#/backend/entities/Meeting"
+          },
+          "description": "Stores meetings for a specific employee. Accessible by the employee, their leader, and admins.",
+          "params": [
+            {
+              "name": "employeeId",
+              "description": "Unique identifier for the employee."
+            },
+            {
+              "name": "meetingId",
+              "description": "Unique identifier for the meeting."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/roles/{roleId}",
+        "definition": {
+          "entityName": "Role",
+          "schema": {
+            "$ref": "#/backend/entities/Role"
+          },
+          "description": "Stores role data.",
+          "params": [
+            {
+              "name": "roleId",
+              "description": "Unique identifier for the role."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/teams/{teamId}",
+        "definition": {
+          "entityName": "Team",
+          "schema": {
+            "$ref": "#/backend/entities/Team"
+          },
+          "description": "Stores team data.",
+          "params": [
+            {
+              "name": "teamId",
+              "description": "Unique identifier for the team."
+            }
+          ]
+        }
+      }
+    ],
+    "reasoning": "This Firestore structure is designed to support the Nina 1.0 application's requirements for managing employees, roles, teams, interactions, PDI actions, and meetings. It prioritizes authorization independence and simplifies security rules. The structure uses path-based ownership for user-related data and a membership map approach for collaborative data where applicable. Denormalization is employed to avoid `get()` calls in security rules, enabling atomic operations and easier debugging.  Structural segregation ensures that each collection has a homogeneous security posture, avoiding the mixing of data with different access requirements within the same collection. \n\n**Authorization Independence and QAPs:**\n\n*   **Roles and Teams:** Stored as top-level collections.  Access control is primarily managed through roles, which could be further enhanced with custom claims if needed, although the DBAC approach is maintained here.\n*   **Employees:** Stored in a top-level collection. This allows for easy listing and management of all employees.\n*   **Employee-Owned Data (Interactions, PDI Actions, Meetings):**  These are stored as subcollections under each employee document (`/employees/{employeeId}/interactions`, `/employees/{employeeId}/pdiActions`, `/employees/{employeeId}/meetings`). This path-based ownership simplifies security rules, ensuring that only the employee or authorized personnel (e.g., leaders, admins) can access this data.\n\nThis structure allows for secure `list` operations because each collection has a clear and consistent security posture. For example, listing employees can be restricted based on the user's role, while listing interactions is restricted to the owner of the employee document or authorized personnel."
+  }
+}
