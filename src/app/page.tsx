@@ -23,7 +23,7 @@ export default function LoginPage() {
         </CardHeader>
         <CardContent>
           <Link href="/dashboard" className="w-full">
-            <Button className="w-full">
+            <Button variant="outline" className="w-full bg-white hover:bg-slate-100 text-slate-800">
               <Icons.google className="mr-2 h-4 w-4" />
               Entrar com Google
             </Button>
