@@ -27,6 +27,11 @@ export const teamMembers: TeamMember[] = [
     pdi: [
       { id: "pdi-1", action: "Curso Avançado de Liderança", category: "Leadership", dueDate: "2024-09-30T10:00:00Z", status: "In Progress" },
     ],
+    diagnosis: {
+      status: "Concluído",
+      date: "2024-03-10T10:00:00Z",
+      details: "A colaboradora demonstra fortes habilidades de liderança e gestão de pessoas. Próximos passos incluem focar em estratégias de expansão global da equipe de RH."
+    }
   },
   {
     id: "user-2",
@@ -47,6 +52,11 @@ export const teamMembers: TeamMember[] = [
       { id: "pdi-2", action: "Certificação em AWS Architect", category: "Technical", dueDate: "2024-07-31T10:00:00Z", status: "In Progress" },
       { id: "pdi-3", action: "Workshop de Comunicação Não-Violenta", category: "Soft Skill", dueDate: "2024-06-20T10:00:00Z", status: "Not Started" },
     ],
+    diagnosis: {
+        status: "Em Andamento",
+        date: "2024-05-15T10:00:00Z",
+        details: "Apresenta excelente conhecimento técnico, mas precisa desenvolver habilidades de comunicação para gerenciar conflitos na equipe de forma mais eficaz."
+    }
   },
   {
     id: "user-3",
@@ -65,6 +75,11 @@ export const teamMembers: TeamMember[] = [
     pdi: [
       { id: "pdi-4", action: "Aprender nova linguagem de programação (Rust)", category: "Technical", dueDate: "2024-12-31T10:00:00Z", status: "Not Started" },
     ],
+    diagnosis: {
+        status: "Pendente",
+        date: "2024-01-01T10:00:00Z",
+        details: "Diagnóstico ainda não iniciado. Agendar reunião para levantamento de pontos fortes e de desenvolvimento."
+    }
   },
   {
     id: "user-4",
@@ -83,6 +98,11 @@ export const teamMembers: TeamMember[] = [
     pdi: [
       { id: "pdi-5", action: "Participar como palestrante em um meetup interno", category: "Soft Skill", dueDate: "2024-08-15T10:00:00Z", status: "Not Started" },
     ],
+    diagnosis: {
+        status: "Concluído",
+        date: "2024-04-20T10:00:00Z",
+        details: "Colaboradora proativa e com rápido aprendizado. Apresenta grande potencial para assumir mais responsabilidades em projetos complexos. Ponto de atenção é a gestão de tempo em tarefas múltiplas."
+    }
   },
   {
     id: "user-5",
@@ -99,6 +119,11 @@ export const teamMembers: TeamMember[] = [
       { id: "int-7", type: "1:1", date: "2024-05-29T10:00:00Z", notes: "Discussão sobre o roadmap do Q3.", authorId: "user-1" },
     ],
     pdi: [],
+    diagnosis: {
+        status: "Em Andamento",
+        date: "2024-05-05T10:00:00Z",
+        details: "Ótima visão de produto e mercado. Precisa aprimorar a forma como comunica as prioridades e o racional por trás das decisões para o time de desenvolvimento."
+    }
   },
   {
     id: "user-6",
@@ -115,5 +140,10 @@ export const teamMembers: TeamMember[] = [
     pdi: [
       { id: "pdi-6", action: "Curso de Design Systems", category: "Technical", dueDate: "2024-10-31T10:00:00Z", status: "Not Started" },
     ],
+    diagnosis: {
+        status: "Pendente",
+        date: "2024-02-15T10:00:00Z",
+        details: "Diagnóstico pendente. Agendar sessão para avaliar as competências de UX e alinhar expectativas de carreira."
+    }
   },
 ];

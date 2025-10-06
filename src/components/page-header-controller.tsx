@@ -17,6 +17,10 @@ const titles: { [key: string]: { title: string; description?: string } } = {
     title: "Acompanhamento Individual",
     description: "Registre e acompanhe as interações com sua equipe.",
   },
+  "/dashboard/pdi": {
+    title: "Plano de Desenvolvimento",
+    description: "Visualize e gerencie o PDI e o diagnóstico de cada colaborador.",
+  },
   "/dashboard/risk-analysis": {
     title: "Análise de Risco",
     description: "Identifique e mitigue riscos relacionados à sua equipe.",

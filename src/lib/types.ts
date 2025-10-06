@@ -24,6 +24,12 @@ export interface PDIAction {
   status: "Not Started" | "In Progress" | "Completed";
 }
 
+export interface Diagnosis {
+    status: "Concluído" | "Em Andamento" | "Pendente";
+    date: string;
+    details: string;
+}
+
 export interface TeamMember extends User {
   team: string;
   position: string;
@@ -37,4 +43,5 @@ export interface TeamMember extends User {
   };
   timeline: Interaction[];
   pdi: PDIAction[];
+  diagnosis: Diagnosis;
 }
