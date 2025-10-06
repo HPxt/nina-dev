@@ -6,22 +6,46 @@
       "type": "object",
       "description": "Represents an employee in the organization.",
       "properties": {
-        "id": {
+        "id3a": {
           "type": "string",
-          "description": "Unique identifier for the employee."
+          "description": "Unique identifier for the employee from the external system."
         },
-        "firstName": {
+        "name": {
           "type": "string",
-          "description": "First name of the employee."
-        },
-        "lastName": {
-          "type": "string",
-          "description": "Last name of the employee."
+          "description": "Full name of the employee."
         },
         "email": {
           "type": "string",
           "description": "Email address of the employee.",
           "format": "email"
+        },
+        "photoURL": {
+          "type": "string",
+          "description": "URL of the employee's profile picture."
+        },
+        "axis": {
+          "type": "string",
+          "description": "Organizational axis the employee belongs to."
+        },
+        "area": {
+          "type": "string",
+          "description": "Organizational area the employee works in."
+        },
+        "position": {
+          "type": "string",
+          "description": "Job title or position of the employee."
+        },
+        "segment": {
+          "type": "string",
+          "description": "Business segment of the employee."
+        },
+        "leader": {
+          "type": "string",
+          "description": "Name of the employee's direct leader."
+        },
+        "city": {
+          "type": "string",
+          "description": "City where the employee is based."
         },
         "roleId": {
           "type": "string",
@@ -37,12 +61,10 @@
         }
       },
       "required": [
-        "id",
-        "firstName",
-        "lastName",
+        "id3a",
+        "name",
         "email",
-        "roleId",
-        "teamId"
+        "position"
       ]
     },
     "Role": {
@@ -229,7 +251,7 @@
           "params": [
             {
               "name": "employeeId",
-              "description": "Unique identifier for the employee."
+              "description": "Unique identifier for the employee. Should correspond to id3a from the CSV."
             }
           ]
         }

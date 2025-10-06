@@ -15,6 +15,11 @@ import { useDropzone } from "react-dropzone";
 import { FileUp, FileCheck2, AlertCircle } from "lucide-react";
 import { ScrollArea } from "./ui/scroll-area";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "./ui/table";
+import { useFirestore } from "@/firebase";
+import { doc } from "firebase/firestore";
+import { setDocumentNonBlocking } from "@/firebase/non-blocking-updates";
+import { useToast } from "@/hooks/use-toast";
+
 
 type CsvData = { [key: string]: string };
 
@@ -35,6 +40,9 @@ export function CsvUploadDialog({ open, onOpenChange }: { open: boolean; onOpenC
   const [file, setFile] = useState<File | null>(null);
   const [data, setData] = useState<CsvData[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [isImporting, setIsImporting] = useState(false);
+  const firestore = useFirestore();
+  const { toast } = useToast();
 
   const onDrop = useCallback((acceptedFiles: File[]) => {
     setError(null);
@@ -71,7 +79,7 @@ export function CsvUploadDialog({ open, onOpenChange }: { open: boolean; onOpenC
       const rows = lines.slice(1).map((line) => {
         const values = line.split(',');
         return header.reduce((obj, nextKey, index) => {
-            obj[nextKey] = values[index];
+            obj[nextKey] = values[index] ? values[index].trim() : '';
             return obj;
         }, {} as CsvData);
       });
@@ -89,8 +97,45 @@ export function CsvUploadDialog({ open, onOpenChange }: { open: boolean; onOpenC
     setFile(null);
     setData([]);
     setError(null);
+    setIsImporting(false);
     onOpenChange(false);
   }
+
+  const handleImport = async () => {
+    if (!firestore || data.length === 0) return;
+
+    setIsImporting(true);
+    try {
+      const importPromises = data.map(row => {
+        const docId = row.id3a;
+        if (!docId) {
+          console.warn("Linha ignorada por falta de id3a:", row);
+          return Promise.resolve(); // Ignora a linha se não tiver id
+        }
+        const docRef = doc(firestore, "employees", docId);
+        // Os dados em `row` já estão no formato que queremos salvar.
+        return setDocumentNonBlocking(docRef, row, { merge: true });
+      });
+
+      // Embora a função seja "non-blocking", esperamos todas as escritas iniciarem.
+      await Promise.all(importPromises);
+
+      toast({
+        title: "Importação Concluída",
+        description: `${data.length} registros foram processados com sucesso.`,
+      });
+    } catch (e) {
+      console.error("Erro durante a importação:", e);
+      toast({
+        variant: "destructive",
+        title: "Erro na Importação",
+        description: "Ocorreu um erro ao salvar os dados. Verifique o console para mais detalhes.",
+      });
+    } finally {
+      handleClose();
+    }
+  };
+
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
@@ -160,8 +205,10 @@ export function CsvUploadDialog({ open, onOpenChange }: { open: boolean; onOpenC
             )}
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={handleClose}>Cancelar</Button>
-          <Button disabled={data.length === 0 || !!error}>Importar {data.length > 0 ? `${data.length} registros` : ''}</Button>
+          <Button variant="outline" onClick={handleClose} disabled={isImporting}>Cancelar</Button>
+          <Button onClick={handleImport} disabled={data.length === 0 || !!error || isImporting}>
+            {isImporting ? "Importando..." : `Importar ${data.length > 0 ? `${data.length} registros` : ''}`}
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
