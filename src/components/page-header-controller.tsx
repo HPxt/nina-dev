@@ -13,6 +13,10 @@ const titles: { [key: string]: { title: string; description?: string } } = {
     title: "Equipe",
     description: "Visualize e gerencie os membros da sua equipe.",
   },
+  "/dashboard/individual-tracking": {
+    title: "Acompanhamento Individual",
+    description: "Registre e acompanhe as interações com sua equipe.",
+  },
   "/dashboard/risk-analysis": {
     title: "Análise de Risco",
     description: "Identifique e mitigue riscos relacionados à sua equipe.",

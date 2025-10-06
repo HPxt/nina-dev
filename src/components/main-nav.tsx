@@ -7,6 +7,7 @@ import {
   Users,
   ShieldAlert,
   Settings,
+  ClipboardList,
 } from "lucide-react";
 import type { Role } from "@/lib/types";
 import {
@@ -18,6 +19,7 @@ import {
 const navItems = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/dashboard/team", label: "Equipe", icon: Users },
+  { href: "/dashboard/individual-tracking", label: "Acompanhamento", icon: ClipboardList, roles: ["Líder", "Diretor", "Admin"] },
   { href: "/dashboard/risk-analysis", label: "Análise de Risco", icon: ShieldAlert, roles: ["Líder", "Diretor", "Admin"] },
   { href: "/dashboard/admin", label: "Admin", icon: Settings, roles: ["Admin"] },
 ];
