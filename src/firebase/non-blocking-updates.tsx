@@ -18,14 +18,20 @@ import {FirestorePermissionError} from '@/firebase/errors';
  */
 export function setDocumentNonBlocking(docRef: DocumentReference, data: any, options: SetOptions) {
   setDoc(docRef, data, options).catch(error => {
-    errorEmitter.emit(
-      'permission-error',
-      new FirestorePermissionError({
-        path: docRef.path,
-        operation: 'write', // or 'create'/'update' based on options
-        requestResourceData: data,
-      })
-    )
+    // Check if the error has a code property, which is common for Firebase errors
+    if (error && error.code === 'permission-denied') {
+        errorEmitter.emit(
+          'permission-error',
+          new FirestorePermissionError({
+            path: docRef.path,
+            operation: options && 'merge' in options ? 'update' : 'create',
+            requestResourceData: data,
+          })
+        )
+    } else {
+        // For other types of errors, you might want to log them or handle them differently
+        console.error("An unexpected error occurred during setDoc:", error);
+    }
   })
   // Execution continues immediately
 }
