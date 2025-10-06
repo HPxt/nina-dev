@@ -1,3 +1,4 @@
+
 export type Role = "Colaborador" | "Líder" | "Diretor" | "Admin";
 
 export interface User {
@@ -6,6 +7,21 @@ export interface User {
   email: string;
   avatarUrl: string;
   role: Role;
+}
+
+export interface Employee {
+  id3a: string;
+  name: string;
+  email: string;
+  photoURL?: string;
+  axis?: string;
+  area?: string;
+  position?: string;
+  segment?: string;
+  leader?: string;
+  city?: string;
+  role?: Role;
+  team?: string;
 }
 
 export interface Interaction {

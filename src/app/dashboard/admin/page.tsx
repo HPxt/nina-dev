@@ -1,7 +1,7 @@
 
 "use client";
 
-import { teamMembers } from "@/lib/data";
+import type { Role } from "@/lib/types";
 import {
   Card,
   CardContent,
@@ -30,15 +30,26 @@ import { MoreHorizontal, PlusCircle, Upload } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import type { Role } from "@/lib/types";
 import { CsvUploadDialog } from "@/components/csv-upload-dialog";
-import { useState } from "react";
+import { useState, useMemo } from "react";
+import { useCollection, useFirestore, useMemoFirebase } from "@/firebase";
+import { collection } from "firebase/firestore";
+import type { Employee } from "@/lib/types";
+import { Skeleton } from "@/components/ui/skeleton";
 
 const roles: Role[] = ["Colaborador", "Líder", "Diretor", "Admin"];
 
 export default function AdminPage() {
   const [isCsvDialogOpen, setIsCsvDialogOpen] = useState(false);
+  const firestore = useFirestore();
+
+  const employeesCollection = useMemoFirebase(
+    () => (firestore ? collection(firestore, "employees") : null),
+    [firestore]
+  );
   
+  const { data: employees, isLoading } = useCollection<Employee>(employeesCollection);
+
   return (
     <>
     <Tabs defaultValue="employees">
@@ -74,17 +85,43 @@ export default function AdminPage() {
                 <TableRow>
                   <TableHead>Nome</TableHead>
                   <TableHead>Email</TableHead>
+                  <TableHead>Cargo</TableHead>
+                  <TableHead>Eixo</TableHead>
+                  <TableHead>Área</TableHead>
+                  <TableHead>Segmento</TableHead>
+                  <TableHead>Líder</TableHead>
+                  <TableHead>Cidade</TableHead>
                   <TableHead>Função</TableHead>
                   <TableHead className="text-right">Ações</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {teamMembers.map((member) => (
-                  <TableRow key={member.id}>
-                    <TableCell className="font-medium">{member.name}</TableCell>
-                    <TableCell>{member.email}</TableCell>
+                {isLoading && Array.from({ length: 5 }).map((_, i) => (
+                    <TableRow key={i}>
+                        <TableCell><Skeleton className="h-5 w-24" /></TableCell>
+                        <TableCell><Skeleton className="h-5 w-32" /></TableCell>
+                        <TableCell><Skeleton className="h-5 w-20" /></TableCell>
+                        <TableCell><Skeleton className="h-5 w-20" /></TableCell>
+                        <TableCell><Skeleton className="h-5 w-20" /></TableCell>
+                        <TableCell><Skeleton className="h-5 w-20" /></TableCell>
+                        <TableCell><Skeleton className="h-5 w-20" /></TableCell>
+                        <TableCell><Skeleton className="h-5 w-20" /></TableCell>
+                        <TableCell><Skeleton className="h-9 w-[180px]" /></TableCell>
+                        <TableCell className="text-right"><Skeleton className="h-8 w-8 rounded-full" /></TableCell>
+                    </TableRow>
+                ))}
+                {employees?.map((employee) => (
+                  <TableRow key={employee.id}>
+                    <TableCell className="font-medium">{employee.name}</TableCell>
+                    <TableCell>{employee.email}</TableCell>
+                    <TableCell>{employee.position}</TableCell>
+                    <TableCell>{employee.axis}</TableCell>
+                    <TableCell>{employee.area}</TableCell>
+                    <TableCell>{employee.segment}</TableCell>
+                    <TableCell>{employee.leader}</TableCell>
+                    <TableCell>{employee.city}</TableCell>
                     <TableCell>
-                      <Select defaultValue={member.role}>
+                      <Select defaultValue={employee.role}>
                         <SelectTrigger className="w-[180px]">
                           <SelectValue placeholder="Selecione a função" />
                         </SelectTrigger>
