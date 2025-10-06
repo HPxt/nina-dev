@@ -9,13 +9,14 @@ import {
 } from "@/components/ui/card";
 import { Icons } from "@/components/icons";
 import Link from "next/link";
+import Image from "next/image";
 
 export default function LoginPage() {
   return (
     <main className="flex min-h-screen flex-col items-center justify-center bg-muted/40 p-4">
       <Card className="w-full max-w-sm">
         <CardHeader className="items-center text-center">
-          <Icons.logo className="h-12 w-12 text-primary" />
+          <Image src="https://firebasestorage.googleapis.com/v0/b/a-riva-hub.firebasestorage.app/o/Imagens%20institucionais%20(logos%20e%20etc)%2Flogo%20oficial%20preta.png?alt=media&token=ce88dc80-01cd-4295-b443-951e6c0210aa" alt="Nina 1.0 Logo" width={48} height={48} className="h-12 w-12" />
           <CardTitle className="font-headline text-3xl pt-4">Nina 1.0</CardTitle>
           <CardDescription>
             Bem-vindo(a) de volta! Faça login para continuar.
