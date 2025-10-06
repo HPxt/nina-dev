@@ -1,7 +1,7 @@
 
 "use client";
 
-import type { Employee, Role } from "@/lib/types";
+import type { Employee } from "@/lib/types";
 import {
   Card,
   CardContent,
@@ -26,8 +26,15 @@ import {
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
-import { MoreHorizontal, PlusCircle, Upload, ArrowUpDown, X } from "lucide-react";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { MoreHorizontal, PlusCircle, Upload, ArrowUpDown, X, Filter } from "lucide-react";
+import { 
+  DropdownMenu, 
+  DropdownMenuContent, 
+  DropdownMenuItem, 
+  DropdownMenuTrigger,
+  DropdownMenuSeparator,
+  DropdownMenuCheckboxItem
+} from "@/components/ui/dropdown-menu";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { CsvUploadDialog } from "@/components/csv-upload-dialog";
@@ -37,6 +44,9 @@ import { collection, doc } from "firebase/firestore";
 import { setDocumentNonBlocking } from "@/firebase/non-blocking-updates";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Role } from "@/lib/types";
+
 
 const roles: Role[] = ["Colaborador", "Líder", "Diretor", "Admin"];
 
@@ -50,16 +60,19 @@ export default function AdminPage() {
   const firestore = useFirestore();
   const { user, isUserLoading } = useUser();
 
-  const [filters, setFilters] = useState({
+  const initialFilters = {
     email: "",
-    position: "",
-    axis: "",
-    area: "",
-    segment: "",
-    leader: "",
-    city: "",
-    role: "",
-  });
+    name: "",
+    position: new Set<string>(),
+    axis: new Set<string>(),
+    area: new Set<string>(),
+    segment: new Set<string>(),
+    leader: new Set<string>(),
+    city: new Set<string>(),
+    role: new Set<string>(),
+  };
+
+  const [filters, setFilters] = useState(initialFilters);
   const [sortConfig, setSortConfig] = useState<SortConfig>({ key: 'name', direction: 'ascending' });
 
   const employeesCollection = useMemoFirebase(
@@ -76,14 +89,15 @@ export default function AdminPage() {
   };
   
   const uniqueValues = useMemo(() => {
-    if (!employees) return { positions: [], axes: [], areas: [], segments: [], leaders: [], cities: [] };
-    const positions = [...new Set(employees.map(e => e.position).filter(p => p && p.trim() !== ''))] as string[];
-    const axes = [...new Set(employees.map(e => e.axis).filter(a => a && a.trim() !== ''))] as string[];
-    const areas = [...new Set(employees.map(e => e.area).filter(a => a && a.trim() !== ''))] as string[];
-    const segments = [...new Set(employees.map(e => e.segment).filter(s => s && s.trim() !== ''))] as string[];
-    const leaders = [...new Set(employees.map(e => e.leader).filter(l => l && l.trim() !== ''))] as string[];
-    const cities = [...new Set(employees.map(e => e.city).filter(c => c && c.trim() !== ''))] as string[];
-    return { positions, axes, areas, segments, leaders, cities };
+    if (!employees) return { positions: [], axes: [], areas: [], segments: [], leaders: [], cities: [], roles: [] };
+    const positions = [...new Set(employees.map(e => e.position).filter(Boolean))].sort();
+    const axes = [...new Set(employees.map(e => e.axis).filter(Boolean))].sort();
+    const areas = [...new Set(employees.map(e => e.area).filter(Boolean))].sort();
+    const segments = [...new Set(employees.map(e => e.segment).filter(Boolean))].sort();
+    const leaders = [...new Set(employees.map(e => e.leader).filter(Boolean))].sort();
+    const cities = [...new Set(employees.map(e => e.city).filter(Boolean))].sort();
+    const roles = [...new Set(employees.map(e => e.role).filter(Boolean))].sort() as Role[];
+    return { positions, axes, areas, segments, leaders, cities, roles };
   }, [employees]);
 
 
@@ -93,13 +107,14 @@ export default function AdminPage() {
     let filtered = employees.filter(employee => {
         return (
             (!filters.email || employee.email?.toLowerCase().includes(filters.email.toLowerCase())) &&
-            (!filters.position || employee.position === filters.position) &&
-            (!filters.axis || employee.axis === filters.axis) &&
-            (!filters.area || employee.area === filters.area) &&
-            (!filters.segment || employee.segment === filters.segment) &&
-            (!filters.leader || employee.leader === filters.leader) &&
-            (!filters.city || employee.city === filters.city) &&
-            (!filters.role || employee.role === filters.role)
+            (!filters.name || employee.name?.toLowerCase().includes(filters.name.toLowerCase())) &&
+            (filters.position.size === 0 || (employee.position && filters.position.has(employee.position))) &&
+            (filters.axis.size === 0 || (employee.axis && filters.axis.has(employee.axis))) &&
+            (filters.area.size === 0 || (employee.area && filters.area.has(employee.area))) &&
+            (filters.segment.size === 0 || (employee.segment && filters.segment.has(employee.segment))) &&
+            (filters.leader.size === 0 || (employee.leader && filters.leader.has(employee.leader))) &&
+            (filters.city.size === 0 || (employee.city && filters.city.has(employee.city))) &&
+            (filters.role.size === 0 || (employee.role && filters.role.has(employee.role)))
         );
     });
 
@@ -129,16 +144,63 @@ export default function AdminPage() {
     }
     setSortConfig({ key, direction });
   };
-  
-  const handleFilterChange = (filterName: keyof typeof filters, value: string) => {
+
+  const handleMultiSelectFilterChange = (filterName: keyof typeof filters, value: string) => {
+    setFilters(prev => {
+      const newSet = new Set(prev[filterName] as Set<string>);
+      if (newSet.has(value)) {
+        newSet.delete(value);
+      } else {
+        newSet.add(value);
+      }
+      return { ...prev, [filterName]: newSet };
+    });
+  };
+
+  const handleTextFilterChange = (filterName: 'email' | 'name', value: string) => {
     setFilters(prev => ({ ...prev, [filterName]: value }));
   };
 
-  const clearFilters = () => {
-    setFilters({ email: "", position: "", axis: "", area: "", segment: "", leader: "", city: "", role: "" });
-  };
+  const isFilterActive = useMemo(() => {
+    return Object.values(filters).some(value => {
+      if (typeof value === 'string') return value !== '';
+      if (value instanceof Set) return value.size > 0;
+      return false;
+    });
+  }, [filters]);
+
+  const clearFilters = () => setFilters(initialFilters);
 
   const isLoading = isUserLoading || areEmployeesLoading;
+
+  const FilterComponent = ({ title, filterKey, options, children }: { title: string, filterKey: keyof typeof filters, options: string[], children?: React.ReactNode }) => (
+    <div className="flex items-center gap-1">
+      <span>{title}</span>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button variant="ghost" size="icon" className="h-6 w-6">
+            <Filter className={`h-4 w-4 ${filters[filterKey] instanceof Set && (filters[filterKey] as Set<string>).size > 0 ? 'text-primary' : ''}`} />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="start">
+          {children ? children :
+            <>
+              {options.map((option) => (
+                <DropdownMenuCheckboxItem
+                  key={option}
+                  checked={filters[filterKey] instanceof Set && (filters[filterKey] as Set<string>).has(option)}
+                  onSelect={(e) => e.preventDefault()}
+                  onCheckedChange={() => handleMultiSelectFilterChange(filterKey, option)}
+                >
+                  {option}
+                </DropdownMenuCheckboxItem>
+              ))}
+            </>
+          }
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </div>
+  );
 
   return (
     <>
@@ -158,6 +220,12 @@ export default function AdminPage() {
                     </CardDescription>
                 </div>
                 <div className="flex items-center gap-2">
+                    {isFilterActive && (
+                      <Button variant="ghost" size="sm" onClick={clearFilters}>
+                        <X className="mr-2 h-4 w-4" />
+                        Limpar filtros
+                      </Button>
+                    )}
                     <Button variant="outline" size="sm" onClick={() => setIsCsvDialogOpen(true)}>
                         <Upload className="mr-2 h-4 w-4" />
                         Upload CSV
@@ -170,86 +238,71 @@ export default function AdminPage() {
             </div>
           </CardHeader>
           <CardContent>
-            <div className="mb-4 p-4 border rounded-lg bg-muted/50">
-              <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
-                  <Input 
-                      placeholder="Filtrar por Email..."
-                      value={filters.email}
-                      onChange={(e) => handleFilterChange('email', e.target.value)}
-                      className="bg-background"
-                  />
-                   <Select value={filters.position} onValueChange={(value) => handleFilterChange('position', value)}>
-                      <SelectTrigger><SelectValue placeholder="Cargo" /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="">Todos os Cargos</SelectItem>
-                        {uniqueValues.positions.map((p, i) => <SelectItem key={`${p}-${i}`} value={p}>{p}</SelectItem>)}
-                      </SelectContent>
-                  </Select>
-                  <Select value={filters.axis} onValueChange={(value) => handleFilterChange('axis', value)}>
-                      <SelectTrigger><SelectValue placeholder="Eixo" /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="">Todos os Eixos</SelectItem>
-                        {uniqueValues.axes.map((v,i) => <SelectItem key={`${v}-${i}`} value={v}>{v}</SelectItem>)}
-                      </SelectContent>
-                  </Select>
-                   <Select value={filters.area} onValueChange={(value) => handleFilterChange('area', value)}>
-                      <SelectTrigger><SelectValue placeholder="Área" /></SelectTrigger>
-                      <SelectContent>
-                         <SelectItem value="">Todas as Áreas</SelectItem>
-                        {uniqueValues.areas.map((v,i) => <SelectItem key={`${v}-${i}`} value={v}>{v}</SelectItem>)}
-                      </SelectContent>
-                  </Select>
-                   <Select value={filters.segment} onValueChange={(value) => handleFilterChange('segment', value)}>
-                      <SelectTrigger><SelectValue placeholder="Segmento" /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="">Todos os Segmentos</SelectItem>
-                        {uniqueValues.segments.map((v,i) => <SelectItem key={`${v}-${i}`} value={v}>{v}</SelectItem>)}
-                      </SelectContent>
-                  </Select>
-                   <Select value={filters.leader} onValueChange={(value) => handleFilterChange('leader', value)}>
-                      <SelectTrigger><SelectValue placeholder="Líder" /></SelectTrigger>
-                      <SelectContent>
-                         <SelectItem value="">Todos os Líderes</SelectItem>
-                        {uniqueValues.leaders.map((v,i) => <SelectItem key={`${v}-${i}`} value={v}>{v}</SelectItem>)}
-                      </SelectContent>
-                  </Select>
-                   <Select value={filters.city} onValueChange={(value) => handleFilterChange('city', value)}>
-                      <SelectTrigger><SelectValue placeholder="Cidade" /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="">Todas as Cidades</SelectItem>
-                        {uniqueValues.cities.map((v,i) => <SelectItem key={`${v}-${i}`} value={v}>{v}</SelectItem>)}
-                      </SelectContent>
-                  </Select>
-                   <Select value={filters.role} onValueChange={(value) => handleFilterChange('role', value)}>
-                      <SelectTrigger><SelectValue placeholder="Função" /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="">Todas as Funções</SelectItem>
-                        {roles.map((r,i) => <SelectItem key={`${r}-${i}`} value={r}>{r}</SelectItem>)}
-                      </SelectContent>
-                  </Select>
-                  <Button variant="ghost" onClick={clearFilters} className="lg:col-start-5">
-                    <X className="mr-2 h-4 w-4" />
-                    Limpar Filtros
-                  </Button>
-              </div>
-            </div>
             <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead>
-                    <Button variant="ghost" onClick={() => requestSort('name')}>
-                      Nome
-                      <ArrowUpDown className="ml-2 h-4 w-4" />
-                    </Button>
+                    <div className="flex items-center gap-1">
+                      <Button variant="ghost" onClick={() => requestSort('name')} className="px-1">
+                        Nome
+                        <ArrowUpDown className="ml-2 h-4 w-4" />
+                      </Button>
+                       <Popover>
+                        <PopoverTrigger asChild>
+                           <Button variant="ghost" size="icon" className="h-6 w-6">
+                              <Filter className={`h-4 w-4 ${filters.name ? 'text-primary' : ''}`} />
+                            </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="p-2">
+                            <Input
+                                placeholder="Filtrar por nome..."
+                                value={filters.name}
+                                onChange={(e) => handleTextFilterChange('name', e.target.value)}
+                            />
+                        </PopoverContent>
+                      </Popover>
+                    </div>
                   </TableHead>
-                  <TableHead>Email</TableHead>
-                  <TableHead>Cargo</TableHead>
-                  <TableHead>Eixo</TableHead>
-                  <TableHead>Área</TableHead>
-                  <TableHead>Segmento</TableHead>
-                  <TableHead>Líder</TableHead>
-                  <TableHead>Cidade</TableHead>
-                  <TableHead>Função</TableHead>
+                   <TableHead>
+                     <div className="flex items-center gap-1">
+                        <span>Email</span>
+                        <Popover>
+                          <PopoverTrigger asChild>
+                             <Button variant="ghost" size="icon" className="h-6 w-6">
+                                <Filter className={`h-4 w-4 ${filters.email ? 'text-primary' : ''}`} />
+                              </Button>
+                          </PopoverTrigger>
+                          <PopoverContent className="p-2">
+                              <Input
+                                  placeholder="Filtrar por email..."
+                                  value={filters.email}
+                                  onChange={(e) => handleTextFilterChange('email', e.target.value)}
+                              />
+                          </PopoverContent>
+                        </Popover>
+                      </div>
+                  </TableHead>
+                  <TableHead>
+                    <FilterComponent title="Cargo" filterKey="position" options={uniqueValues.positions} />
+                  </TableHead>
+                  <TableHead>
+                     <FilterComponent title="Eixo" filterKey="axis" options={uniqueValues.axes} />
+                  </TableHead>
+                  <TableHead>
+                    <FilterComponent title="Área" filterKey="area" options={uniqueValues.areas} />
+                  </TableHead>
+                  <TableHead>
+                    <FilterComponent title="Segmento" filterKey="segment" options={uniqueValues.segments} />
+                  </TableHead>
+                  <TableHead>
+                    <FilterComponent title="Líder" filterKey="leader" options={uniqueValues.leaders} />
+                  </TableHead>
+                  <TableHead>
+                    <FilterComponent title="Cidade" filterKey="city" options={uniqueValues.cities} />
+                  </TableHead>
+                  <TableHead>
+                    <FilterComponent title="Função" filterKey="role" options={uniqueValues.roles} />
+                  </TableHead>
                   <TableHead className="text-right">Ações</TableHead>
                 </TableRow>
               </TableHeader>
@@ -341,3 +394,5 @@ export default function AdminPage() {
     </>
   );
 }
+
+    
