@@ -21,8 +21,8 @@ const titles: { [key: string]: { title: string; description?: string } } = {
     description: "Identifique e mitigue riscos relacionados à sua equipe.",
   },
   "/dashboard/admin": {
-    title: "Gerenciamento de Admin",
-    description: "Configure as permissões e ajustes gerais do sistema.",
+    title: "Configurações",
+    description: "Configure os ajustes gerais do sistema.",
   },
 };
 

@@ -1,5 +1,4 @@
 import { MainNav } from "@/components/main-nav";
-import { UserNav } from "@/components/user-nav";
 import {
   SidebarProvider,
   Sidebar,
@@ -7,9 +6,14 @@ import {
   SidebarContent,
   SidebarFooter,
   SidebarInset,
+  SidebarMenu,
+  SidebarMenuItem,
+  SidebarMenuButton,
 } from "@/components/ui/sidebar";
 import { currentUser } from "@/lib/data";
 import { PageHeaderController } from "@/components/page-header-controller";
+import { Settings } from "lucide-react";
+import Link from "next/link";
 
 export default function DashboardLayout({
   children,
@@ -25,7 +29,16 @@ export default function DashboardLayout({
           <MainNav userRole={currentUser.role} />
         </SidebarContent>
         <SidebarFooter>
-          <UserNav user={currentUser} />
+            <SidebarMenu>
+                <SidebarMenuItem>
+                    <SidebarMenuButton asChild tooltip="Configurações">
+                        <Link href="/dashboard/admin">
+                            <Settings />
+                            <span>Configurações</span>
+                        </Link>
+                    </SidebarMenuButton>
+                </SidebarMenuItem>
+            </SidebarMenu>
         </SidebarFooter>
       </Sidebar>
       <SidebarInset>

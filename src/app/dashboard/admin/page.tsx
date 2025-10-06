@@ -58,7 +58,7 @@ export default function AdminPage() {
     <Tabs defaultValue="employees">
       <TabsList className="grid w-full grid-cols-2">
         <TabsTrigger value="employees">Funcionários</TabsTrigger>
-        <TabsTrigger value="settings">Configurações</TabsTrigger>
+        <TabsTrigger value="settings">Geral</TabsTrigger>
       </TabsList>
       <TabsContent value="employees">
         <Card>

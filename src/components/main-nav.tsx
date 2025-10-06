@@ -5,7 +5,6 @@ import { usePathname } from "next/navigation";
 import {
   LayoutDashboard,
   ShieldAlert,
-  Settings,
   ClipboardList,
   ClipboardCheck,
 } from "lucide-react";
@@ -21,7 +20,6 @@ const navItems = [
   { href: "/dashboard/individual-tracking", label: "Acompanhamento", icon: ClipboardList, roles: ["Líder", "Diretor", "Admin"] },
   { href: "/dashboard/pdi", label: "Plano de Desenvolvimento", icon: ClipboardCheck, roles: ["Líder", "Diretor", "Admin"] },
   { href: "/dashboard/risk-analysis", label: "Análise de Risco", icon: ShieldAlert, roles: ["Líder", "Diretor", "Admin"] },
-  { href: "/dashboard/admin", label: "Admin", icon: Settings, roles: ["Admin"] },
 ];
 
 export function MainNav({ userRole }: { userRole: Role }) {
