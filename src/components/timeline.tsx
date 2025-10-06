@@ -1,19 +1,15 @@
 import type { Interaction } from "@/lib/types";
 import {
   MessageSquare,
-  Star,
-  Target,
-  FileText,
+  Users,
   Calendar,
 } from "lucide-react";
 import { formatDate } from "@/lib/utils";
 
 const interactionIcons = {
-  "1-on-1": <Calendar className="h-4 w-4" />,
+  "1:1": <Calendar className="h-4 w-4" />,
   "Feedback": <MessageSquare className="h-4 w-4" />,
-  "Goal Setting": <Target className="h-4 w-4" />,
-  "Performance Review": <Star className="h-4 w-4" />,
-  "General Note": <FileText className="h-4 w-4" />,
+  "N3 Individual": <Users className="h-4 w-4" />,
 };
 
 export function Timeline({ interactions }: { interactions: Interaction[] }) {

@@ -21,8 +21,8 @@ export const teamMembers: TeamMember[] = [
     oneOnOneStatus: "Em dia",
     risk: { score: 15, health: 90, satisfaction: 85, performance: 95 },
     timeline: [
-      { id: "int-1", type: "Performance Review", date: "2024-04-15T10:00:00Z", notes: "Revisão de desempenho anual. Performance excelente.", authorId: "user-0" },
-      { id: "int-2", type: "Goal Setting", date: "2024-01-20T10:00:00Z", notes: "Definição de metas para o Q1. Foco em expansão da equipe.", authorId: "user-0" },
+      { id: "int-1", type: "N3 Individual", date: "2024-04-15T10:00:00Z", notes: "Revisão de desempenho anual. Performance excelente.", authorId: "user-0" },
+      { id: "int-2", type: "N3 Individual", date: "2024-01-20T10:00:00Z", notes: "Definição de metas para o Q1. Foco em expansão da equipe.", authorId: "user-0" },
     ],
     pdi: [
       { id: "pdi-1", action: "Curso Avançado de Liderança", category: "Leadership", dueDate: "2024-09-30T10:00:00Z", status: "In Progress" },
@@ -40,7 +40,7 @@ export const teamMembers: TeamMember[] = [
     oneOnOneStatus: "Atenção",
     risk: { score: 45, health: 70, satisfaction: 60, performance: 80 },
     timeline: [
-      { id: "int-3", type: "1-on-1", date: "2024-05-10T10:00:00Z", notes: "Conversa sobre o andamento do projeto X. Demonstrou preocupação com prazos.", authorId: "user-1" },
+      { id: "int-3", type: "1:1", date: "2024-05-10T10:00:00Z", notes: "Conversa sobre o andamento do projeto X. Demonstrou preocupação com prazos.", authorId: "user-1" },
       { id: "int-4", type: "Feedback", date: "2024-04-22T10:00:00Z", notes: "Feedback positivo sobre a mentoria de novos membros.", authorId: "user-1" },
     ],
     pdi: [
@@ -60,7 +60,7 @@ export const teamMembers: TeamMember[] = [
     oneOnOneStatus: "Atrasado",
     risk: { score: 70, health: 50, satisfaction: 40, performance: 65 },
     timeline: [
-      { id: "int-5", type: "1-on-1", date: "2024-04-05T10:00:00Z", notes: "Mencionou estar se sentindo desmotivado com as tarefas atuais.", authorId: "user-2" },
+      { id: "int-5", type: "1:1", date: "2024-04-05T10:00:00Z", notes: "Mencionou estar se sentindo desmotivado com as tarefas atuais.", authorId: "user-2" },
     ],
     pdi: [
       { id: "pdi-4", action: "Aprender nova linguagem de programação (Rust)", category: "Technical", dueDate: "2024-12-31T10:00:00Z", status: "Not Started" },
@@ -78,7 +78,7 @@ export const teamMembers: TeamMember[] = [
     oneOnOneStatus: "Em dia",
     risk: { score: 25, health: 80, satisfaction: 90, performance: 88 },
     timeline: [
-      { id: "int-6", type: "1-on-1", date: "2024-05-28T10:00:00Z", notes: "Alinhamento semanal, tudo correndo bem. Mostrou interesse em novos desafios.", authorId: "user-2" },
+      { id: "int-6", type: "1:1", date: "2024-05-28T10:00:00Z", notes: "Alinhamento semanal, tudo correndo bem. Mostrou interesse em novos desafios.", authorId: "user-2" },
     ],
     pdi: [
       { id: "pdi-5", action: "Participar como palestrante em um meetup interno", category: "Soft Skill", dueDate: "2024-08-15T10:00:00Z", status: "Not Started" },
@@ -96,7 +96,7 @@ export const teamMembers: TeamMember[] = [
     oneOnOneStatus: "Em dia",
     risk: { score: 30, health: 85, satisfaction: 75, performance: 85 },
     timeline: [
-      { id: "int-7", type: "1-on-1", date: "2024-05-29T10:00:00Z", notes: "Discussão sobre o roadmap do Q3.", authorId: "user-1" },
+      { id: "int-7", type: "1:1", date: "2024-05-29T10:00:00Z", notes: "Discussão sobre o roadmap do Q3.", authorId: "user-1" },
     ],
     pdi: [],
   },

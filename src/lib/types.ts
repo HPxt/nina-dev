@@ -10,7 +10,7 @@ export interface User {
 
 export interface Interaction {
   id: string;
-  type: "1-on-1" | "Feedback" | "Goal Setting" | "Performance Review" | "General Note";
+  type: "1:1" | "Feedback" | "N3 Individual";
   date: string;
   notes: string;
   authorId: string;

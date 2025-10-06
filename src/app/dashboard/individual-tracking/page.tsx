@@ -105,16 +105,10 @@ export default function IndividualTrackingPage() {
                         <SelectValue placeholder="Selecione o tipo" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="1-on-1">1-on-1</SelectItem>
+                        <SelectItem value="1:1">1:1</SelectItem>
                         <SelectItem value="Feedback">Feedback</SelectItem>
-                        <SelectItem value="Goal Setting">
-                          Definição de Metas
-                        </SelectItem>
-                        <SelectItem value="Performance Review">
-                          Revisão de Desempenho
-                        </SelectItem>
-                        <SelectItem value="General Note">
-                          Anotação Geral
+                        <SelectItem value="N3 Individual">
+                          N3 Individual
                         </SelectItem>
                       </SelectContent>
                     </Select>
