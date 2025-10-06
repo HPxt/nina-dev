@@ -1,3 +1,6 @@
+
+"use client";
+
 import { teamMembers } from "@/lib/data";
 import {
   Card,
@@ -28,11 +31,16 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import type { Role } from "@/lib/types";
+import { CsvUploadDialog } from "@/components/csv-upload-dialog";
+import { useState } from "react";
 
 const roles: Role[] = ["Colaborador", "Líder", "Diretor", "Admin"];
 
 export default function AdminPage() {
+  const [isCsvDialogOpen, setIsCsvDialogOpen] = useState(false);
+  
   return (
+    <>
     <Tabs defaultValue="employees">
       <TabsList className="grid w-full grid-cols-2">
         <TabsTrigger value="employees">Funcionários</TabsTrigger>
@@ -49,7 +57,7 @@ export default function AdminPage() {
                     </CardDescription>
                 </div>
                 <div className="flex items-center gap-2">
-                    <Button variant="outline" size="sm">
+                    <Button variant="outline" size="sm" onClick={() => setIsCsvDialogOpen(true)}>
                         <Upload className="mr-2 h-4 w-4" />
                         Upload CSV
                     </Button>
@@ -131,5 +139,7 @@ export default function AdminPage() {
         </Card>
       </TabsContent>
     </Tabs>
+    <CsvUploadDialog open={isCsvDialogOpen} onOpenChange={setIsCsvDialogOpen} />
+    </>
   );
 }
