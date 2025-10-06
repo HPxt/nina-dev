@@ -27,7 +27,7 @@ export function Timeline({ interactions }: { interactions: Interaction[] }) {
       {interactions.map((item) => (
         <div key={item.id} className="relative flex items-start gap-4">
           <div className="flex h-6 w-6 items-center justify-center rounded-full bg-secondary z-10">
-            <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary/10 text-primary">
+            <span className="flex h-6 w-6 items-center justify-center rounded-full bg-muted text-foreground">
                 {interactionIcons[item.type]}
             </span>
           </div>
