@@ -32,7 +32,7 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { CsvUploadDialog } from "@/components/csv-upload-dialog";
 import { useState, useMemo } from "react";
-import { useCollection, useFirestore, useMemoFirebase } from "@/firebase";
+import { useCollection, useFirestore, useMemoFirebase, useUser } from "@/firebase";
 import { collection } from "firebase/firestore";
 import type { Employee } from "@/lib/types";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -42,13 +42,16 @@ const roles: Role[] = ["Colaborador", "Líder", "Diretor", "Admin"];
 export default function AdminPage() {
   const [isCsvDialogOpen, setIsCsvDialogOpen] = useState(false);
   const firestore = useFirestore();
+  const { user, isUserLoading } = useUser();
 
   const employeesCollection = useMemoFirebase(
-    () => (firestore ? collection(firestore, "employees") : null),
-    [firestore]
+    () => (firestore && user ? collection(firestore, "employees") : null),
+    [firestore, user]
   );
   
-  const { data: employees, isLoading } = useCollection<Employee>(employeesCollection);
+  const { data: employees, isLoading: areEmployeesLoading } = useCollection<Employee>(employeesCollection);
+
+  const isLoading = isUserLoading || areEmployeesLoading;
 
   return (
     <>
@@ -110,8 +113,8 @@ export default function AdminPage() {
                         <TableCell className="text-right"><Skeleton className="h-8 w-8 rounded-full" /></TableCell>
                     </TableRow>
                 ))}
-                {employees?.map((employee) => (
-                  <TableRow key={employee.id}>
+                {!isLoading && employees?.map((employee) => (
+                  <TableRow key={employee.id3a}>
                     <TableCell className="font-medium">{employee.name}</TableCell>
                     <TableCell>{employee.email}</TableCell>
                     <TableCell>{employee.position}</TableCell>
