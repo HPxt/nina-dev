@@ -26,13 +26,12 @@ import {
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
-import { MoreHorizontal, PlusCircle, Upload, ArrowUpDown, X, Filter } from "lucide-react";
+import { MoreHorizontal, PlusCircle, Upload, ArrowUpDown, X, Filter, User } from "lucide-react";
 import { 
   DropdownMenu, 
   DropdownMenuContent, 
   DropdownMenuItem, 
   DropdownMenuTrigger,
-  DropdownMenuSeparator,
   DropdownMenuCheckboxItem
 } from "@/components/ui/dropdown-menu";
 import { Switch } from "@/components/ui/switch";
@@ -46,6 +45,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Role } from "@/lib/types";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 
 const roles: Role[] = ["Colaborador", "Líder", "Diretor", "Admin"];
@@ -137,6 +138,44 @@ export default function AdminPage() {
     return filtered;
   }, [employees, filters, sortConfig]);
 
+  const teams = useMemo(() => {
+    if (!employees) return new Map<string, Employee[]>();
+
+    const groupedByLeader = new Map<string, Employee[]>();
+
+    employees.forEach(employee => {
+      const leaderName = employee.leader || "Sem Líder";
+
+      if (!groupedByLeader.has(leaderName)) {
+        groupedByLeader.set(leaderName, []);
+      }
+      groupedByLeader.get(leaderName)?.push(employee);
+    });
+
+     // Sort leaders alphabetically
+    const sortedLeaders = [...groupedByLeader.keys()].sort((a, b) => a.localeCompare(b));
+    
+    const sortedMap = new Map<string, Employee[]>();
+    sortedLeaders.forEach(leader => {
+        // Sort employees within each team alphabetically
+        const sortedEmployees = groupedByLeader.get(leader)?.sort((a, b) => a.name.localeCompare(b.name));
+        if (sortedEmployees) {
+            sortedMap.set(leader, sortedEmployees);
+        }
+    });
+
+    return sortedMap;
+  }, [employees]);
+  
+  const getInitials = (name: string) => {
+    const names = name.split(" ");
+    if (names.length > 1) {
+      return `${names[0][0]}${names[names.length - 1][0]}`;
+    }
+    return name.substring(0, 2);
+  };
+
+
   const requestSort = (key: keyof Employee) => {
     let direction: 'ascending' | 'descending' = 'ascending';
     if (sortConfig && sortConfig.key === key && sortConfig.direction === 'ascending') {
@@ -185,9 +224,9 @@ export default function AdminPage() {
         <DropdownMenuContent align="start">
           {children ? children :
             <>
-              {options.map((option) => (
+              {options.map((option, index) => (
                 <DropdownMenuCheckboxItem
-                  key={option}
+                  key={`${option}-${index}`}
                   checked={filters[filterKey] instanceof Set && (filters[filterKey] as Set<string>).has(option)}
                   onSelect={(e) => e.preventDefault()}
                   onCheckedChange={() => handleMultiSelectFilterChange(filterKey, option)}
@@ -205,8 +244,9 @@ export default function AdminPage() {
   return (
     <>
     <Tabs defaultValue="employees">
-      <TabsList className="grid w-full grid-cols-2">
+      <TabsList className="grid w-full grid-cols-3">
         <TabsTrigger value="employees">Funcionários</TabsTrigger>
+        <TabsTrigger value="teams">Equipes</TabsTrigger>
         <TabsTrigger value="settings">Geral</TabsTrigger>
       </TabsList>
       <TabsContent value="employees">
@@ -368,6 +408,60 @@ export default function AdminPage() {
           </CardContent>
         </Card>
       </TabsContent>
+       <TabsContent value="teams">
+        <Card>
+          <CardHeader>
+            <CardTitle>Equipes e Colaboradores</CardTitle>
+            <CardDescription>Visualize as equipes com base na liderança.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {isLoading ? (
+                Array.from({ length: 3 }).map((_, i) => (
+                    <div key={i} className="mb-4">
+                        <Skeleton className="h-12 w-1/3 mb-2" />
+                        <div className="pl-6 space-y-2">
+                            <Skeleton className="h-8 w-2/3" />
+                            <Skeleton className="h-8 w-1/2" />
+                        </div>
+                    </div>
+                ))
+            ) : (
+            <Accordion type="multiple" className="w-full">
+              {[...teams.entries()].map(([leader, members]) => {
+                const leaderEmployee = employees?.find(e => e.name === leader);
+                return (
+                  <AccordionItem value={leader} key={leader}>
+                    <AccordionTrigger>
+                        <div className="flex items-center gap-3">
+                            <Avatar className="h-9 w-9">
+                                <AvatarImage src={leaderEmployee?.photoURL} alt={leader} />
+                                <AvatarFallback>{getInitials(leader)}</AvatarFallback>
+                            </Avatar>
+                            <span className="font-medium">{leader}</span>
+                             <span className="ml-2 inline-flex items-center justify-center w-6 h-6 text-xs font-semibold text-white bg-primary rounded-full">
+                                {members.length}
+                            </span>
+                        </div>
+                    </AccordionTrigger>
+                    <AccordionContent>
+                      <ul className="pl-6 space-y-3">
+                        {members.map((member) => (
+                          <li key={member.id} className="flex items-center gap-3 text-sm">
+                            <User className="h-4 w-4 text-muted-foreground" />
+                            <span className="font-medium">{member.name}</span>
+                            <span className="text-muted-foreground">({member.position})</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </AccordionContent>
+                  </AccordionItem>
+                )
+              })}
+            </Accordion>
+            )}
+          </CardContent>
+        </Card>
+      </TabsContent>
       <TabsContent value="settings">
         <Card>
           <CardHeader>
@@ -395,4 +489,3 @@ export default function AdminPage() {
   );
 }
 
-    
