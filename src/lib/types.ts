@@ -10,6 +10,7 @@ export interface User {
 }
 
 export interface Employee {
+  id: string; // Adicionado para corresponder ao ID do documento do Firestore
   id3a: string;
   name: string;
   email: string;

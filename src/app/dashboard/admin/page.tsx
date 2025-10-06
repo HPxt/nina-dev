@@ -31,7 +31,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { CsvUploadDialog } from "@/components/csv-upload-dialog";
-import { useState, useMemo } from "react";
+import { useState } from "react";
 import { useCollection, useFirestore, useMemoFirebase, useUser } from "@/firebase";
 import { collection } from "firebase/firestore";
 import type { Employee } from "@/lib/types";
@@ -114,7 +114,7 @@ export default function AdminPage() {
                     </TableRow>
                 ))}
                 {!isLoading && employees?.map((employee) => (
-                  <TableRow key={employee.id3a}>
+                  <TableRow key={employee.id}>
                     <TableCell className="font-medium">{employee.name}</TableCell>
                     <TableCell>{employee.email}</TableCell>
                     <TableCell>{employee.position}</TableCell>
