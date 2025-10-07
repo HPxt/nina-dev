@@ -44,7 +44,9 @@ const formSchema = z.object({
   axis: z.string().optional(),
   area: z.string().optional(),
   segment: z.string().optional(),
+  leaderId: z.string().optional(),
   leader: z.string().optional(),
+  leaderEmail: z.string().optional(),
   city: z.string().optional(),
   role: z.string().optional(),
   photoURL: z.string().url().optional().or(z.literal('')),
@@ -56,7 +58,7 @@ interface EmployeeFormDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   employee?: Employee;
-  leaders: string[];
+  leaders: Employee[];
   roles: Role[];
 }
 
@@ -81,7 +83,9 @@ export function EmployeeFormDialog({
       axis: "",
       area: "",
       segment: "",
+      leaderId: "",
       leader: "",
+      leaderEmail: "",
       city: "",
       role: "Colaborador",
       photoURL: "",
@@ -98,7 +102,9 @@ export function EmployeeFormDialog({
         axis: employee.axis || "",
         area: employee.area || "",
         segment: employee.segment || "",
+        leaderId: employee.leaderId || "",
         leader: employee.leader || "",
+        leaderEmail: employee.leaderEmail || "",
         city: employee.city || "",
         role: employee.role || "Colaborador",
         photoURL: employee.photoURL || "",
@@ -112,7 +118,9 @@ export function EmployeeFormDialog({
         axis: "",
         area: "",
         segment: "",
+        leaderId: "",
         leader: "",
+        leaderEmail: "",
         city: "",
         role: "Colaborador",
         photoURL: "",
@@ -125,9 +133,16 @@ export function EmployeeFormDialog({
 
     const docId = isEditMode ? employee.id : data.id3a;
     const docRef = doc(firestore, "employees", docId);
+
+    const leader = leaders.find(l => l.id === data.leaderId);
+    const dataToSave = {
+        ...data,
+        leader: leader?.name || "",
+        leaderEmail: leader?.email || "",
+    }
     
     try {
-      await setDocumentNonBlocking(docRef, data, { merge: isEditMode });
+      await setDocumentNonBlocking(docRef, dataToSave, { merge: isEditMode });
       toast({
         title: isEditMode ? "Funcionário Atualizado" : "Funcionário Adicionado",
         description: `Os dados de ${data.name} foram salvos com sucesso.`,
@@ -269,20 +284,20 @@ export function EmployeeFormDialog({
             </div>
             <FormField
               control={form.control}
-              name="leader"
+              name="leaderId"
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Líder</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                  <Select onValueChange={field.onChange} value={field.value}>
                     <FormControl>
                       <SelectTrigger>
                         <SelectValue placeholder="Selecione um líder" />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      {leaders.map((leaderName) => (
-                        <SelectItem key={leaderName} value={leaderName}>
-                          {leaderName}
+                      {leaders.map((leader) => (
+                        <SelectItem key={leader.id} value={leader.id}>
+                          {leader.name}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -297,7 +312,7 @@ export function EmployeeFormDialog({
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Função</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                  <Select onValueChange={field.onChange} value={field.value}>
                     <FormControl>
                       <SelectTrigger>
                         <SelectValue placeholder="Selecione uma função" />
@@ -342,6 +357,3 @@ export function EmployeeFormDialog({
     </Dialog>
   );
 }
-
-
-    

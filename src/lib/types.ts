@@ -19,7 +19,9 @@ export interface Employee {
   area?: string;
   position?: string;
   segment?: string;
+  leaderId?: string;
   leader?: string;
+  leaderEmail?: string;
   city?: string;
   role?: Role;
   team?: string;

@@ -92,16 +92,22 @@ export default function AdminPage() {
     setDocumentNonBlocking(docRef, { role: newRole }, { merge: true });
   };
   
-  const uniqueValues = useMemo(() => {
-    if (!employees) return { positions: [], axes: [], areas: [], segments: [], leaders: [], cities: [], roles: [] };
+    const { leaders, uniqueValues } = useMemo(() => {
+    if (!employees) return { leaders: [], uniqueValues: { positions: [], axes: [], areas: [], segments: [], leaders: [], cities: [], roles: [] } };
     const positions = [...new Set(employees.map(e => e.position).filter(Boolean))].sort();
     const axes = [...new Set(employees.map(e => e.axis).filter(Boolean))].sort();
     const areas = [...new Set(employees.map(e => e.area).filter(Boolean))].sort();
     const segments = [...new Set(employees.map(e => e.segment).filter(Boolean))].sort();
-    const leaders = [...new Set(employees.map(e => e.leader).filter(Boolean))].sort();
+    const leaderNames = [...new Set(employees.map(e => e.leader).filter(Boolean))].sort();
     const cities = [...new Set(employees.map(e => e.city).filter(Boolean))].sort();
     const roles = [...new Set(employees.map(e => e.role).filter(Boolean))].sort() as Role[];
-    return { positions, axes, areas, segments, leaders, cities, roles };
+
+    const leaders = employees.filter(e => e.role === 'Líder' || e.role === 'Diretor' || e.role === 'Admin');
+
+    return { 
+      leaders,
+      uniqueValues: { positions, axes, areas, segments, leaders: leaderNames, cities, roles }
+    };
   }, [employees]);
 
 
@@ -143,30 +149,43 @@ export default function AdminPage() {
 
   const teams = useMemo(() => {
     if (!employees) return new Map<string, Employee[]>();
-
+  
     const groupedByLeader = new Map<string, Employee[]>();
-
+  
     employees.forEach(employee => {
-      const leaderName = employee.leader || "Sem Líder";
-
-      if (!groupedByLeader.has(leaderName)) {
-        groupedByLeader.set(leaderName, []);
+      const leaderId = employee.leaderId || "sem-lider";
+  
+      if (!groupedByLeader.has(leaderId)) {
+        groupedByLeader.set(leaderId, []);
       }
-      groupedByLeader.get(leaderName)?.push(employee);
+      groupedByLeader.get(leaderId)?.push(employee);
     });
-
-     // Sort leaders alphabetically
-    const sortedLeaders = [...groupedByLeader.keys()].sort((a, b) => a.localeCompare(b));
-    
-    const sortedMap = new Map<string, Employee[]>();
-    sortedLeaders.forEach(leader => {
-        // Sort employees within each team alphabetically
-        const sortedEmployees = groupedByLeader.get(leader)?.sort((a, b) => a.name.localeCompare(b.name));
-        if (sortedEmployees) {
-            sortedMap.set(leader, sortedEmployees);
+  
+    const leaderIdToNameMap = new Map<string, string>();
+    employees.forEach(e => {
+        if(e.role === 'Líder' || e.role === 'Diretor' || e.role === 'Admin') {
+            leaderIdToNameMap.set(e.id, e.name);
         }
     });
+    leaderIdToNameMap.set('sem-lider', 'Sem Líder');
 
+
+    // Sort leaders alphabetically by name
+    const sortedLeaderIds = [...groupedByLeader.keys()].sort((a, b) => {
+      const nameA = leaderIdToNameMap.get(a) || '';
+      const nameB = leaderIdToNameMap.get(b) || '';
+      return nameA.localeCompare(nameB);
+    });
+  
+    const sortedMap = new Map<string, Employee[]>();
+    sortedLeaderIds.forEach(leaderId => {
+      // Sort employees within each team alphabetically
+      const sortedEmployees = groupedByLeader.get(leaderId)?.sort((a, b) => a.name.localeCompare(b.name));
+      if (sortedEmployees) {
+        sortedMap.set(leaderId, sortedEmployees);
+      }
+    });
+  
     return sortedMap;
   }, [employees]);
   
@@ -441,17 +460,19 @@ export default function AdminPage() {
                 ))
             ) : (
             <Accordion type="multiple" className="w-full">
-              {[...teams.entries()].map(([leader, members]) => {
-                const leaderEmployee = employees?.find(e => e.name === leader);
+              {[...teams.entries()].map(([leaderId, members]) => {
+                const leaderEmployee = employees?.find(e => e.id === leaderId);
+                const leaderName = leaderEmployee?.name || "Sem Líder";
+
                 return (
-                  <AccordionItem value={leader} key={leader}>
+                  <AccordionItem value={leaderId} key={leaderId}>
                     <AccordionTrigger>
                         <div className="flex items-center gap-3">
                             <Avatar className="h-9 w-9">
-                                <AvatarImage src={leaderEmployee?.photoURL} alt={leader} />
-                                <AvatarFallback>{getInitials(leader)}</AvatarFallback>
+                                <AvatarImage src={leaderEmployee?.photoURL} alt={leaderName} />
+                                <AvatarFallback>{getInitials(leaderName)}</AvatarFallback>
                             </Avatar>
-                            <span className="font-medium">{leader}</span>
+                            <span className="font-medium">{leaderName}</span>
                              <span className="ml-2 inline-flex items-center justify-center w-6 h-6 text-xs font-semibold text-white bg-primary rounded-full">
                                 {members.length}
                             </span>
@@ -503,11 +524,9 @@ export default function AdminPage() {
         open={isEmployeeFormOpen} 
         onOpenChange={setIsEmployeeFormOpen}
         employee={selectedEmployee}
-        leaders={uniqueValues.leaders}
+        leaders={leaders}
         roles={roles}
     />
     </>
   );
 }
-
-    

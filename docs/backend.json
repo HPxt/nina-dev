@@ -1,3 +1,4 @@
+
 {
   "entities": {
     "Employee": {
@@ -39,9 +40,18 @@
           "type": "string",
           "description": "Business segment of the employee."
         },
+        "leaderId": {
+          "type": "string",
+          "description": "The unique ID (employee.id) of the employee's direct leader."
+        },
         "leader": {
           "type": "string",
           "description": "Name of the employee's direct leader."
+        },
+        "leaderEmail": {
+          "type": "string",
+          "description": "Email of the employee's direct leader.",
+          "format": "email"
         },
         "city": {
           "type": "string",
