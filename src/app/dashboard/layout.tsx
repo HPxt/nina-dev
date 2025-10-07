@@ -10,6 +10,7 @@ import {
   SidebarMenu,
   SidebarMenuItem,
   SidebarMenuButton,
+  SidebarTrigger,
 } from "@/components/ui/sidebar";
 import { currentUser } from "@/lib/data";
 import { PageHeaderController } from "@/components/page-header-controller";
@@ -26,6 +27,7 @@ export default function DashboardLayout({
     <SidebarProvider>
       <Sidebar>
         <SidebarHeader>
+            <SidebarTrigger className="ml-auto hidden md:flex" />
         </SidebarHeader>
         <SidebarContent>
           <MainNav userRole={currentUser.role} />
