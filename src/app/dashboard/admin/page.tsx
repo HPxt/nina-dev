@@ -34,8 +34,6 @@ import {
   DropdownMenuTrigger,
   DropdownMenuCheckboxItem
 } from "@/components/ui/dropdown-menu";
-import { Switch } from "@/components/ui/switch";
-import { Label } from "@/components/ui/label";
 import { CsvUploadDialog } from "@/components/csv-upload-dialog";
 import { useState, useMemo } from "react";
 import { useCollection, useFirestore, useMemoFirebase, useUser } from "@/firebase";
@@ -47,6 +45,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Role } from "@/lib/types";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { EmployeeFormDialog } from "@/components/employee-form-dialog";
 
 
 const roles: Role[] = ["Colaborador", "Líder", "Diretor", "Admin"];
@@ -58,6 +57,9 @@ type SortConfig = {
 
 export default function AdminPage() {
   const [isCsvDialogOpen, setIsCsvDialogOpen] = useState(false);
+  const [isEmployeeFormOpen, setIsEmployeeFormOpen] = useState(false);
+  const [selectedEmployee, setSelectedEmployee] = useState<Employee | undefined>(undefined);
+
   const firestore = useFirestore();
   const { user, isUserLoading } = useUser();
 
@@ -168,6 +170,7 @@ export default function AdminPage() {
   }, [employees]);
   
   const getInitials = (name: string) => {
+    if (!name) return "";
     const names = name.split(" ");
     if (names.length > 1) {
       return `${names[0][0]}${names[names.length - 1][0]}`;
@@ -209,6 +212,16 @@ export default function AdminPage() {
   }, [filters]);
 
   const clearFilters = () => setFilters(initialFilters);
+
+  const handleAddEmployee = () => {
+    setSelectedEmployee(undefined);
+    setIsEmployeeFormOpen(true);
+  };
+
+  const handleEditEmployee = (employee: Employee) => {
+    setSelectedEmployee(employee);
+    setIsEmployeeFormOpen(true);
+  };
 
   const isLoading = isUserLoading || areEmployeesLoading;
 
@@ -270,7 +283,7 @@ export default function AdminPage() {
                         <Upload className="mr-2 h-4 w-4" />
                         Upload CSV
                     </Button>
-                    <Button size="sm">
+                    <Button size="sm" onClick={handleAddEmployee}>
                         <PlusCircle className="mr-2 h-4 w-4" />
                         Adicionar Funcionário
                     </Button>
@@ -373,7 +386,7 @@ export default function AdminPage() {
                     <TableCell>{employee.city}</TableCell>
                     <TableCell>
                       <Select 
-                        defaultValue={employee.role}
+                        value={employee.role}
                         onValueChange={(newRole) => handleRoleChange(employee.id, newRole as Role)}
                       >
                         <SelectTrigger className="w-[180px]">
@@ -396,7 +409,7 @@ export default function AdminPage() {
                                 </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent>
-                                <DropdownMenuItem>Editar</DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => handleEditEmployee(employee)}>Editar</DropdownMenuItem>
                                 <DropdownMenuItem className="text-destructive">Remover</DropdownMenuItem>
                             </DropdownMenuContent>
                         </DropdownMenu>
@@ -471,9 +484,9 @@ export default function AdminPage() {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
-            <div className="flex items-center justify-between rounded-lg border p-4">
+             <div className="flex items-center justify-between rounded-lg border p-4">
                 <div>
-                    <Label htmlFor="maintenance-mode" className="text-base font-medium">Modo de Manutenção</Label>
+                    <h3 className="text-base font-medium">Modo de Manutenção</h3>
                     <p className="text-sm text-muted-foreground">
                         Ative para desabilitar o acesso ao aplicativo para todos, exceto administradores.
                     </p>
@@ -485,7 +498,15 @@ export default function AdminPage() {
       </TabsContent>
     </Tabs>
     <CsvUploadDialog open={isCsvDialogOpen} onOpenChange={setIsCsvDialogOpen} />
+    <EmployeeFormDialog 
+        open={isEmployeeFormOpen} 
+        onOpenChange={setIsEmployeeFormOpen}
+        employee={selectedEmployee}
+        leaders={uniqueValues.leaders}
+        roles={roles}
+    />
     </>
   );
 }
 
+    
