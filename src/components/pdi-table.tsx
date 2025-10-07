@@ -1,3 +1,4 @@
+
 "use client"
 
 import { useState } from "react";
@@ -19,22 +20,31 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import {
-    Dialog,
-    DialogContent,
-    DialogDescription,
-    DialogFooter,
-    DialogHeader,
-    DialogTitle,
-    DialogTrigger,
-  } from "@/components/ui/dialog"
-  import { Input } from "@/components/ui/input"
-  import { Label } from "@/components/ui/label"
-  import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
-  import { Textarea } from "./ui/textarea";
+import { PdiActionFormDialog } from "./pdi-action-form-dialog";
 
-export function PdiTable({ pdiActions }: { pdiActions: PDIAction[] }) {
-    const [open, setOpen] = useState(false);
+type PdiTableProps = {
+    pdiActions: PDIAction[];
+    employeeId: string;
+};
+
+export function PdiTable({ pdiActions, employeeId }: PdiTableProps) {
+    const [isFormOpen, setIsFormOpen] = useState(false);
+    const [selectedAction, setSelectedAction] = useState<PDIAction | undefined>(undefined);
+
+    const handleAdd = () => {
+        setSelectedAction(undefined);
+        setIsFormOpen(true);
+    };
+
+    const handleEdit = (action: PDIAction) => {
+        setSelectedAction(action);
+        setIsFormOpen(true);
+    };
+
+    const handleDelete = (actionId: string) => {
+        // TODO: Implement deletion logic
+        console.log("Delete action:", actionId);
+    };
 
     const getStatusBadge = (status: "Not Started" | "In Progress" | "Completed") => {
         switch (status) {
@@ -50,49 +60,10 @@ export function PdiTable({ pdiActions }: { pdiActions: PDIAction[] }) {
   return (
     <>
         <div className="flex justify-end mb-4">
-            <Dialog open={open} onOpenChange={setOpen}>
-                <DialogTrigger asChild>
-                    <Button size="sm">
-                        <PlusCircle className="mr-2 h-4 w-4" />
-                        Adicionar Ação
-                    </Button>
-                </DialogTrigger>
-                <DialogContent className="sm:max-w-[425px]">
-                    <DialogHeader>
-                    <DialogTitle>Adicionar Ação PDI</DialogTitle>
-                    <DialogDescription>
-                        Preencha os detalhes da nova ação de desenvolvimento.
-                    </DialogDescription>
-                    </DialogHeader>
-                    <div className="grid gap-4 py-4">
-                        <div className="grid grid-cols-4 items-center gap-4">
-                            <Label htmlFor="action" className="text-right">Ação</Label>
-                            <Input id="action" className="col-span-3" />
-                        </div>
-                        <div className="grid grid-cols-4 items-center gap-4">
-                            <Label htmlFor="category" className="text-right">Categoria</Label>
-                            <Select>
-                                <SelectTrigger className="col-span-3">
-                                    <SelectValue placeholder="Selecione"/>
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="Technical">Técnica</SelectItem>
-                                    <SelectItem value="Soft Skill">Comportamental</SelectItem>
-                                    <SelectItem value="Leadership">Liderança</SelectItem>
-                                    <SelectItem value="Career">Carreira</SelectItem>
-                                </SelectContent>
-                            </Select>
-                        </div>
-                        <div className="grid grid-cols-4 items-center gap-4">
-                            <Label htmlFor="dueDate" className="text-right">Prazo</Label>
-                            <Input id="dueDate" type="date" className="col-span-3" />
-                        </div>
-                    </div>
-                    <DialogFooter>
-                    <Button type="submit" onClick={() => setOpen(false)}>Salvar</Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
+            <Button size="sm" onClick={handleAdd}>
+                <PlusCircle className="mr-2 h-4 w-4" />
+                Adicionar Ação
+            </Button>
         </div>
         <Table>
         <TableHeader>
@@ -119,8 +90,8 @@ export function PdiTable({ pdiActions }: { pdiActions: PDIAction[] }) {
                             <Button variant="ghost" size="icon"><MoreHorizontal className="h-4 w-4" /></Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent>
-                            <DropdownMenuItem><Pen className="mr-2 h-4 w-4" /> Editar</DropdownMenuItem>
-                            <DropdownMenuItem className="text-destructive"><Trash className="mr-2 h-4 w-4" /> Remover</DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleEdit(item)}><Pen className="mr-2 h-4 w-4" /> Editar</DropdownMenuItem>
+                            <DropdownMenuItem className="text-destructive" onClick={() => handleDelete(item.id)}><Trash className="mr-2 h-4 w-4" /> Remover</DropdownMenuItem>
                         </DropdownMenuContent>
                     </DropdownMenu>
                 </TableCell>
@@ -132,6 +103,13 @@ export function PdiTable({ pdiActions }: { pdiActions: PDIAction[] }) {
             )}
         </TableBody>
         </Table>
+        <PdiActionFormDialog
+            open={isFormOpen}
+            onOpenChange={setIsFormOpen}
+            employeeId={employeeId}
+            action={selectedAction}
+        />
     </>
   );
 }
+

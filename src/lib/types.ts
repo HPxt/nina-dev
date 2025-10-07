@@ -23,6 +23,7 @@ export interface Employee {
   city?: string;
   role?: Role;
   team?: string;
+  diagnosis?: Diagnosis; // Diagnosis is now optional and part of the employee
 }
 
 export interface Interaction {
@@ -37,13 +38,13 @@ export interface PDIAction {
   id: string;
   action: string;
   category: "Technical" | "Soft Skill" | "Leadership" | "Career";
-  dueDate: string;
+  dueDate: string; // ISO 8601 string
   status: "Not Started" | "In Progress" | "Completed";
 }
 
 export interface Diagnosis {
     status: "Concluído" | "Em Andamento" | "Pendente";
-    date: string;
+    date: string; // ISO 8601 string
     details: string;
 }
 
@@ -62,3 +63,4 @@ export interface TeamMember extends User {
   pdi: PDIAction[];
   diagnosis: Diagnosis;
 }
+
