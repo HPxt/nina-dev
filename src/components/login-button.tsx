@@ -5,7 +5,7 @@ import { useAuth, useUser } from "@/firebase";
 import { Button } from "@/components/ui/button";
 import { Icons } from "@/components/icons";
 import { useRouter } from "next/navigation";
-import { signInAnonymously } from "firebase/auth";
+import { GoogleAuthProvider, signInWithPopup } from "firebase/auth";
 import { useEffect } from "react";
 
 export function LoginButton() {
@@ -15,10 +15,11 @@ export function LoginButton() {
 
   const handleLogin = async () => {
     if (!auth) return;
+    const provider = new GoogleAuthProvider();
     try {
-      await signInAnonymously(auth);
+      await signInWithPopup(auth, provider);
     } catch (error) {
-      console.error("Anonymous sign-in failed", error);
+      console.error("Google sign-in failed", error);
     }
   };
 
