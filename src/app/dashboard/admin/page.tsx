@@ -26,7 +26,7 @@ import {
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
-import { MoreHorizontal, PlusCircle, Upload, ArrowUpDown, X, Filter, User } from "lucide-react";
+import { MoreHorizontal, PlusCircle, Upload, ArrowUpDown, X, Filter, User, ShieldCheck } from "lucide-react";
 import { 
   DropdownMenu, 
   DropdownMenuContent, 
@@ -49,7 +49,7 @@ import { EmployeeFormDialog } from "@/components/employee-form-dialog";
 import { Switch } from "@/components/ui/switch";
 
 
-const roles: Role[] = ["Colaborador", "Líder", "Diretor", "Admin"];
+const roles: Role[] = ["Colaborador", "Líder", "Diretor"];
 
 type SortConfig = {
   key: keyof Employee;
@@ -92,24 +92,25 @@ export default function AdminPage() {
     setDocumentNonBlocking(docRef, { role: newRole }, { merge: true });
   };
   
-    const { leaders, directors, uniqueValues } = useMemo(() => {
-        if (!employees) return { leaders: [], directors: [], uniqueValues: { positions: [], axes: [], areas: [], segments: [], leaders: [], cities: [], roles: [] } };
+    const { leaders, directors, admins, uniqueValues } = useMemo(() => {
+        if (!employees) return { leaders: [], directors: [], admins: [], uniqueValues: { positions: [], axes: [], areas: [], segments: [], leaders: [], cities: [], roles: [] } };
         const positions = [...new Set(employees.map(e => e.position).filter(Boolean))].sort();
         const axes = [...new Set(employees.map(e => e.axis).filter(Boolean))].sort();
         const areas = [...new Set(employees.map(e => e.area).filter(Boolean))].sort();
         const segments = [...new Set(employees.map(e => e.segment).filter(Boolean))].sort();
         const leaderNames = [...new Set(employees.map(e => e.leader).filter(Boolean))].sort();
         const cities = [...new Set(employees.map(e => e.city).filter(Boolean))].sort();
-        const roles = [...new Set(employees.map(e => e.role).filter(Boolean))].sort() as Role[];
+        const roles = [...new Set(employees.map(e => e.role).filter(e => e !== 'Admin'))].sort() as Role[];
 
         const leaders = employees.filter(e => e.role === 'Líder' || e.role === 'Diretor' || e.role === 'Admin');
         const directors = employees.filter(e => e.role === 'Diretor').sort((a,b) => a.name.localeCompare(b.name));
-
+        const admins = employees.filter(e => e.role === 'Admin').sort((a,b) => a.name.localeCompare(b.name));
 
         return { 
-        leaders,
-        directors,
-        uniqueValues: { positions, axes, areas, segments, leaders: leaderNames, cities, roles }
+          leaders,
+          directors,
+          admins,
+          uniqueValues: { positions, axes, areas, segments, leaders: leaderNames, cities, roles }
         };
     }, [employees]);
 
@@ -119,6 +120,7 @@ export default function AdminPage() {
     
     let filtered = employees.filter(employee => {
         return (
+            (employee.role !== 'Admin') &&
             (!filters.email || employee.email?.toLowerCase().includes(filters.email.toLowerCase())) &&
             (!filters.name || employee.name?.toLowerCase().includes(filters.name.toLowerCase())) &&
             (filters.position.size === 0 || (employee.position && filters.position.has(employee.position))) &&
@@ -604,6 +606,45 @@ export default function AdminPage() {
                 </div>
                 <Switch id="maintenance-mode" />
             </div>
+            <Card>
+                <CardHeader>
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <CardTitle className="text-xl">Administradores</CardTitle>
+                            <CardDescription>Gerencie quem tem acesso de administrador.</CardDescription>
+                        </div>
+                        <Button>Gerenciar Admins</Button>
+                    </div>
+                </CardHeader>
+                <CardContent>
+                    {isLoading ? (
+                         <div className="space-y-3">
+                            <Skeleton className="h-10 w-2/3" />
+                            <Skeleton className="h-10 w-1/2" />
+                        </div>
+                    ) : admins.length > 0 ? (
+                        <ul className="space-y-4">
+                            {admins.map(admin => (
+                                <li key={admin.id} className="flex items-center justify-between">
+                                    <div className="flex items-center gap-3">
+                                        <Avatar className="h-9 w-9">
+                                            <AvatarImage src={admin.photoURL} alt={admin.name} />
+                                            <AvatarFallback>{getInitials(admin.name)}</AvatarFallback>
+                                        </Avatar>
+                                        <div>
+                                            <span className="font-medium">{admin.name}</span>
+                                            <p className="text-sm text-muted-foreground">{admin.email}</p>
+                                        </div>
+                                    </div>
+                                    <ShieldCheck className="h-5 w-5 text-primary"/>
+                                </li>
+                            ))}
+                        </ul>
+                    ) : (
+                        <p className="text-sm text-muted-foreground text-center py-4">Nenhum administrador cadastrado.</p>
+                    )}
+                </CardContent>
+            </Card>
           </CardContent>
         </Card>
       </TabsContent>
@@ -619,3 +660,5 @@ export default function AdminPage() {
     </>
   );
 }
+
+    
