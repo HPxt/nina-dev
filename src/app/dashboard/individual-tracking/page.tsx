@@ -1,8 +1,8 @@
+
 "use client";
 
-import { useState } from "react";
-import { teamMembers } from "@/lib/data";
-import type { TeamMember } from "@/lib/types";
+import { useState, useMemo }from "react";
+import type { Employee, Interaction } from "@/lib/types";
 import {
   Card,
   CardContent,
@@ -31,20 +31,98 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { useCollection, useFirestore, useMemoFirebase, useUser } from "@/firebase";
+import { addDocumentNonBlocking } from "@/firebase/non-blocking-updates";
+import { collection } from "firebase/firestore";
+import { useToast } from "@/hooks/use-toast";
+
+type NewInteraction = Omit<Interaction, "id" | "date" | "authorId">;
 
 export default function IndividualTrackingPage() {
-  const [selectedMemberId, setSelectedMemberId] = useState<string | null>(
-    teamMembers.length > 0 ? teamMembers[0].id : null
-  );
+  const [selectedEmployeeId, setSelectedEmployeeId] = useState<string | null>(null);
   const [openDialog, setOpenDialog] = useState(false);
+  const [newInteraction, setNewInteraction] = useState<NewInteraction>({ type: "1:1", notes: "" });
+  const [isSaving, setIsSaving] = useState(false);
 
-  const selectedMember = teamMembers.find(
-    (member) => member.id === selectedMemberId
+  const firestore = useFirestore();
+  const { user } = useUser();
+  const { toast } = useToast();
+
+  const employeesCollection = useMemoFirebase(
+    () => (firestore && user ? collection(firestore, "employees") : null),
+    [firestore, user]
   );
+  
+  const { data: employees, isLoading: areEmployeesLoading } = useCollection<Employee>(employeesCollection);
+
+  const interactionsCollection = useMemoFirebase(
+    () => (firestore && selectedEmployeeId ? collection(firestore, "employees", selectedEmployeeId, "interactions") : null),
+    [firestore, selectedEmployeeId]
+  );
+
+  const { data: interactions, isLoading: areInteractionsLoading } = useCollection<Interaction>(interactionsCollection);
+
+  const sortedEmployees = useMemo(() => {
+    if (!employees) return [];
+    return [...employees].sort((a, b) => a.name.localeCompare(b.name));
+  }, [employees]);
+
+  const selectedEmployee = useMemo(() => {
+    return employees?.find((employee) => employee.id === selectedEmployeeId);
+  }, [employees, selectedEmployeeId]);
+
 
   const handleMemberChange = (id: string) => {
-    setSelectedMemberId(id);
+    setSelectedEmployeeId(id);
   };
+  
+  const resetForm = () => {
+    setNewInteraction({ type: "1:1", notes: "" });
+  }
+
+  const handleSaveInteraction = async () => {
+    if (!interactionsCollection || !user || !newInteraction.notes.trim()) {
+        toast({
+            variant: "destructive",
+            title: "Erro de Validação",
+            description: "As anotações não podem estar vazias.",
+        });
+        return;
+    }
+    setIsSaving(true);
+    
+    const interactionToSave = {
+        ...newInteraction,
+        authorId: user.uid,
+        date: new Date().toISOString(),
+    };
+
+    try {
+        await addDocumentNonBlocking(interactionsCollection, interactionToSave);
+        toast({
+            title: "Interação Salva!",
+            description: "O registro da sua interação foi salvo com sucesso.",
+        });
+        setOpenDialog(false);
+        resetForm();
+    } catch (error) {
+        console.error("Error saving interaction: ", error);
+        toast({
+            variant: "destructive",
+            title: "Erro ao Salvar",
+            description: "Não foi possível salvar a interação. Tente novamente.",
+        });
+    } finally {
+        setIsSaving(false);
+    }
+  };
+  
+  const handleOpenChange = (isOpen: boolean) => {
+    setOpenDialog(isOpen);
+    if (!isOpen) {
+      resetForm();
+    }
+  }
 
   return (
     <div className="space-y-6">
@@ -58,13 +136,14 @@ export default function IndividualTrackingPage() {
         <CardContent>
           <Select
             onValueChange={handleMemberChange}
-            defaultValue={selectedMemberId ?? ""}
+            value={selectedEmployeeId ?? ""}
+            disabled={areEmployeesLoading}
           >
             <SelectTrigger className="w-full md:w-[300px]">
-              <SelectValue placeholder="Selecione um colaborador" />
+              <SelectValue placeholder={areEmployeesLoading ? "Carregando..." : "Selecione um colaborador"} />
             </SelectTrigger>
             <SelectContent>
-              {teamMembers.map((member) => (
+              {sortedEmployees.map((member) => (
                 <SelectItem key={member.id} value={member.id}>
                   {member.name}
                 </SelectItem>
@@ -74,16 +153,18 @@ export default function IndividualTrackingPage() {
         </CardContent>
       </Card>
 
-      {selectedMember && (
+      {selectedEmployeeId && (
         <Card>
           <CardHeader className="flex-row items-center justify-between">
             <div>
               <CardTitle>Linha do Tempo de Interação</CardTitle>
-              <CardDescription>
-                Histórico de interações com {selectedMember.name}.
-              </CardDescription>
+              {selectedEmployee &&
+                <CardDescription>
+                    Histórico de interações com {selectedEmployee.name}.
+                </CardDescription>
+              }
             </div>
-            <Dialog open={openDialog} onOpenChange={setOpenDialog}>
+            <Dialog open={openDialog} onOpenChange={handleOpenChange}>
               <DialogTrigger asChild>
                 <Button>
                   <PlusCircle className="mr-2 h-4 w-4" />
@@ -93,14 +174,19 @@ export default function IndividualTrackingPage() {
               <DialogContent className="sm:max-w-[425px]">
                 <DialogHeader>
                   <DialogTitle>Registrar Nova Interação</DialogTitle>
-                  <DialogDescription>
-                    Preencha os detalhes da interação com {selectedMember.name}.
-                  </DialogDescription>
+                  {selectedEmployee && 
+                    <DialogDescription>
+                        Preencha os detalhes da interação com {selectedEmployee.name}.
+                    </DialogDescription>
+                  }
                 </DialogHeader>
                 <div className="grid gap-4 py-4">
                   <div className="space-y-2">
                     <Label htmlFor="interaction-type">Tipo de Interação</Label>
-                    <Select>
+                    <Select 
+                        value={newInteraction.type} 
+                        onValueChange={(value) => setNewInteraction(prev => ({...prev, type: value as Interaction["type"]}))}
+                    >
                       <SelectTrigger id="interaction-type">
                         <SelectValue placeholder="Selecione o tipo" />
                       </SelectTrigger>
@@ -119,19 +205,22 @@ export default function IndividualTrackingPage() {
                       id="notes"
                       placeholder="Detalhes da conversa, pontos de ação, etc."
                       className="min-h-[120px]"
+                      value={newInteraction.notes}
+                      onChange={(e) => setNewInteraction(prev => ({...prev, notes: e.target.value}))}
                     />
                   </div>
                 </div>
                 <DialogFooter>
-                  <Button type="submit" onClick={() => setOpenDialog(false)}>
-                    Salvar Interação
+                  <Button type="button" variant="outline" onClick={() => handleOpenChange(false)} disabled={isSaving}>Cancelar</Button>
+                  <Button type="submit" onClick={handleSaveInteraction} disabled={isSaving}>
+                    {isSaving ? "Salvando..." : "Salvar Interação"}
                   </Button>
                 </DialogFooter>
               </DialogContent>
             </Dialog>
           </CardHeader>
           <CardContent>
-            <Timeline interactions={selectedMember.timeline} />
+            <Timeline interactions={interactions ?? []} isLoading={areInteractionsLoading} />
           </CardContent>
         </Card>
       )}

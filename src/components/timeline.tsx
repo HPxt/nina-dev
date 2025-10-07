@@ -5,22 +5,42 @@ import {
   Calendar,
 } from "lucide-react";
 import { formatDate } from "@/lib/utils";
+import { Skeleton } from "./ui/skeleton";
 
-const interactionIcons = {
+const interactionIcons: Record<Interaction["type"], React.ReactNode> = {
   "1:1": <Calendar className="h-4 w-4" />,
   "Feedback": <MessageSquare className="h-4 w-4" />,
   "N3 Individual": <Users className="h-4 w-4" />,
 };
 
-export function Timeline({ interactions }: { interactions: Interaction[] }) {
-  if (interactions.length === 0) {
-    return <p className="text-sm text-muted-foreground">Nenhuma interação registrada.</p>
+export function Timeline({ interactions, isLoading }: { interactions: Interaction[]; isLoading: boolean }) {
+  if (isLoading) {
+    return (
+      <div className="space-y-6">
+        {Array.from({ length: 3 }).map((_, i) => (
+          <div key={i} className="flex items-start gap-4">
+            <Skeleton className="h-6 w-6 rounded-full" />
+            <div className="flex-1 space-y-2">
+              <Skeleton className="h-4 w-[100px]" />
+              <Skeleton className="h-3 w-[80px]" />
+              <Skeleton className="h-10 w-full" />
+            </div>
+          </div>
+        ))}
+      </div>
+    )
   }
+  
+  if (interactions.length === 0) {
+    return <p className="text-center text-sm text-muted-foreground py-8">Nenhuma interação registrada para este colaborador.</p>
+  }
+
+  const sortedInteractions = [...interactions].sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime());
   
   return (
     <div className="relative space-y-6">
       <div className="absolute left-3 top-3 h-full w-0.5 bg-border" aria-hidden="true" />
-      {interactions.map((item) => (
+      {sortedInteractions.map((item) => (
         <div key={item.id} className="relative flex items-start gap-4">
           <div className="flex h-6 w-6 items-center justify-center rounded-full bg-secondary z-10">
             <span className="flex h-6 w-6 items-center justify-center rounded-full bg-muted text-foreground">
@@ -30,7 +50,7 @@ export function Timeline({ interactions }: { interactions: Interaction[] }) {
           <div className="flex-1 pt-0.5">
             <p className="text-sm font-medium">{item.type}</p>
             <p className="text-xs text-muted-foreground">{formatDate(item.date)}</p>
-            <p className="mt-2 text-sm text-foreground/90">{item.notes}</p>
+            <p className="mt-2 text-sm text-foreground/90 whitespace-pre-wrap">{item.notes}</p>
           </div>
         </div>
       ))}

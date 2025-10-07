@@ -10,7 +10,7 @@ export interface User {
 }
 
 export interface Employee {
-  id: string; // Adicionado para corresponder ao ID do documento do Firestore
+  id: string; 
   id3a: string;
   name: string;
   email: string;
@@ -28,7 +28,7 @@ export interface Employee {
 export interface Interaction {
   id: string;
   type: "1:1" | "Feedback" | "N3 Individual";
-  date: string;
+  date: string; // ISO 8601 string
   notes: string;
   authorId: string;
 }
