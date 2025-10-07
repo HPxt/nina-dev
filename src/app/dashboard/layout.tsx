@@ -27,9 +27,14 @@ export default function DashboardLayout({
     <SidebarProvider>
       <Sidebar collapsible="icon">
         <SidebarHeader>
-            <SidebarTrigger className="ml-auto hidden md:flex" />
+          {/* O trigger foi movido para o SidebarContent */}
         </SidebarHeader>
         <SidebarContent>
+          <SidebarMenu>
+            <SidebarMenuItem>
+              <SidebarTrigger className="ml-auto hidden md:flex" />
+            </SidebarMenuItem>
+          </SidebarMenu>
           <MainNav userRole={currentUser.role} />
         </SidebarContent>
         <SidebarFooter>
