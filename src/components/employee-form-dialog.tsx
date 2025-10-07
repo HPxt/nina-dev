@@ -44,7 +44,7 @@ const formSchema = z.object({
   axis: z.string().optional(),
   area: z.string().optional(),
   segment: z.string().optional(),
-  // leaderId, leader, and leaderEmail removed from here
+  leaderId: z.string().optional(),
   city: z.string().optional(),
   role: z.string().optional(),
   photoURL: z.string().url().optional().or(z.literal('')),
@@ -81,6 +81,7 @@ export function EmployeeFormDialog({
       axis: "",
       area: "",
       segment: "",
+      leaderId: "",
       city: "",
       role: "Colaborador",
       photoURL: "",
@@ -97,6 +98,7 @@ export function EmployeeFormDialog({
         axis: employee.axis || "",
         area: employee.area || "",
         segment: employee.segment || "",
+        leaderId: employee.leaderId || "",
         city: employee.city || "",
         role: employee.role || "Colaborador",
         photoURL: employee.photoURL || "",
@@ -110,6 +112,7 @@ export function EmployeeFormDialog({
         axis: "",
         area: "",
         segment: "",
+        leaderId: "",
         city: "",
         role: "Colaborador",
         photoURL: "",
@@ -123,18 +126,16 @@ export function EmployeeFormDialog({
     const docId = isEditMode ? employee.id : data.id3a;
     const docRef = doc(firestore, "employees", docId);
     
-    // We don't set leader info here anymore
-    const dataToSave = {
+    const selectedLeader = leaders.find(l => l.id === data.leaderId);
+
+    const dataToSave: Partial<Employee> = {
         ...data,
+        leader: selectedLeader?.name || "",
+        leaderEmail: selectedLeader?.email || ""
     };
     
     try {
-      // For a new employee, we also save the leader fields as empty
-      const finalData = isEditMode 
-        ? dataToSave 
-        : { ...dataToSave, leaderId: "", leader: "", leaderEmail: "" };
-
-      await setDocumentNonBlocking(docRef, finalData, { merge: isEditMode });
+      await setDocumentNonBlocking(docRef, dataToSave, { merge: isEditMode });
       toast({
         title: isEditMode ? "Funcionário Atualizado" : "Funcionário Adicionado",
         description: `Os dados de ${data.name} foram salvos com sucesso.`,
@@ -274,7 +275,33 @@ export function EmployeeFormDialog({
                 )}
                 />
             </div>
-            
+            <FormField
+              control={form.control}
+              name="leaderId"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Líder</FormLabel>
+                  <Select onValueChange={field.onChange} value={field.value}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione um líder" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="">Sem Líder</SelectItem>
+                      {leaders
+                        .filter(l => l.id !== employee?.id) // Cannot be their own leader
+                        .map((leader) => (
+                        <SelectItem key={leader.id} value={leader.id}>
+                          {leader.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
             <FormField
               control={form.control}
               name="role"

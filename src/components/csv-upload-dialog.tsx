@@ -14,9 +14,10 @@ import { useState, useCallback } from "react";
 import { useDropzone } from "react-dropzone";
 import { FileUp, FileCheck2, AlertCircle } from "lucide-react";
 import { useFirestore } from "@/firebase";
-import { doc } from "firebase/firestore";
+import { collection, doc, getDocs } from "firebase/firestore";
 import { setDocumentNonBlocking } from "@/firebase/non-blocking-updates";
 import { useToast } from "@/hooks/use-toast";
+import type { Employee } from "@/lib/types";
 
 
 type CsvData = { [key: string]: string };
@@ -30,7 +31,7 @@ const EXPECTED_COLUMNS = [
     'area',
     'position',
     'segment',
-    'leader',
+    'leaderEmail', // Alterado de 'leader' para 'leaderEmail'
     'city'
 ];
 
@@ -104,19 +105,38 @@ export function CsvUploadDialog({ open, onOpenChange }: { open: boolean; onOpenC
 
     setIsImporting(true);
     try {
-      const importPromises = data.map(row => {
-        const docId = row.id3a;
-        if (!docId) {
-          console.warn("Linha ignorada por falta de id3a:", row);
-          return Promise.resolve(); // Ignora a linha se não tiver id
-        }
-        const docRef = doc(firestore, "employees", docId);
-        // Os dados em `row` já estão no formato que queremos salvar.
-        return setDocumentNonBlocking(docRef, row, { merge: true });
-      });
+        // 1. Buscar todos os funcionários existentes para criar um mapa de email -> funcionário
+        const employeesRef = collection(firestore, "employees");
+        const querySnapshot = await getDocs(employeesRef);
+        const employeeMap = new Map<string, Employee>();
+        querySnapshot.forEach(doc => {
+            const employee = { id: doc.id, ...doc.data() } as Employee;
+            if (employee.email) {
+                employeeMap.set(employee.email.toLowerCase(), employee);
+            }
+        });
 
-      // Embora a função seja "non-blocking", esperamos todas as escritas iniciarem.
-      await Promise.all(importPromises);
+        const importPromises = data.map(row => {
+            const docId = row.id3a;
+            if (!docId) {
+                console.warn("Linha ignorada por falta de id3a:", row);
+                return Promise.resolve(); // Ignora a linha se não tiver id
+            }
+            const docRef = doc(firestore, "employees", docId);
+            
+            const leaderEmail = row.leaderEmail?.toLowerCase();
+            const leader = leaderEmail ? employeeMap.get(leaderEmail) : undefined;
+            
+            const employeeData = {
+                ...row,
+                leaderId: leader?.id || "",
+                leader: leader?.name || "",
+            };
+
+            return setDocumentNonBlocking(docRef, employeeData, { merge: true });
+        });
+        
+        await Promise.all(importPromises);
 
       toast({
         title: "Importação Concluída",
@@ -141,7 +161,7 @@ export function CsvUploadDialog({ open, onOpenChange }: { open: boolean; onOpenC
         <DialogHeader>
           <DialogTitle>Upload de Funcionários via CSV</DialogTitle>
           <DialogDescription>
-            Selecione ou arraste um arquivo CSV para importar os dados dos funcionários.
+            Selecione ou arraste um arquivo CSV para importar os dados dos funcionários. O CSV deve conter as colunas: {EXPECTED_COLUMNS.join(', ')}.
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-6 py-4">

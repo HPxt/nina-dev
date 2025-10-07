@@ -29,7 +29,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Button } from "./ui/button";
-import { Input } from "./ui/input";
 import { Textarea } from "./ui/textarea";
 import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
 import { Calendar } from "./ui/calendar";
@@ -43,12 +42,14 @@ import { useToast } from "@/hooks/use-toast";
 import type { PDIAction } from "@/lib/types";
 
 const actionSchema = z.object({
-  action: z.string().min(1, "A descrição da ação é obrigatória."),
-  category: z.enum(["Technical", "Soft Skill", "Leadership", "Career"]),
-  dueDate: z.date({
+  description: z.string().min(1, "A descrição da ação é obrigatória."),
+  startDate: z.date({
+    required_error: "A data de início é obrigatória.",
+  }),
+  endDate: z.date({
     required_error: "A data de prazo é obrigatória.",
   }),
-  status: z.enum(["Not Started", "In Progress", "Completed"]),
+  status: z.enum(["To Do", "In Progress", "Completed"]),
 });
 
 type ActionFormData = z.infer<typeof actionSchema>;
@@ -73,26 +74,25 @@ export function PdiActionFormDialog({
   const form = useForm<ActionFormData>({
     resolver: zodResolver(actionSchema),
     defaultValues: {
-      action: "",
-      category: "Technical",
-      status: "Not Started",
+      description: "",
+      status: "To Do",
     },
   });
 
   useEffect(() => {
     if (action) {
       form.reset({
-        action: action.action,
-        category: action.category,
+        description: action.description,
         status: action.status,
-        dueDate: new Date(action.dueDate),
+        startDate: new Date(action.startDate),
+        endDate: new Date(action.endDate),
       });
     } else {
       form.reset({
-        action: "",
-        category: "Technical",
-        status: "Not Started",
-        dueDate: undefined
+        description: "",
+        status: "To Do",
+        startDate: undefined,
+        endDate: undefined
       });
     }
   }, [action, form]);
@@ -104,10 +104,12 @@ export function PdiActionFormDialog({
     const docId = isEditMode ? action.id : doc(collectionRef).id;
     const docRef = doc(collectionRef, docId);
 
-    const actionData = {
+    const actionData: PDIAction = {
         ...data,
         id: docId,
-        dueDate: data.dueDate.toISOString(),
+        employeeId: employeeId,
+        startDate: data.startDate.toISOString(),
+        endDate: data.endDate.toISOString(),
     };
 
     try {
@@ -142,7 +144,7 @@ export function PdiActionFormDialog({
           <form onSubmit={form.handleSubmit(onSubmit)} className="grid gap-4 py-4">
             <FormField
               control={form.control}
-              name="action"
+              name="description"
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Ação</FormLabel>
@@ -156,30 +158,7 @@ export function PdiActionFormDialog({
                 </FormItem>
               )}
             />
-             <FormField
-              control={form.control}
-              name="category"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Categoria</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecione uma categoria" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                        <SelectItem value="Technical">Técnica</SelectItem>
-                        <SelectItem value="Soft Skill">Comportamental</SelectItem>
-                        <SelectItem value="Leadership">Liderança</SelectItem>
-                        <SelectItem value="Career">Carreira</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-             <FormField
+            <FormField
               control={form.control}
               name="status"
               render={({ field }) => (
@@ -192,7 +171,7 @@ export function PdiActionFormDialog({
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      <SelectItem value="Not Started">Não Iniciado</SelectItem>
+                      <SelectItem value="To Do">A Fazer</SelectItem>
                       <SelectItem value="In Progress">Em Progresso</SelectItem>
                       <SelectItem value="Completed">Concluído</SelectItem>
                     </SelectContent>
@@ -201,9 +180,48 @@ export function PdiActionFormDialog({
                 </FormItem>
               )}
             />
+            <div className="grid grid-cols-2 gap-4">
             <FormField
                 control={form.control}
-                name="dueDate"
+                name="startDate"
+                render={({ field }) => (
+                    <FormItem className="flex flex-col">
+                    <FormLabel>Data de Início</FormLabel>
+                    <Popover>
+                        <PopoverTrigger asChild>
+                        <FormControl>
+                            <Button
+                            variant={"outline"}
+                            className={cn(
+                                "w-full pl-3 text-left font-normal",
+                                !field.value && "text-muted-foreground"
+                            )}
+                            >
+                            {field.value ? (
+                                format(field.value, "PPP")
+                            ) : (
+                                <span>Escolha uma data</span>
+                            )}
+                            <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                            </Button>
+                        </FormControl>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0" align="start">
+                        <Calendar
+                            mode="single"
+                            selected={field.value}
+                            onSelect={field.onChange}
+                            initialFocus
+                        />
+                        </PopoverContent>
+                    </Popover>
+                    <FormMessage />
+                    </FormItem>
+                )}
+             />
+             <FormField
+                control={form.control}
+                name="endDate"
                 render={({ field }) => (
                     <FormItem className="flex flex-col">
                     <FormLabel>Data de Prazo</FormLabel>
@@ -242,6 +260,7 @@ export function PdiActionFormDialog({
                     </FormItem>
                 )}
              />
+             </div>
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
                 Cancelar

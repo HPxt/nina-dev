@@ -40,10 +40,11 @@ export interface Interaction {
 
 export interface PDIAction {
   id: string;
-  action: string;
-  category: "Technical" | "Soft Skill" | "Leadership" | "Career";
-  dueDate: string; // ISO 8601 string
-  status: "Not Started" | "In Progress" | "Completed";
+  employeeId: string;
+  description: string;
+  startDate: string;
+  endDate: string;
+  status: "To Do" | "In Progress" | "Completed";
 }
 
 export interface Diagnosis {

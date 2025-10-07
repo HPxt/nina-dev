@@ -21,6 +21,9 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { PdiActionFormDialog } from "./pdi-action-form-dialog";
+import { useFirestore } from "@/firebase";
+import { deleteDoc, doc } from "firebase/firestore";
+import { useToast } from "@/hooks/use-toast";
 
 type PdiTableProps = {
     pdiActions: PDIAction[];
@@ -30,6 +33,8 @@ type PdiTableProps = {
 export function PdiTable({ pdiActions, employeeId }: PdiTableProps) {
     const [isFormOpen, setIsFormOpen] = useState(false);
     const [selectedAction, setSelectedAction] = useState<PDIAction | undefined>(undefined);
+    const firestore = useFirestore();
+    const { toast } = useToast();
 
     const handleAdd = () => {
         setSelectedAction(undefined);
@@ -41,21 +46,44 @@ export function PdiTable({ pdiActions, employeeId }: PdiTableProps) {
         setIsFormOpen(true);
     };
 
-    const handleDelete = (actionId: string) => {
-        // TODO: Implement deletion logic
-        console.log("Delete action:", actionId);
+    const handleDelete = async (actionId: string) => {
+        if (!firestore) return;
+        const docRef = doc(firestore, "employees", employeeId, "pdiActions", actionId);
+        try {
+            await deleteDoc(docRef);
+            toast({
+                title: "Ação Removida",
+                description: "A ação do PDI foi removida com sucesso.",
+            });
+        } catch (error) {
+            console.error("Error deleting PDI action:", error);
+            toast({
+                variant: "destructive",
+                title: "Erro ao Remover",
+                description: "Não foi possível remover a ação do PDI.",
+            });
+        }
     };
 
-    const getStatusBadge = (status: "Not Started" | "In Progress" | "Completed") => {
+    const getStatusBadge = (status: "To Do" | "In Progress" | "Completed") => {
         switch (status) {
           case "Completed":
             return "default";
           case "In Progress":
             return "secondary";
-          case "Not Started":
+          case "To Do":
             return "outline";
         }
     };
+
+    const getStatusLabel = (status: "To Do" | "In Progress" | "Completed") => {
+        const labels = {
+            "To Do": "A Fazer",
+            "In Progress": "Em Progresso",
+            "Completed": "Concluído",
+        };
+        return labels[status];
+    }
     
   return (
     <>
@@ -69,7 +97,7 @@ export function PdiTable({ pdiActions, employeeId }: PdiTableProps) {
         <TableHeader>
             <TableRow>
             <TableHead>Ação</TableHead>
-            <TableHead>Categoria</TableHead>
+            <TableHead>Início</TableHead>
             <TableHead>Prazo</TableHead>
             <TableHead>Status</TableHead>
             <TableHead className="text-right">Ações</TableHead>
@@ -78,11 +106,11 @@ export function PdiTable({ pdiActions, employeeId }: PdiTableProps) {
         <TableBody>
             {pdiActions.length > 0 ? pdiActions.map((item) => (
             <TableRow key={item.id}>
-                <TableCell className="font-medium">{item.action}</TableCell>
-                <TableCell>{item.category}</TableCell>
-                <TableCell>{new Date(item.dueDate).toLocaleDateString('pt-BR')}</TableCell>
+                <TableCell className="font-medium max-w-xs truncate">{item.description}</TableCell>
+                <TableCell>{new Date(item.startDate).toLocaleDateString('pt-BR')}</TableCell>
+                <TableCell>{new Date(item.endDate).toLocaleDateString('pt-BR')}</TableCell>
                 <TableCell>
-                <Badge variant={getStatusBadge(item.status)}>{item.status}</Badge>
+                <Badge variant={getStatusBadge(item.status)}>{getStatusLabel(item.status)}</Badge>
                 </TableCell>
                 <TableCell className="text-right">
                     <DropdownMenu>
@@ -112,4 +140,3 @@ export function PdiTable({ pdiActions, employeeId }: PdiTableProps) {
     </>
   );
 }
-
