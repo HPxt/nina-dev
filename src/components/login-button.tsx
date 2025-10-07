@@ -1,17 +1,23 @@
 
 "use client";
 
-import { useAuth, useUser } from "@/firebase";
+import { useAuth, useFirestore, useUser } from "@/firebase";
 import { Button } from "@/components/ui/button";
 import { Icons } from "@/components/icons";
 import { useRouter } from "next/navigation";
-import { GoogleAuthProvider, signInWithPopup } from "firebase/auth";
-import { useEffect } from "react";
+import { GoogleAuthProvider, signInWithPopup, signOut } from "firebase/auth";
+import { useEffect, useState } from "react";
+import { collection, query, where, getDocs } from "firebase/firestore";
+import type { Employee } from "@/lib/types";
+import { useToast } from "@/hooks/use-toast";
 
 export function LoginButton() {
   const auth = useAuth();
+  const firestore = useFirestore();
   const router = useRouter();
   const { user, isUserLoading } = useUser();
+  const { toast } = useToast();
+  const [isVerifying, setIsVerifying] = useState(false);
 
   const handleLogin = async () => {
     if (!auth) return;
@@ -20,25 +26,67 @@ export function LoginButton() {
       await signInWithPopup(auth, provider);
     } catch (error) {
       console.error("Google sign-in failed", error);
+      toast({
+        variant: "destructive",
+        title: "Erro de Login",
+        description: "Falha ao autenticar com o Google.",
+      });
     }
   };
 
   useEffect(() => {
-    if (!isUserLoading && user) {
-      router.push("/dashboard");
-    }
-  }, [user, isUserLoading, router]);
+    const verifyAccess = async () => {
+      if (isUserLoading || !user || !firestore) return;
 
+      setIsVerifying(true);
+
+      const employeesRef = collection(firestore, "employees");
+      const q = query(employeesRef, where("email", "==", user.email));
+      
+      try {
+        const querySnapshot = await getDocs(q);
+        
+        if (querySnapshot.empty) {
+          throw new Error("Usuário não encontrado.");
+        }
+
+        const employeeDoc = querySnapshot.docs[0];
+        const employeeData = employeeDoc.data() as Employee;
+        const allowedRoles: (string | undefined)[] = ["Admin", "Diretor", "Líder"];
+
+        if (allowedRoles.includes(employeeData.role)) {
+          router.push("/dashboard");
+        } else {
+          throw new Error("Acesso negado.");
+        }
+      } catch (error: any) {
+        toast({
+          variant: "destructive",
+          title: "Acesso Negado",
+          description: "Você não tem permissão para acessar este sistema.",
+        });
+        if (auth) {
+          await signOut(auth);
+        }
+      } finally {
+        setIsVerifying(false);
+      }
+    };
+
+    verifyAccess();
+  }, [user, isUserLoading, firestore, router, auth, toast]);
+
+  const isLoading = isUserLoading || isVerifying;
 
   return (
     <Button
       onClick={handleLogin}
       variant="outline"
       className="w-full bg-white hover:bg-slate-100 text-slate-800"
-      disabled={isUserLoading}
+      disabled={isLoading}
     >
-      {isUserLoading ? (
-        "Entrando..."
+      {isLoading ? (
+        "Verificando..."
       ) : (
         <>
           <Icons.google className="mr-2 h-4 w-4" />
