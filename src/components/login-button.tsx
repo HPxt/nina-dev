@@ -24,6 +24,7 @@ export function LoginButton() {
     const provider = new GoogleAuthProvider();
     try {
       await signInWithPopup(auth, provider);
+      // O useEffect cuidará do redirecionamento após a verificação
     } catch (error) {
       console.error("Google sign-in failed", error);
       toast({
@@ -36,7 +37,8 @@ export function LoginButton() {
 
   useEffect(() => {
     const verifyAccess = async () => {
-      if (isUserLoading || !user || !firestore) return;
+      // Aguarda o usuário ser carregado e não estar em outra verificação
+      if (isUserLoading || !user || !firestore || isVerifying) return;
 
       setIsVerifying(true);
 
@@ -47,7 +49,7 @@ export function LoginButton() {
         const querySnapshot = await getDocs(q);
         
         if (querySnapshot.empty) {
-          throw new Error("Usuário não encontrado.");
+          throw new Error("Usuário não encontrado no sistema.");
         }
 
         const employeeDoc = querySnapshot.docs[0];
@@ -57,13 +59,13 @@ export function LoginButton() {
         if (allowedRoles.includes(employeeData.role)) {
           router.push("/dashboard");
         } else {
-          throw new Error("Acesso negado.");
+          throw new Error("Seu perfil não tem permissão de acesso.");
         }
       } catch (error: any) {
         toast({
           variant: "destructive",
           title: "Acesso Negado",
-          description: "Você não tem permissão para acessar este sistema.",
+          description: error.message || "Você não tem permissão para acessar este sistema.",
         });
         if (auth) {
           await signOut(auth);
@@ -73,7 +75,9 @@ export function LoginButton() {
       }
     };
 
-    verifyAccess();
+    if (user) {
+        verifyAccess();
+    }
   }, [user, isUserLoading, firestore, router, auth, toast]);
 
   const isLoading = isUserLoading || isVerifying;
