@@ -39,14 +39,16 @@ export default function DashboardLayout({
         </SidebarContent>
         <SidebarFooter>
             <SidebarMenu>
-                <SidebarMenuItem>
-                    <SidebarMenuButton asChild tooltip="Configurações">
-                        <Link href="/dashboard/admin">
-                            <Settings />
-                            <span>Configurações</span>
-                        </Link>
-                    </SidebarMenuButton>
-                </SidebarMenuItem>
+                {currentUser.role === 'Admin' && (
+                  <SidebarMenuItem>
+                      <SidebarMenuButton asChild tooltip="Configurações">
+                          <Link href="/dashboard/admin">
+                              <Settings />
+                              <span>Configurações</span>
+                          </Link>
+                      </SidebarMenuButton>
+                  </SidebarMenuItem>
+                )}
                 <SidebarMenuItem>
                     <LogoutButton />
                 </SidebarMenuItem>
