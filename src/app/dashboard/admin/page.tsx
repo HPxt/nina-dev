@@ -246,6 +246,21 @@ export default function AdminPage() {
     setIsEmployeeFormOpen(true);
   };
 
+  const handleLeaderChange = (employeeId: string, newLeaderId: string) => {
+    if (!firestore || !employees) return;
+    
+    const employeeDocRef = doc(firestore, "employees", employeeId);
+    const newLeader = leaders.find(l => l.id === newLeaderId);
+
+    const dataToSave = {
+        leaderId: newLeader?.id || "",
+        leader: newLeader?.name || "",
+        leaderEmail: newLeader?.email || ""
+    };
+    
+    setDocumentNonBlocking(employeeDocRef, dataToSave, { merge: true });
+  };
+
   const isLoading = isUserLoading || areEmployeesLoading;
 
   const FilterComponent = ({ title, filterKey, options, children }: { title: string, filterKey: keyof typeof filters, options: string[], children?: React.ReactNode }) => (
@@ -391,7 +406,7 @@ export default function AdminPage() {
                         <TableCell><Skeleton className="h-5 w-20" /></TableCell>
                         <TableCell><Skeleton className="h-5 w-20" /></TableCell>
                         <TableCell><Skeleton className="h-5 w-20" /></TableCell>
-                        <TableCell><Skeleton className="h-5 w-20" /></TableCell>
+                        <TableCell><Skeleton className="h-9 w-[180px]" /></TableCell>
                         <TableCell><Skeleton className="h-5 w-20" /></TableCell>
                         <TableCell><Skeleton className="h-9 w-[180px]" /></TableCell>
                         <TableCell className="text-right"><Skeleton className="h-8 w-8 rounded-full" /></TableCell>
@@ -405,7 +420,27 @@ export default function AdminPage() {
                     <TableCell>{employee.axis}</TableCell>
                     <TableCell>{employee.area}</TableCell>
                     <TableCell>{employee.segment}</TableCell>
-                    <TableCell>{employee.leader}</TableCell>
+                    <TableCell>
+                       <Select 
+                        value={employee.leaderId || ""}
+                        onValueChange={(newLeaderId) => handleLeaderChange(employee.id, newLeaderId)}
+                        disabled={!leaders || leaders.length === 0}
+                      >
+                        <SelectTrigger className="w-[180px]">
+                          <SelectValue placeholder="Selecione o líder" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="">Sem Líder</SelectItem>
+                          {leaders
+                            .filter(leader => leader.id !== employee.id) // Cannot be their own leader
+                            .map((leader) => (
+                            <SelectItem key={leader.id} value={leader.id}>
+                              {leader.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </TableCell>
                     <TableCell>{employee.city}</TableCell>
                     <TableCell>
                       <Select 
