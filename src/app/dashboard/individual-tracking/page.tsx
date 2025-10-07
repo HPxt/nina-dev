@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useMemo }from "react";
+import { useState, useMemo } from "react";
 import type { Employee, Interaction } from "@/lib/types";
 import {
   Card,
@@ -32,15 +32,16 @@ import {
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useCollection, useFirestore, useMemoFirebase, useUser } from "@/firebase";
-import { addDocumentNonBlocking } from "@/firebase/non-blocking-updates";
-import { collection, serverTimestamp } from "firebase/firestore";
+import { addDoc, collection, doc, serverTimestamp, setDoc } from "firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
+import { RiskAssessmentFormDialog } from "@/components/risk-assessment-form-dialog";
 
 type NewInteraction = Omit<Interaction, "id" | "date" | "authorId">;
 
 export default function IndividualTrackingPage() {
   const [selectedEmployeeId, setSelectedEmployeeId] = useState<string | null>(null);
-  const [openDialog, setOpenDialog] = useState(false);
+  const [openInteractionDialog, setOpenInteractionDialog] = useState(false);
+  const [openRiskDialog, setOpenRiskDialog] = useState(false);
   const [newInteraction, setNewInteraction] = useState<NewInteraction>({ type: "1:1", notes: "" });
   const [isSaving, setIsSaving] = useState(false);
 
@@ -89,6 +90,13 @@ export default function IndividualTrackingPage() {
         });
         return;
     }
+    
+    if (newInteraction.type === 'Índice de Risco') {
+        setOpenInteractionDialog(false);
+        setOpenRiskDialog(true);
+        return;
+    }
+
     setIsSaving(true);
     
     const interactionToSave = {
@@ -98,12 +106,12 @@ export default function IndividualTrackingPage() {
     };
 
     try {
-        await addDocumentNonBlocking(interactionsCollection, interactionToSave);
+        await addDoc(interactionsCollection, interactionToSave);
         toast({
             title: "Interação Salva!",
             description: "O registro da sua interação foi salvo com sucesso.",
         });
-        setOpenDialog(false);
+        setOpenInteractionDialog(false);
         resetForm();
     } catch (error) {
         console.error("Error saving interaction: ", error);
@@ -116,13 +124,68 @@ export default function IndividualTrackingPage() {
         setIsSaving(false);
     }
   };
+
+  const handleSaveRiskAssessment = async (score: number, details: string) => {
+    if (!interactionsCollection || !user || !selectedEmployee) {
+        toast({
+            variant: "destructive",
+            title: "Erro",
+            description: "Não foi possível salvar a avaliação de risco.",
+        });
+        return;
+    }
+    setIsSaving(true);
+
+    const interactionToSave = {
+        type: 'Índice de Risco',
+        notes: details,
+        riskScore: score,
+        authorId: user.uid,
+        date: new Date().toISOString(),
+    };
+
+    const employeeDocRef = doc(firestore, "employees", selectedEmployee.id);
+
+    try {
+        // Save interaction
+        await addDoc(interactionsCollection, interactionToSave);
+        // Update employee's risk score
+        await setDoc(employeeDocRef, { riskScore: score }, { merge: true });
+
+        toast({
+            title: "Avaliação de Risco Salva!",
+            description: `O índice de risco de ${selectedEmployee.name} foi atualizado.`,
+        });
+        setOpenRiskDialog(false);
+    } catch (error) {
+        console.error("Error saving risk assessment: ", error);
+        toast({
+            variant: "destructive",
+            title: "Erro ao Salvar",
+            description: "Não foi possível salvar a avaliação de risco. Verifique as permissões.",
+        });
+    } finally {
+        setIsSaving(false);
+    }
+  };
   
   const handleOpenChange = (isOpen: boolean) => {
-    setOpenDialog(isOpen);
+    setOpenInteractionDialog(isOpen);
     if (!isOpen) {
       resetForm();
     }
   }
+
+  const handleInteractionTypeChange = (value: string) => {
+    const type = value as Interaction["type"];
+    if (type === 'Índice de Risco') {
+        // No need to change state, we will handle it on save
+        setNewInteraction(prev => ({...prev, type}));
+    } else {
+        setNewInteraction(prev => ({...prev, type, notes: ""}));
+    }
+  };
+
 
   return (
     <div className="space-y-6">
@@ -164,7 +227,7 @@ export default function IndividualTrackingPage() {
                 </CardDescription>
               }
             </div>
-            <Dialog open={openDialog} onOpenChange={handleOpenChange}>
+            <Dialog open={openInteractionDialog} onOpenChange={handleOpenChange}>
               <DialogTrigger asChild>
                 <Button>
                   <PlusCircle className="mr-2 h-4 w-4" />
@@ -185,7 +248,7 @@ export default function IndividualTrackingPage() {
                     <Label htmlFor="interaction-type">Tipo de Interação</Label>
                     <Select 
                         value={newInteraction.type} 
-                        onValueChange={(value) => setNewInteraction(prev => ({...prev, type: value as Interaction["type"]}))}
+                        onValueChange={handleInteractionTypeChange}
                     >
                       <SelectTrigger id="interaction-type">
                         <SelectValue placeholder="Selecione o tipo" />
@@ -196,24 +259,27 @@ export default function IndividualTrackingPage() {
                         <SelectItem value="N3 Individual">
                           N3 Individual
                         </SelectItem>
+                        <SelectItem value="Índice de Risco">Índice de Risco</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="notes">Anotações</Label>
-                    <Textarea
-                      id="notes"
-                      placeholder="Detalhes da conversa, pontos de ação, etc."
-                      className="min-h-[120px]"
-                      value={newInteraction.notes}
-                      onChange={(e) => setNewInteraction(prev => ({...prev, notes: e.target.value}))}
-                    />
-                  </div>
+                  { newInteraction.type !== 'Índice de Risco' &&
+                    <div className="space-y-2">
+                        <Label htmlFor="notes">Anotações</Label>
+                        <Textarea
+                        id="notes"
+                        placeholder="Detalhes da conversa, pontos de ação, etc."
+                        className="min-h-[120px]"
+                        value={newInteraction.notes}
+                        onChange={(e) => setNewInteraction(prev => ({...prev, notes: e.target.value}))}
+                        />
+                    </div>
+                  }
                 </div>
                 <DialogFooter>
                   <Button type="button" variant="outline" onClick={() => handleOpenChange(false)} disabled={isSaving}>Cancelar</Button>
                   <Button type="submit" onClick={handleSaveInteraction} disabled={isSaving}>
-                    {isSaving ? "Salvando..." : "Salvar Interação"}
+                    {isSaving ? "Salvando..." : newInteraction.type === 'Índice de Risco' ? 'Avançar' : 'Salvar Interação'}
                   </Button>
                 </DialogFooter>
               </DialogContent>
@@ -223,6 +289,16 @@ export default function IndividualTrackingPage() {
             <Timeline interactions={interactions ?? []} isLoading={areInteractionsLoading} />
           </CardContent>
         </Card>
+      )}
+
+      {selectedEmployee && (
+        <RiskAssessmentFormDialog
+            open={openRiskDialog}
+            onOpenChange={setOpenRiskDialog}
+            employee={selectedEmployee}
+            onSave={handleSaveRiskAssessment}
+            isSaving={isSaving}
+        />
       )}
     </div>
   );

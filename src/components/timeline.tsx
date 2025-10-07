@@ -1,16 +1,19 @@
+
 import type { Interaction } from "@/lib/types";
 import {
   MessageSquare,
   Users,
   Calendar,
+  ShieldAlert,
 } from "lucide-react";
-import { formatDate } from "@/lib/utils";
+import { formatDate, cn } from "@/lib/utils";
 import { Skeleton } from "./ui/skeleton";
 
 const interactionIcons: Record<Interaction["type"], React.ReactNode> = {
   "1:1": <Calendar className="h-4 w-4" />,
   "Feedback": <MessageSquare className="h-4 w-4" />,
   "N3 Individual": <Users className="h-4 w-4" />,
+  "Índice de Risco": <ShieldAlert className="h-4 w-4" />,
 };
 
 export function Timeline({ interactions, isLoading }: { interactions: Interaction[]; isLoading: boolean }) {
@@ -47,12 +50,19 @@ export function Timeline({ interactions, isLoading }: { interactions: Interactio
       {sortedInteractions.map((item) => (
         <div key={item.id} className="relative flex items-start gap-4">
           <div className="flex h-6 w-6 items-center justify-center rounded-full bg-secondary z-10">
-            <span className="flex h-6 w-6 items-center justify-center rounded-full bg-muted text-foreground">
+            <span className={cn("flex h-6 w-6 items-center justify-center rounded-full bg-muted text-foreground", item.type === 'Índice de Risco' && "text-destructive")}>
                 {item.type ? interactionIcons[item.type] : null}
             </span>
           </div>
           <div className="flex-1 pt-0.5">
-            <p className="text-sm font-medium">{item.type}</p>
+            <div className="flex justify-between items-center">
+              <p className="text-sm font-medium">{item.type}</p>
+              {item.type === 'Índice de Risco' && typeof item.riskScore === 'number' && (
+                <p className="text-sm font-bold">
+                  Pontuação: {item.riskScore}
+                </p>
+              )}
+            </div>
             <p className="text-xs text-muted-foreground">{item.date ? formatDate(item.date) : 'Data indisponível'}</p>
             <p className="mt-2 text-sm text-foreground/90 whitespace-pre-wrap">{item.notes}</p>
           </div>

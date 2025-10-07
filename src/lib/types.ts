@@ -23,15 +23,17 @@ export interface Employee {
   city?: string;
   role?: Role;
   team?: string;
-  diagnosis?: Diagnosis; // Diagnosis is now optional and part of the employee
+  diagnosis?: Diagnosis;
+  riskScore?: number;
 }
 
 export interface Interaction {
   id: string;
-  type: "1:1" | "Feedback" | "N3 Individual";
+  type: "1:1" | "Feedback" | "N3 Individual" | "Índice de Risco";
   date: string; // ISO 8601 string
   notes: string;
   authorId: string;
+  riskScore?: number; // Add riskScore to interaction
 }
 
 export interface PDIAction {
@@ -63,4 +65,3 @@ export interface TeamMember extends User {
   pdi: PDIAction[];
   diagnosis: Diagnosis;
 }
-
