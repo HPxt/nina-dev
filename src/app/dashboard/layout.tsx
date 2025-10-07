@@ -1,4 +1,6 @@
 
+"use client";
+
 import { MainNav } from "@/components/main-nav";
 import {
   SidebarProvider,
@@ -46,6 +48,7 @@ export default function DashboardLayout({
   }, [employees]);
 
   const userRole = currentUserEmployee?.role;
+  const isUserAdmin = user?.email ? adminEmails.includes(user.email) : false;
 
   return (
     <SidebarProvider>
@@ -63,7 +66,7 @@ export default function DashboardLayout({
         </SidebarContent>
         <SidebarFooter>
             <SidebarMenu>
-                {(adminEmails.includes(user?.email || '')) && (
+                {isUserAdmin && (
                   <SidebarMenuItem>
                       <SidebarMenuButton asChild tooltip="Configurações">
                           <Link href="/dashboard/admin">
