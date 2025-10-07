@@ -91,12 +91,6 @@ export default function IndividualTrackingPage() {
         return;
     }
     
-    if (newInteraction.type === 'Índice de Risco') {
-        setOpenInteractionDialog(false);
-        setOpenRiskDialog(true);
-        return;
-    }
-
     setIsSaving(true);
     
     const interactionToSave = {
@@ -178,11 +172,14 @@ export default function IndividualTrackingPage() {
 
   const handleInteractionTypeChange = (value: string) => {
     const type = value as Interaction["type"];
+    
     if (type === 'Índice de Risco') {
-        // No need to change state, we will handle it on save
-        setNewInteraction(prev => ({...prev, type}));
+        setOpenInteractionDialog(false); // Fecha o modal atual
+        setOpenRiskDialog(true); // Abre o modal de risco
+        // Resetamos o form para o default caso o usuário feche o modal de risco e abra o de interação de novo
+        resetForm(); 
     } else {
-        setNewInteraction(prev => ({...prev, type, notes: ""}));
+        setNewInteraction({ type: type, notes: "" });
     }
   };
 
@@ -263,23 +260,21 @@ export default function IndividualTrackingPage() {
                       </SelectContent>
                     </Select>
                   </div>
-                  { newInteraction.type !== 'Índice de Risco' &&
-                    <div className="space-y-2">
-                        <Label htmlFor="notes">Anotações</Label>
-                        <Textarea
-                        id="notes"
-                        placeholder="Detalhes da conversa, pontos de ação, etc."
-                        className="min-h-[120px]"
-                        value={newInteraction.notes}
-                        onChange={(e) => setNewInteraction(prev => ({...prev, notes: e.target.value}))}
-                        />
-                    </div>
-                  }
+                  <div className="space-y-2">
+                      <Label htmlFor="notes">Anotações</Label>
+                      <Textarea
+                      id="notes"
+                      placeholder="Detalhes da conversa, pontos de ação, etc."
+                      className="min-h-[120px]"
+                      value={newInteraction.notes}
+                      onChange={(e) => setNewInteraction(prev => ({...prev, notes: e.target.value}))}
+                      />
+                  </div>
                 </div>
                 <DialogFooter>
                   <Button type="button" variant="outline" onClick={() => handleOpenChange(false)} disabled={isSaving}>Cancelar</Button>
                   <Button type="submit" onClick={handleSaveInteraction} disabled={isSaving}>
-                    {isSaving ? "Salvando..." : newInteraction.type === 'Índice de Risco' ? 'Avançar' : 'Salvar Interação'}
+                    {isSaving ? "Salvando..." : 'Salvar Interação'}
                   </Button>
                 </DialogFooter>
               </DialogContent>
