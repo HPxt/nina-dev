@@ -35,7 +35,11 @@ export function Timeline({ interactions, isLoading }: { interactions: Interactio
     return <p className="text-center text-sm text-muted-foreground py-8">Nenhuma interação registrada para este colaborador.</p>
   }
 
-  const sortedInteractions = [...interactions].sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  const sortedInteractions = [...interactions].sort((a,b) => {
+    const dateA = a.date ? new Date(a.date).getTime() : 0;
+    const dateB = b.date ? new Date(b.date).getTime() : 0;
+    return dateB - dateA;
+  });
   
   return (
     <div className="relative space-y-6">
@@ -44,12 +48,12 @@ export function Timeline({ interactions, isLoading }: { interactions: Interactio
         <div key={item.id} className="relative flex items-start gap-4">
           <div className="flex h-6 w-6 items-center justify-center rounded-full bg-secondary z-10">
             <span className="flex h-6 w-6 items-center justify-center rounded-full bg-muted text-foreground">
-                {interactionIcons[item.type]}
+                {item.type ? interactionIcons[item.type] : null}
             </span>
           </div>
           <div className="flex-1 pt-0.5">
             <p className="text-sm font-medium">{item.type}</p>
-            <p className="text-xs text-muted-foreground">{formatDate(item.date)}</p>
+            <p className="text-xs text-muted-foreground">{item.date ? formatDate(item.date) : 'Data indisponível'}</p>
             <p className="mt-2 text-sm text-foreground/90 whitespace-pre-wrap">{item.notes}</p>
           </div>
         </div>
