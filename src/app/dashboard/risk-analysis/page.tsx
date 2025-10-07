@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useMemo } from "react";
+import React, { useState, useMemo } from "react";
 import type { Employee, Interaction } from "@/lib/types";
 import {
   Card,
@@ -18,7 +18,7 @@ import {
 } from "@/components/ui/chart";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, LineChart, Line, ReferenceLine, Legend } from "recharts";
 import { useCollection, useFirestore, useMemoFirebase } from "@/firebase";
-import { collection }s from "firebase/firestore";
+import { collection } from "firebase/firestore";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -26,7 +26,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
-import { ChevronDown, ChevronsUpDown } from "lucide-react";
+import { Check, ChevronsUpDown } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
@@ -62,15 +62,6 @@ export default function RiskAnalysisPage() {
     if (!employees) return [];
     return employees.filter(e => selectedEmployeeIds.includes(e.id));
   }, [employees, selectedEmployeeIds]);
-
-  const interactionsCollections = useMemoFirebase(() => {
-    if (!firestore || selectedEmployeeIds.length === 0) return [];
-    return selectedEmployeeIds.map(id => collection(firestore, "employees", id, "interactions"));
-  }, [firestore, selectedEmployeeIds]);
-
-  const { data: interactionsData, isLoading: areInteractionsLoading } = useCollection<Interaction>(
-    interactionsCollections.length > 0 ? interactionsCollections.flat()[0] : null
-  );
 
   const [interactions, setInteractions] = useState<{ [key: string]: Interaction[] }>({});
   const [loadingInteractions, setLoadingInteractions] = useState(false);
