@@ -32,7 +32,7 @@ export default function DashboardLayout({
         <SidebarContent>
           <SidebarMenu>
             <SidebarMenuItem>
-              <SidebarTrigger className="ml-auto hidden md:flex" />
+              <SidebarTrigger className="hidden md:flex" />
             </SidebarMenuItem>
           </SidebarMenu>
           <MainNav userRole={currentUser.role} />
