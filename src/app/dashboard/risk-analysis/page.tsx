@@ -217,8 +217,8 @@ export default function RiskAnalysisPage() {
                     <YAxis />
                     <Tooltip cursor={false} content={<ChartTooltipContent />} />
                     <Legend />
-                    <ReferenceLine y={5} label="Risco Alto" stroke="red" strokeDasharray="3 3" />
-                    <ReferenceLine y={2} label="Risco Baixo" stroke="orange" strokeDasharray="3 3" />
+                    <ReferenceLine y={5} label="Risco Alto" stroke="gray" strokeDasharray="3 3" />
+                    <ReferenceLine y={2} label="Risco Baixo" stroke="gray" strokeDasharray="3 3" />
                     <Bar dataKey="risk" name="Índice de Risco" radius={4} />
                     </BarChart>
                 </ChartContainer>
