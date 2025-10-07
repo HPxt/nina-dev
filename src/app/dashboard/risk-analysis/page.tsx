@@ -1,6 +1,8 @@
+
 "use client";
 
-import { teamMembers } from "@/lib/data";
+import { useState, useMemo } from "react";
+import type { Employee, Interaction } from "@/lib/types";
 import {
   Card,
   CardContent,
@@ -9,112 +11,270 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { Progress } from "@/components/ui/progress";
-import {
   ChartContainer,
   ChartTooltip,
   ChartTooltipContent,
   ChartConfig,
-  ChartLegend,
-  ChartLegendContent,
 } from "@/components/ui/chart";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Legend, Tooltip } from "recharts";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, LineChart, Line, ReferenceLine, Legend } from "recharts";
+import { useCollection, useFirestore, useMemoFirebase } from "@/firebase";
+import { collection }s from "firebase/firestore";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuCheckboxItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Button } from "@/components/ui/button";
+import { ChevronDown, ChevronsUpDown } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Badge } from "@/components/ui/badge";
+import { cn, formatDate } from "@/lib/utils";
 
-const chartData = teamMembers.map(member => ({ name: member.name.split(' ')[0], risk: member.risk.score }));
-
-const chartConfig = {
-  risk: {
-    label: "Risco",
-    color: "hsl(var(--primary))",
-  },
-} satisfies ChartConfig;
+const chartColors = [
+  "hsl(var(--chart-1))",
+  "hsl(var(--chart-2))",
+  "hsl(var(--chart-3))",
+  "hsl(var(--chart-4))",
+  "hsl(var(--chart-5))",
+];
 
 export default function RiskAnalysisPage() {
+  const [selectedEmployeeIds, setSelectedEmployeeIds] = useState<string[]>([]);
+  const [open, setOpen] = useState(false);
 
-    const getRiskBadge = (score: number) => {
-        if (score > 60) return "destructive";
-        if (score > 30) return "secondary";
-        return "default";
+  const firestore = useFirestore();
+
+  const employeesCollection = useMemoFirebase(
+    () => (firestore ? collection(firestore, "employees") : null),
+    [firestore]
+  );
+  const { data: employees, isLoading: areEmployeesLoading } = useCollection<Employee>(employeesCollection);
+
+  const sortedEmployees = useMemo(() => {
+    if (!employees) return [];
+    return [...employees].sort((a, b) => a.name.localeCompare(b.name));
+  }, [employees]);
+
+  const selectedEmployees = useMemo(() => {
+    if (!employees) return [];
+    return employees.filter(e => selectedEmployeeIds.includes(e.id));
+  }, [employees, selectedEmployeeIds]);
+
+  const interactionsCollections = useMemoFirebase(() => {
+    if (!firestore || selectedEmployeeIds.length === 0) return [];
+    return selectedEmployeeIds.map(id => collection(firestore, "employees", id, "interactions"));
+  }, [firestore, selectedEmployeeIds]);
+
+  const { data: interactionsData, isLoading: areInteractionsLoading } = useCollection<Interaction>(
+    interactionsCollections.length > 0 ? interactionsCollections.flat()[0] : null
+  );
+
+  const [interactions, setInteractions] = useState<{ [key: string]: Interaction[] }>({});
+  const [loadingInteractions, setLoadingInteractions] = useState(false);
+
+  React.useEffect(() => {
+    const fetchInteractions = async () => {
+      if (!firestore || selectedEmployeeIds.length === 0) {
+        setInteractions({});
+        return;
+      }
+      setLoadingInteractions(true);
+      const newInteractions: { [key: string]: Interaction[] } = {};
+      
+      const { getDocs } = await import("firebase/firestore");
+
+      for (const id of selectedEmployeeIds) {
+        const interactionsCollection = collection(firestore, "employees", id, "interactions");
+        const snapshot = await getDocs(interactionsCollection);
+        newInteractions[id] = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Interaction));
+      }
+      setInteractions(newInteractions);
+      setLoadingInteractions(false);
     };
+    fetchInteractions();
+  }, [selectedEmployeeIds, firestore]);
+  
 
-    const getRiskLabel = (score: number) => {
-        if (score > 60) return "Alto";
-        if (score > 30) return "Médio";
-        return "Baixo";
-    }
+  const barChartData = useMemo(() => {
+    return selectedEmployees.map(emp => ({
+      name: emp.name.split(' ')[0],
+      risk: emp.riskScore ?? 0,
+      fill: chartColors[selectedEmployees.indexOf(emp) % chartColors.length],
+    }));
+  }, [selectedEmployees]);
+
+  const lineChartData = useMemo(() => {
+    const dateMap = new Map<string, any>();
+    
+    selectedEmployeeIds.forEach(id => {
+      const employeeInteractions = interactions[id] || [];
+      employeeInteractions
+        .filter(int => int.type === 'Índice de Risco' && typeof int.riskScore === 'number')
+        .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+        .forEach(int => {
+          const date = new Date(int.date).toLocaleDateString('pt-BR');
+          if (!dateMap.has(date)) {
+            dateMap.set(date, { date });
+          }
+          dateMap.get(date)[id] = int.riskScore;
+        });
+    });
+
+    return Array.from(dateMap.values()).sort((a,b) => {
+        const dateA = a.date.split('/').reverse().join('-');
+        const dateB = b.date.split('/').reverse().join('-');
+        return new Date(dateA).getTime() - new Date(dateB).getTime();
+    });
+  }, [interactions, selectedEmployeeIds]);
+
+  const lineChartConfig = useMemo(() => {
+    const config: ChartConfig = {};
+    selectedEmployees.forEach((emp, index) => {
+      config[emp.id] = {
+        label: emp.name,
+        color: chartColors[index % chartColors.length],
+      };
+    });
+    return config;
+  }, [selectedEmployees]);
+
+
+  const handleSelectEmployee = (id: string) => {
+    setSelectedEmployeeIds(prev =>
+      prev.includes(id) ? prev.filter(eId => eId !== id) : [...prev, id]
+    );
+  };
+  
+  const isLoading = areEmployeesLoading || loadingInteractions;
 
   return (
-    <div className="grid gap-6 lg:grid-cols-2">
-      <Card className="lg:col-span-2">
-        <CardHeader>
-          <CardTitle>Distribuição de Risco</CardTitle>
-          <CardDescription>
-            Visualização do índice de risco por membro da equipe.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <ChartContainer config={chartConfig} className="min-h-[200px] w-full">
-            <BarChart accessibilityLayer data={chartData}>
-              <CartesianGrid vertical={false} />
-              <XAxis
-                dataKey="name"
-                tickLine={false}
-                tickMargin={10}
-                axisLine={false}
-              />
-              <YAxis />
-              <Tooltip cursor={false} content={<ChartTooltipContent />} />
-              <Legend content={<ChartLegendContent />} />
-              <Bar dataKey="risk" fill="var(--color-risk)" radius={4} />
-            </BarChart>
-          </ChartContainer>
-        </CardContent>
-      </Card>
-      <Card className="lg:col-span-2">
-        <CardHeader>
-          <CardTitle>Índice de Risco dos Membros</CardTitle>
-          <CardDescription>
-            Detalhes sobre as métricas de saúde, satisfação e desempenho.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Membro</TableHead>
-                <TableHead>Índice de Risco</TableHead>
-                <TableHead>Saúde</TableHead>
-                <TableHead>Satisfação</TableHead>
-                <TableHead>Desempenho</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {teamMembers.map((member) => (
-                <TableRow key={member.id}>
-                  <TableCell className="font-medium">{member.name}</TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-2">
-                      <Progress value={member.risk.score} className="w-24" />
-                      <Badge variant={getRiskBadge(member.risk.score)}>{getRiskLabel(member.risk.score)}</Badge>
-                    </div>
-                  </TableCell>
-                  <TableCell>{member.risk.health}%</TableCell>
-                  <TableCell>{member.risk.satisfaction}%</TableCell>
-                  <TableCell>{member.risk.performance}%</TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
+    <div className="space-y-6">
+        <Card>
+            <CardHeader>
+                <CardTitle>Seleção de Colaboradores</CardTitle>
+                <CardDescription>Escolha um ou mais colaboradores para analisar os dados de risco.</CardDescription>
+            </CardHeader>
+            <CardContent>
+                <Popover open={open} onOpenChange={setOpen}>
+                    <PopoverTrigger asChild>
+                    <Button
+                        variant="outline"
+                        role="combobox"
+                        aria-expanded={open}
+                        className="w-full md:w-[400px] justify-between"
+                        disabled={areEmployeesLoading}
+                    >
+                        <span className="truncate">
+                        {selectedEmployees.length > 0 ? selectedEmployees.map(e => e.name).join(', ') : areEmployeesLoading ? "Carregando..." : "Selecione colaboradores..."}
+                        </span>
+                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                    </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-[400px] p-0">
+                    <Command>
+                        <CommandInput placeholder="Buscar colaborador..." />
+                        <CommandEmpty>Nenhum colaborador encontrado.</CommandEmpty>
+                        <CommandList>
+                            <CommandGroup>
+                                {sortedEmployees.map(employee => (
+                                <CommandItem
+                                    key={employee.id}
+                                    value={employee.name}
+                                    onSelect={() => handleSelectEmployee(employee.id)}
+                                >
+                                     <div className={cn(
+                                        "mr-2 flex h-4 w-4 items-center justify-center rounded-sm border border-primary",
+                                        selectedEmployeeIds.includes(employee.id)
+                                        ? "bg-primary text-primary-foreground"
+                                        : "opacity-50 [&_svg]:invisible"
+                                    )}>
+                                        <Check className="h-4 w-4" />
+                                    </div>
+                                    {employee.name}
+                                </CommandItem>
+                                ))}
+                            </CommandGroup>
+                        </CommandList>
+                    </Command>
+                    </PopoverContent>
+                </Popover>
+            </CardContent>
+        </Card>
+
+      <div className="grid gap-6 lg:grid-cols-2">
+        <Card className="lg:col-span-2">
+          <CardHeader>
+            <CardTitle>Distribuição de Risco Atual</CardTitle>
+            <CardDescription>
+              Visualização do índice de risco atual por membro da equipe.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+             {isLoading ? ( <Skeleton className="h-[300px] w-full" /> ) : selectedEmployees.length > 0 ? (
+                <ChartContainer config={{}} className="min-h-[300px] w-full">
+                    <BarChart accessibilityLayer data={barChartData}>
+                    <CartesianGrid vertical={false} />
+                    <XAxis
+                        dataKey="name"
+                        tickLine={false}
+                        tickMargin={10}
+                        axisLine={false}
+                    />
+                    <YAxis />
+                    <Tooltip cursor={false} content={<ChartTooltipContent />} />
+                    <Legend />
+                    <ReferenceLine y={5} label="Risco Alto" stroke="red" strokeDasharray="3 3" />
+                    <ReferenceLine y={2} label="Risco Baixo" stroke="orange" strokeDasharray="3 3" />
+                    <Bar dataKey="risk" name="Índice de Risco" radius={4} />
+                    </BarChart>
+                </ChartContainer>
+            ) : (
+                <div className="flex items-center justify-center h-[300px] text-muted-foreground text-sm">
+                    Selecione pelo menos um colaborador para ver o gráfico.
+                </div>
+            )}
+          </CardContent>
+        </Card>
+        <Card className="lg:col-span-2">
+          <CardHeader>
+            <CardTitle>Série Histórica do Índice de Risco</CardTitle>
+            <CardDescription>
+              Evolução das pontuações de risco dos colaboradores selecionados.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+             {isLoading ? ( <Skeleton className="h-[300px] w-full" /> ) : selectedEmployees.length > 0 ? (
+                <ChartContainer config={lineChartConfig} className="min-h-[300px] w-full">
+                <LineChart data={lineChartData} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                    <XAxis dataKey="date" tickMargin={10} />
+                    <YAxis />
+                    <Tooltip content={<ChartTooltipContent />} />
+                    <Legend />
+                    {selectedEmployeeIds.map((id, index) => (
+                        <Line 
+                            key={id} 
+                            type="monotone" 
+                            dataKey={id} 
+                            stroke={chartColors[index % chartColors.length]} 
+                            name={employees?.find(e => e.id === id)?.name}
+                            strokeWidth={2}
+                            dot={{ r: 4 }}
+                        />
+                    ))}
+                </LineChart>
+                </ChartContainer>
+            ) : (
+                <div className="flex items-center justify-center h-[300px] text-muted-foreground text-sm">
+                    Selecione pelo menos um colaborador para ver o histórico.
+                </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }

@@ -1,3 +1,4 @@
+
 "use client";
 
 import { usePathname } from "next/navigation";
@@ -18,7 +19,7 @@ const titles: { [key: string]: { title: string; description?: string } } = {
   },
   "/dashboard/risk-analysis": {
     title: "Análise de Risco",
-    description: "Identifique e mitigue riscos relacionados à sua equipe.",
+    description: "Compare e analise o índice de risco dos colaboradores.",
   },
   "/dashboard/admin": {
     title: "Configurações",
