@@ -18,7 +18,7 @@ import { PageHeaderController } from "@/components/page-header-controller";
 import { Settings } from "lucide-react";
 import Link from "next/link";
 import { LogoutButton } from "@/components/logout-button";
-import { useUser, useCollection, useFirestore } from "@/firebase";
+import { useUser, useCollection, useFirestore, useMemoFirebase } from "@/firebase";
 import { useMemo } from 'react';
 import type { Employee } from "@/lib/types";
 import { collection } from "firebase/firestore";
@@ -31,7 +31,7 @@ export default function DashboardLayout({
   const { user } = useUser();
   const firestore = useFirestore();
 
-  const employeesCollection = useMemo(
+  const employeesCollection = useMemoFirebase(
     () => (firestore ? collection(firestore, "employees") : null),
     [firestore]
   );
