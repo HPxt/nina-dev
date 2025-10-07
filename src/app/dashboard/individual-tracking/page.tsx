@@ -50,8 +50,8 @@ export default function IndividualTrackingPage() {
   const { toast } = useToast();
 
   const employeesCollection = useMemoFirebase(
-    () => (firestore && user ? collection(firestore, "employees") : null),
-    [firestore, user]
+    () => (firestore ? collection(firestore, "employees") : null),
+    [firestore]
   );
   
   const { data: employees, isLoading: areEmployeesLoading } = useCollection<Employee>(employeesCollection);
@@ -62,11 +62,29 @@ export default function IndividualTrackingPage() {
   );
 
   const { data: interactions, isLoading: areInteractionsLoading } = useCollection<Interaction>(interactionsCollection);
+  
+  const currentUserEmployee = useMemo(() => {
+    if (!user || !employees) return null;
+    return employees.find(e => e.email === user.email);
+  }, [user, employees]);
+
+
+  const managedEmployees = useMemo(() => {
+    if (!currentUserEmployee || !employees) return [];
+    if (currentUserEmployee.role === 'Admin' || currentUserEmployee.role === 'Diretor') {
+        return employees;
+    }
+    if (currentUserEmployee.role === 'Líder') {
+        return employees.filter(e => e.leaderId === currentUserEmployee.id);
+    }
+    return [];
+  }, [currentUserEmployee, employees]);
+
 
   const sortedEmployees = useMemo(() => {
-    if (!employees) return [];
-    return [...employees].sort((a, b) => a.name.localeCompare(b.name));
-  }, [employees]);
+    if (!managedEmployees) return [];
+    return [...managedEmployees].sort((a, b) => a.name.localeCompare(b.name));
+  }, [managedEmployees]);
 
   const selectedEmployee = useMemo(() => {
     return employees?.find((employee) => employee.id === selectedEmployeeId);

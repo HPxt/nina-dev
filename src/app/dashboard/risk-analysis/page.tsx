@@ -17,7 +17,7 @@ import {
   ChartConfig,
 } from "@/components/ui/chart";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, LineChart, Line, ReferenceLine, Legend } from "recharts";
-import { useCollection, useFirestore, useMemoFirebase } from "@/firebase";
+import { useCollection, useFirestore, useMemoFirebase, useUser } from "@/firebase";
 import { collection } from "firebase/firestore";
 import {
   DropdownMenu,
@@ -46,6 +46,7 @@ export default function RiskAnalysisPage() {
   const [open, setOpen] = useState(false);
 
   const firestore = useFirestore();
+  const { user } = useUser();
 
   const employeesCollection = useMemoFirebase(
     () => (firestore ? collection(firestore, "employees") : null),
@@ -53,10 +54,26 @@ export default function RiskAnalysisPage() {
   );
   const { data: employees, isLoading: areEmployeesLoading } = useCollection<Employee>(employeesCollection);
 
+  const currentUserEmployee = useMemo(() => {
+    if (!user || !employees) return null;
+    return employees.find(e => e.email === user.email);
+  }, [user, employees]);
+
+  const managedEmployees = useMemo(() => {
+    if (!currentUserEmployee || !employees) return [];
+    if (currentUserEmployee.role === 'Admin' || currentUserEmployee.role === 'Diretor') {
+        return employees;
+    }
+    if (currentUserEmployee.role === 'Líder') {
+        return employees.filter(e => e.leaderId === currentUserEmployee.id);
+    }
+    return [];
+  }, [currentUserEmployee, employees]);
+
   const sortedEmployees = useMemo(() => {
-    if (!employees) return [];
-    return [...employees].sort((a, b) => a.name.localeCompare(b.name));
-  }, [employees]);
+    if (!managedEmployees) return [];
+    return [...managedEmployees].sort((a, b) => a.name.localeCompare(b.name));
+  }, [managedEmployees]);
 
   const selectedEmployees = useMemo(() => {
     if (!employees) return [];
