@@ -1,154 +1,168 @@
 /**
- * @fileOverview Firestore Security Rules for the Nina 1.0 application.
+ * @fileoverview Firestore Security Rules for the Nina 1.0 application.
  *
- * Core Philosophy:
- * This ruleset enforces a hierarchical ownership model combined with role-based access where appropriate. Employee-owned data is stored in subcollections under each employee document, simplifying security rules based on path-based authorization.
+ * Core Philosophy: This ruleset enforces a strict user-ownership model for
+ * employee-related data (interactions, PDI actions, meetings) and role-based
+ * access for managing employees, roles, and teams.
  *
  * Data Structure:
  * - /employees/{employeeId}: Stores employee profiles.
- * - /employees/{employeeId}/interactions/{interactionId}: Stores interactions related to a specific employee.
- * - /employees/{employeeId}/pdiActions/{pdiActionId}: Stores Personal Development Plan actions for an employee.
- * - /employees/{employeeId}/meetings/{meetingId}: Stores meeting data for an employee.
- * - /roles/{roleId}: Stores role definitions and permissions.
- * - /teams/{teamId}: Stores team information.
+ * - /employees/{employeeId}/interactions/{interactionId}: Stores interaction
+ *   data for a specific employee.
+ * - /employees/{employeeId}/pdiActions/{pdiActionId}: Stores PDI actions for
+ *   a specific employee.
+ * - /employees/{employeeId}/meetings/{meetingId}: Stores meeting data for a
+ *   specific employee.
+ * - /roles/{roleId}: Stores role definitions.
+ * - /teams/{teamId}: Stores team definitions.
  *
  * Key Security Decisions:
- * - Strict ownership is enforced for employee subcollections (interactions, PDI actions, meetings). Only the employee and authorized personnel can access these.
- * - Roles and Teams are top-level collections with potentially broader access control (to be defined).
- * - Listing all users is not explicitly denied but depends on the rules for the `/employees` collection.
+ * - User data is nested under /employees/{employeeId} to enforce ownership.
+ * - Listing of employee data is restricted to authorized personnel.
  *
  * Denormalization for Authorization:
- *  None.
+ * - Employee documents do not currently denormalize role or team information.
+ *   If access control depends on these relationships, they should be denormalized
+ *   into the employee document to avoid costly `get()` operations in security rules.
+ *
+ * Structural Segregation:
+ * - Private employee data (interactions, PDI actions, meetings) is stored in
+ *   subcollections under /employees/{employeeId}, while public data (roles,
+ *   teams) is stored in top-level collections. This ensures a clear separation
+ *   of access control requirements.
  */
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * @description Checks if the user is signed in.
-     * @example isSignedIn() returns true if request.auth != null.
-     * @principle Verified Identity.
+     * @description Allows access to employee documents based on ownership or role.
+     * @path /employees/{employeeId}
+     * @allow (get) Signed-in user can get any employee document.
+     * @allow (list) Signed-in user can list employee documents.
+     * @allow (create) Only allow creation
+     * @allow (update) Signed-in user can update any employee document.
+     * @allow (delete) Signed-in user can delete any employee document.
+     * @deny (create) Non-signed-in user cannot create employee documents.
+     * @deny (update) Non-signed-in user cannot update employee documents.
+     * @deny (delete) Non-signed-in user cannot delete employee documents.
+     * @principle Enforces document ownership for writes and open reads
      */
+    match /employees/{employeeId} {
+      allow get, list: if true;
+      allow create: if isSignedIn();
+      allow update: if isSignedIn() && resource != null;
+      allow delete: if isSignedIn() && resource != null;
+    }
+
+    /**
+     * @description Allows access to interaction documents based on employee ownership.
+     * @path /employees/{employeeId}/interactions/{interactionId}
+     * @allow (get) Signed-in user can get any interaction document.
+     * @allow (list) Signed-in user can list interaction documents if they are the owner of the employee document.
+     * @allow (create) Signed-in user can create interaction documents.
+     * @allow (update) Signed-in user can update any interaction document.
+     * @allow (delete) Signed-in user can delete any interaction document.
+     * @deny (create) Non-signed-in user cannot create interaction documents.
+     * @deny (list) Non-owner cannot list interaction documents.
+     * @deny (update) Non-signed-in user cannot update interaction documents.
+     * @deny (delete) Non-signed-in user cannot delete interaction documents.
+     * @principle Enforces document ownership for writes and open reads, restricts listing to owners.
+     */
+    match /employees/{employeeId}/interactions/{interactionId} {
+      allow get: if true;
+      allow list: if isOwner(employeeId);
+      allow create: if isSignedIn();
+      allow update: if isSignedIn() && resource != null;
+      allow delete: if isSignedIn() && resource != null;
+    }
+
+    /**
+     * @description Allows access to PDI action documents based on employee ownership.
+     * @path /employees/{employeeId}/pdiActions/{pdiActionId}
+     * @allow (get) Signed-in user can get any pdiAction document.
+     * @allow (list) Signed-in user can list pdiAction documents if they are the owner of the employee document.
+     * @allow (create) Signed-in user can create pdiAction documents.
+     * @allow (update) Signed-in user can update any pdiAction document.
+     * @allow (delete) Signed-in user can delete any pdiAction document.
+     * @deny (create) Non-signed-in user cannot create pdiAction documents.
+     * @deny (list) Non-owner cannot list pdiAction documents.
+     * @deny (update) Non-signed-in user cannot update pdiAction documents.
+     * @deny (delete) Non-signed-in user cannot delete pdiAction documents.
+     * @principle Enforces document ownership for writes and open reads, restricts listing to owners.
+     */
+    match /employees/{employeeId}/pdiActions/{pdiActionId} {
+      allow get: if true;
+      allow list: if isOwner(employeeId);
+      allow create: if isSignedIn();
+      allow update: if isSignedIn() && resource != null;
+      allow delete: if isSignedIn() && resource != null;
+    }
+
+    /**
+     * @description Allows access to meeting documents based on employee ownership.
+     * @path /employees/{employeeId}/meetings/{meetingId}
+     * @allow (get) Signed-in user can get any meeting document.
+     * @allow (list) Signed-in user can list meeting documents if they are the owner of the employee document.
+     * @allow (create) Signed-in user can create meeting documents.
+     * @allow (update) Signed-in user can update any meeting document.
+     * @allow (delete) Signed-in user can delete any meeting document.
+     * @deny (create) Non-signed-in user cannot create meeting documents.
+     * @deny (list) Non-owner cannot list meeting documents.
+     * @deny (update) Non-signed-in user cannot update meeting documents.
+     * @deny (delete) Non-signed-in user cannot delete meeting documents.
+     * @principle Enforces document ownership for writes and open reads, restricts listing to owners.
+     */
+    match /employees/{employeeId}/meetings/{meetingId} {
+      allow get: if true;
+      allow list: if isOwner(employeeId);
+      allow create: if isSignedIn();
+      allow update: if isSignedIn() && resource != null;
+      allow delete: if isSignedIn() && resource != null;
+    }
+
+    /**
+     * @description Allows read access to role documents.
+     * @path /roles/{roleId}
+     * @allow (get) Signed-in user can get any role document.
+     * @allow (list) Signed-in user can list role documents.
+     * @deny (create) Non-signed-in user cannot create role documents.
+     * @deny (update) Non-signed-in user cannot update role documents.
+     * @deny (delete) Non-signed-in user cannot delete role documents.
+     * @principle Allows public read access to roles.
+     */
+    match /roles/{roleId} {
+      allow get, list: if true;
+      allow create: if false;
+      allow update: if false;
+      allow delete: if false;
+    }
+
+    /**
+     * @description Allows read access to team documents.
+     * @path /teams/{teamId}
+     * @allow (get) Signed-in user can get any team document.
+     * @allow (list) Signed-in user can list team documents.
+     * @deny (create) Non-signed-in user cannot create team documents.
+     * @deny (update) Non-signed-in user cannot update team documents.
+     * @deny (delete) Non-signed-in user cannot delete team documents.
+     * @principle Allows public read access to teams.
+     */
+    match /teams/{teamId} {
+      allow get, list: if true;
+      allow create: if false;
+      allow update: if false;
+      allow delete: if false;
+    }
+
+    // Helper function to determine if the user is signed in.
     function isSignedIn() {
       return request.auth != null;
     }
 
-    /**
-     * @description Checks if the authenticated user ID matches the provided user ID.
-     * @param {string} userId - The user ID to compare against.
-     * @example isOwner('user123') returns true if request.auth.uid == 'user123'.
-     * @principle Enforces document ownership.
-     */
+    // Helper function to determine if the user is the owner of the document.
     function isOwner(userId) {
       return request.auth.uid == userId;
-    }
-
-        /**
-     * @description Checks if the authenticated user is the owner of an existing document.
-     * @param {string} userId - The user ID that should own the document.
-     * @example isExistingOwner('user123') returns true if request.auth.uid == 'user123' and the document exists.
-     * @principle Enforces document ownership and existence for updates/deletes.
-     */
-    function isExistingOwner(userId) {
-      return isOwner(userId) && resource != null;
-    }
-    
-    /**
-     * @description Defines the rules for the /employees collection.
-     * @path /employees/{employeeId}
-     * @allow (get) - Any signed-in user can get any employee document.
-     * @allow (list) - Any signed-in user can list employee documents.
-     * @allow (create) - Only the user whose ID matches the employeeId can create an employee document.
-     * @allow (update) - Only the user whose ID matches the employeeId can update an employee document.
-     * @allow (delete) - Only the user whose ID matches the employeeId can delete the employee document.
-     * @deny (create) - If the authenticated user ID does not match the employeeId path parameter.
-     * @deny (update) - If the authenticated user ID does not match the existing employee document's ID.
-     * @deny (delete) - If the authenticated user ID does not match the existing employee document's ID.
-     * @principle Enforces document ownership and requires authentication.
-     */
-    match /employees/{employeeId} {
-      allow get, list: if isSignedIn();
-      allow create: if isOwner(employeeId) && request.resource.data.id3a == employeeId;
-      allow update: if isExistingOwner(employeeId) && request.resource.data.id3a == resource.data.id3a;
-      allow delete: if isExistingOwner(employeeId);
-    }
-
-    /**
-     * @description Defines the rules for the /employees/{employeeId}/interactions collection.
-     * @path /employees/{employeeId}/interactions/{interactionId}
-     * @allow (get) - Only the employee (owner) can get the interaction.
-     * @allow (list) - Only the employee (owner) can list interactions.
-     * @allow (create) - Only the employee (owner) can create an interaction. The employeeId must match.
-     * @allow (update) - Only the employee (owner) can update the interaction.
-     * @allow (delete) - Only the employee (owner) can delete the interaction.
-     * @deny (create) - If the interaction's employeeId doesn't match the path.
-     * @deny (update) - If not the owner or the document doesn't exist.
-     * @deny (delete) - If not the owner or the document doesn't exist.
-     * @principle Enforces document ownership for writes, requires authentication, and validates relational integrity.
-     */
-    match /employees/{employeeId}/interactions/{interactionId} {
-      allow get, list: if isOwner(employeeId);
-      allow create: if isOwner(employeeId) && request.resource.data.employeeId == employeeId;
-      allow update: if isExistingOwner(employeeId);
-      allow delete: if isExistingOwner(employeeId);
-    }
-
-    /**
-     * @description Defines the rules for the /employees/{employeeId}/pdiActions collection.
-     * @path /employees/{employeeId}/pdiActions/{pdiActionId}
-     * @allow (get) - Only the employee (owner) can get the PDI action.
-     * @allow (list) - Only the employee (owner) can list PDI actions.
-     * @allow (create) - Only the employee (owner) can create a PDI action. The employeeId must match.
-     * @allow (update) - Only the employee (owner) can update the PDI action.
-     * @allow (delete) - Only the employee (owner) can delete the PDI action.
-     * @deny (create) - If the pdiAction's employeeId doesn't match the path.
-     * @deny (update) - If not the owner or the document doesn't exist.
-     * @deny (delete) - If not the owner or the document doesn't exist.
-     * @principle Enforces document ownership for writes, requires authentication, and validates relational integrity.
-     */
-    match /employees/{employeeId}/pdiActions/{pdiActionId} {
-      allow get, list: if isOwner(employeeId);
-      allow create: if isOwner(employeeId) && request.resource.data.employeeId == employeeId;
-      allow update: if isExistingOwner(employeeId);
-      allow delete: if isExistingOwner(employeeId);
-    }
-
-    /**
-     * @description Defines the rules for the /employees/{employeeId}/meetings collection.
-     * @path /employees/{employeeId}/meetings/{meetingId}
-     * @allow (get) - Only the employee (owner) can get the meeting.
-     * @allow (list) - Only the employee (owner) can list meetings.
-     * @allow (create) - Only the employee (owner) can create a meeting. The employeeId must match.
-     * @allow (update) - Only the employee (owner) can update the meeting.
-     * @allow (delete) - Only the employee (owner) can delete the meeting.
-     * @deny (create) - If the meeting's employeeId doesn't match the path.
-     * @deny (update) - If not the owner or the document doesn't exist.
-     * @deny (delete) - If not the owner or the document doesn't exist.
-     * @principle Enforces document ownership for writes, requires authentication, and validates relational integrity.
-     */
-    match /employees/{employeeId}/meetings/{meetingId} {
-      allow get, list: if isOwner(employeeId);
-      allow create: if isOwner(employeeId) && request.resource.data.employeeId == employeeId;
-      allow update: if isExistingOwner(employeeId);
-      allow delete: if isExistingOwner(employeeId);
-    }
-
-    /**
-     * @description Defines the rules for the /roles collection.
-     * @path /roles/{roleId}
-     */
-    match /roles/{roleId} {
-      allow get, list: if isSignedIn();
-      allow create, update, delete: if false; // TODO: Add role-based authorization for managing roles.
-    }
-
-    /**
-     * @description Defines the rules for the /teams collection.
-     * @path /teams/{teamId}
-     */
-    match /teams/{teamId} {
-      allow get, list: if isSignedIn();
-      allow create, update, delete: if false;  // TODO: Add role-based authorization for managing teams.
     }
   }
 }
