@@ -25,7 +25,7 @@ export default function DashboardLayout({
 }) {
   return (
     <SidebarProvider>
-      <Sidebar>
+      <Sidebar collapsible="icon">
         <SidebarHeader>
             <SidebarTrigger className="ml-auto hidden md:flex" />
         </SidebarHeader>
