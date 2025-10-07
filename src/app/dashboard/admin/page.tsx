@@ -427,7 +427,7 @@ export default function AdminPage() {
                         disabled={!leaders || leaders.length === 0}
                       >
                         <SelectTrigger className="w-[180px]">
-                          <SelectValue placeholder="Selecione o líder" />
+                          <SelectValue placeholder="Selecione um líder" />
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="">Sem Líder</SelectItem>
@@ -604,5 +604,3 @@ export default function AdminPage() {
     </>
   );
 }
-
-    
