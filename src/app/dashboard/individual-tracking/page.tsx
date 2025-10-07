@@ -33,7 +33,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useCollection, useFirestore, useMemoFirebase, useUser } from "@/firebase";
 import { addDocumentNonBlocking } from "@/firebase/non-blocking-updates";
-import { collection } from "firebase/firestore";
+import { collection, serverTimestamp } from "firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
 
 type NewInteraction = Omit<Interaction, "id" | "date" | "authorId">;
@@ -110,7 +110,7 @@ export default function IndividualTrackingPage() {
         toast({
             variant: "destructive",
             title: "Erro ao Salvar",
-            description: "Não foi possível salvar a interação. Tente novamente.",
+            description: "Não foi possível salvar a interação. Verifique as permissões e tente novamente.",
         });
     } finally {
         setIsSaving(false);
