@@ -34,10 +34,20 @@ import {
   DropdownMenuTrigger,
   DropdownMenuCheckboxItem
 } from "@/components/ui/dropdown-menu";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { CsvUploadDialog } from "@/components/csv-upload-dialog";
 import { useState, useMemo } from "react";
 import { useCollection, useFirestore, useMemoFirebase, useUser } from "@/firebase";
-import { collection, doc } from "firebase/firestore";
+import { collection, doc, deleteDoc } from "firebase/firestore";
 import { setDocumentNonBlocking } from "@/firebase/non-blocking-updates";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
@@ -47,6 +57,7 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { EmployeeFormDialog } from "@/components/employee-form-dialog";
 import { Switch } from "@/components/ui/switch";
+import { useToast } from "@/hooks/use-toast";
 
 
 const roles: Role[] = ["Colaborador", "Líder", "Diretor"];
@@ -59,10 +70,13 @@ type SortConfig = {
 export default function AdminPage() {
   const [isCsvDialogOpen, setIsCsvDialogOpen] = useState(false);
   const [isEmployeeFormOpen, setIsEmployeeFormOpen] = useState(false);
+  const [isConfirmDeleteDialogOpen, setIsConfirmDeleteDialogOpen] = useState(false);
   const [selectedEmployee, setSelectedEmployee] = useState<Employee | undefined>(undefined);
+  const [employeeToDelete, setEmployeeToDelete] = useState<Employee | null>(null);
 
   const firestore = useFirestore();
   const { user, isUserLoading } = useUser();
+  const { toast } = useToast();
 
   const initialFilters = {
     email: "",
@@ -247,6 +261,34 @@ export default function AdminPage() {
     setSelectedEmployee(employee);
     setIsEmployeeFormOpen(true);
   };
+
+  const handleDeleteClick = (employee: Employee) => {
+    setEmployeeToDelete(employee);
+    setIsConfirmDeleteDialogOpen(true);
+  };
+
+  const handleDeleteEmployee = async () => {
+    if (!firestore || !employeeToDelete) return;
+    const docRef = doc(firestore, "employees", employeeToDelete.id);
+    try {
+      await deleteDoc(docRef);
+      toast({
+        title: "Funcionário Removido",
+        description: `${employeeToDelete.name} foi removido com sucesso.`,
+      });
+    } catch (error) {
+      console.error("Error deleting employee:", error);
+      toast({
+        variant: "destructive",
+        title: "Erro ao Remover",
+        description: "Não foi possível remover o funcionário.",
+      });
+    } finally {
+      setIsConfirmDeleteDialogOpen(false);
+      setEmployeeToDelete(null);
+    }
+  };
+
 
   const handleLeaderChange = (employeeId: string, newLeaderId: string) => {
     if (!firestore || !employees) return;
@@ -440,7 +482,7 @@ export default function AdminPage() {
                         onValueChange={(newLeaderId) => handleLeaderChange(employee.id, newLeaderId)}
                         disabled={!leaders || leaders.length === 0}
                       >
-                        <SelectTrigger className="w-[280px]">
+                        <SelectTrigger className="w-[180px]">
                           <SelectValue placeholder="Sem Líder" />
                         </SelectTrigger>
                         <SelectContent>
@@ -449,10 +491,7 @@ export default function AdminPage() {
                             .filter(leader => leader.id !== employee.id) // Cannot be their own leader
                             .map((leader) => (
                             <SelectItem key={leader.id} value={leader.id}>
-                              <div className="flex flex-col">
-                                <span>{leader.name}</span>
-                                <span className="text-xs text-muted-foreground">{leader.email}</span>
-                              </div>
+                               {leader.name}
                             </SelectItem>
                           ))}
                         </SelectContent>
@@ -485,7 +524,7 @@ export default function AdminPage() {
                             </DropdownMenuTrigger>
                             <DropdownMenuContent>
                                 <DropdownMenuItem onClick={() => handleEditEmployee(employee)}>Editar</DropdownMenuItem>
-                                <DropdownMenuItem className="text-destructive">Remover</DropdownMenuItem>
+                                <DropdownMenuItem className="text-destructive" onClick={() => handleDeleteClick(employee)}>Remover</DropdownMenuItem>
                             </DropdownMenuContent>
                         </DropdownMenu>
                     </TableCell>
@@ -657,6 +696,23 @@ export default function AdminPage() {
         leaders={leaders}
         roles={roles}
     />
+    <AlertDialog open={isConfirmDeleteDialogOpen} onOpenChange={setIsConfirmDeleteDialogOpen}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Você tem certeza?</AlertDialogTitle>
+          <AlertDialogDescription>
+            Essa ação não pode ser desfeita. Isso irá remover permanentemente o funcionário
+            "{employeeToDelete?.name}" do banco de dados.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancelar</AlertDialogCancel>
+          <AlertDialogAction onClick={handleDeleteEmployee} className="bg-destructive hover:bg-destructive/90">
+            Remover
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
     </>
   );
 }
