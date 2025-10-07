@@ -1,3 +1,4 @@
+
 import { MainNav } from "@/components/main-nav";
 import {
   SidebarProvider,
@@ -14,6 +15,7 @@ import { currentUser } from "@/lib/data";
 import { PageHeaderController } from "@/components/page-header-controller";
 import { Settings } from "lucide-react";
 import Link from "next/link";
+import { LogoutButton } from "@/components/logout-button";
 
 export default function DashboardLayout({
   children,
@@ -37,6 +39,9 @@ export default function DashboardLayout({
                             <span>Configurações</span>
                         </Link>
                     </SidebarMenuButton>
+                </SidebarMenuItem>
+                <SidebarMenuItem>
+                    <LogoutButton />
                 </SidebarMenuItem>
             </SidebarMenu>
         </SidebarFooter>
