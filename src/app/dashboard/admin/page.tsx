@@ -46,6 +46,7 @@ import { Role } from "@/lib/types";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { EmployeeFormDialog } from "@/components/employee-form-dialog";
+import { Switch } from "@/components/ui/switch";
 
 
 const roles: Role[] = ["Colaborador", "Líder", "Diretor", "Admin"];
