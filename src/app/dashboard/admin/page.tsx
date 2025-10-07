@@ -438,15 +438,19 @@ export default function AdminPage() {
                         onValueChange={(newLeaderId) => handleLeaderChange(employee.id, newLeaderId)}
                         disabled={!leaders || leaders.length === 0}
                       >
-                        <SelectTrigger className="w-[180px]">
+                        <SelectTrigger className="w-[280px]">
                           <SelectValue placeholder="Sem Líder" />
                         </SelectTrigger>
                         <SelectContent>
+                          <SelectItem value="">Sem Líder</SelectItem>
                           {leaders
                             .filter(leader => leader.id !== employee.id) // Cannot be their own leader
                             .map((leader) => (
                             <SelectItem key={leader.id} value={leader.id}>
-                              {leader.name}
+                              <div className="flex flex-col">
+                                <span>{leader.name}</span>
+                                <span className="text-xs text-muted-foreground">{leader.email}</span>
+                              </div>
                             </SelectItem>
                           ))}
                         </SelectContent>
