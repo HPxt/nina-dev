@@ -26,17 +26,6 @@ export default function LoginPage() {
           <LoginButton />
         </CardContent>
         <CardFooter className="flex-col text-xs text-muted-foreground">
-          <p>Ao continuar, você concorda com nossos</p>
-          <p>
-            <Link href="#" className="underline">
-              Termos de Serviço
-            </Link>{" "}
-            e{" "}
-            <Link href="#" className="underline">
-              Política de Privacidade
-            </Link>
-            .
-          </p>
         </CardFooter>
       </Card>
     </main>
