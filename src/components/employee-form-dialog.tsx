@@ -81,7 +81,7 @@ export function EmployeeFormDialog({
       axis: "",
       area: "",
       segment: "",
-      leaderId: "",
+      leaderId: "no-leader",
       city: "",
       role: "Colaborador",
       photoURL: "",
@@ -98,7 +98,7 @@ export function EmployeeFormDialog({
         axis: employee.axis || "",
         area: employee.area || "",
         segment: employee.segment || "",
-        leaderId: employee.leaderId || "",
+        leaderId: employee.leaderId || "no-leader",
         city: employee.city || "",
         role: employee.role || "Colaborador",
         photoURL: employee.photoURL || "",
@@ -112,7 +112,7 @@ export function EmployeeFormDialog({
         axis: "",
         area: "",
         segment: "",
-        leaderId: "",
+        leaderId: "no-leader",
         city: "",
         role: "Colaborador",
         photoURL: "",
@@ -126,12 +126,14 @@ export function EmployeeFormDialog({
     const docId = isEditMode ? employee.id : data.id3a;
     const docRef = doc(firestore, "employees", docId);
     
-    const selectedLeader = leaders.find(l => l.id === data.leaderId);
+    const isNoLeader = data.leaderId === "no-leader";
+    const selectedLeader = isNoLeader ? undefined : leaders.find(l => l.id === data.leaderId);
 
     const dataToSave: Partial<Employee> = {
         ...data,
-        leader: selectedLeader?.name || "",
-        leaderEmail: selectedLeader?.email || ""
+        leaderId: isNoLeader ? "" : selectedLeader?.id || "",
+        leader: isNoLeader ? "" : selectedLeader?.name || "",
+        leaderEmail: isNoLeader ? "" : selectedLeader?.email || ""
     };
     
     try {
@@ -288,7 +290,7 @@ export function EmployeeFormDialog({
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      <SelectItem value="">Sem Líder</SelectItem>
+                      <SelectItem value="no-leader">Sem Líder</SelectItem>
                       {leaders
                         .filter(l => l.id !== employee?.id) // Cannot be their own leader
                         .map((leader) => (

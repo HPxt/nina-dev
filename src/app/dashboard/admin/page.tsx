@@ -251,8 +251,8 @@ export default function AdminPage() {
     
     const employeeDocRef = doc(firestore, "employees", employeeId);
     
-    // If newLeaderId is an empty string, it means "Sem Líder" was selected
-    if (newLeaderId === "") {
+    // If newLeaderId is 'no-leader', it means "Sem Líder" was selected
+    if (newLeaderId === "no-leader") {
         const dataToSave = {
             leaderId: "",
             leader: "",
@@ -434,7 +434,7 @@ export default function AdminPage() {
                     <TableCell>{employee.segment}</TableCell>
                     <TableCell>
                        <Select 
-                        value={employee.leaderId || ""}
+                        value={employee.leaderId || "no-leader"}
                         onValueChange={(newLeaderId) => handleLeaderChange(employee.id, newLeaderId)}
                         disabled={!leaders || leaders.length === 0}
                       >
@@ -442,7 +442,7 @@ export default function AdminPage() {
                           <SelectValue placeholder="Sem Líder" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="">Sem Líder</SelectItem>
+                          <SelectItem value="no-leader">Sem Líder</SelectItem>
                           {leaders
                             .filter(leader => leader.id !== employee.id) // Cannot be their own leader
                             .map((leader) => (
