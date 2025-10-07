@@ -92,23 +92,26 @@ export default function AdminPage() {
     setDocumentNonBlocking(docRef, { role: newRole }, { merge: true });
   };
   
-    const { leaders, uniqueValues } = useMemo(() => {
-    if (!employees) return { leaders: [], uniqueValues: { positions: [], axes: [], areas: [], segments: [], leaders: [], cities: [], roles: [] } };
-    const positions = [...new Set(employees.map(e => e.position).filter(Boolean))].sort();
-    const axes = [...new Set(employees.map(e => e.axis).filter(Boolean))].sort();
-    const areas = [...new Set(employees.map(e => e.area).filter(Boolean))].sort();
-    const segments = [...new Set(employees.map(e => e.segment).filter(Boolean))].sort();
-    const leaderNames = [...new Set(employees.map(e => e.leader).filter(Boolean))].sort();
-    const cities = [...new Set(employees.map(e => e.city).filter(Boolean))].sort();
-    const roles = [...new Set(employees.map(e => e.role).filter(Boolean))].sort() as Role[];
+    const { leaders, directors, uniqueValues } = useMemo(() => {
+        if (!employees) return { leaders: [], directors: [], uniqueValues: { positions: [], axes: [], areas: [], segments: [], leaders: [], cities: [], roles: [] } };
+        const positions = [...new Set(employees.map(e => e.position).filter(Boolean))].sort();
+        const axes = [...new Set(employees.map(e => e.axis).filter(Boolean))].sort();
+        const areas = [...new Set(employees.map(e => e.area).filter(Boolean))].sort();
+        const segments = [...new Set(employees.map(e => e.segment).filter(Boolean))].sort();
+        const leaderNames = [...new Set(employees.map(e => e.leader).filter(Boolean))].sort();
+        const cities = [...new Set(employees.map(e => e.city).filter(Boolean))].sort();
+        const roles = [...new Set(employees.map(e => e.role).filter(Boolean))].sort() as Role[];
 
-    const leaders = employees.filter(e => e.role === 'Líder' || e.role === 'Diretor' || e.role === 'Admin');
+        const leaders = employees.filter(e => e.role === 'Líder' || e.role === 'Diretor' || e.role === 'Admin');
+        const directors = employees.filter(e => e.role === 'Diretor').sort((a,b) => a.name.localeCompare(b.name));
 
-    return { 
-      leaders,
-      uniqueValues: { positions, axes, areas, segments, leaders: leaderNames, cities, roles }
-    };
-  }, [employees]);
+
+        return { 
+        leaders,
+        directors,
+        uniqueValues: { positions, axes, areas, segments, leaders: leaderNames, cities, roles }
+        };
+    }, [employees]);
 
 
   const filteredAndSortedEmployees = useMemo(() => {
@@ -442,60 +445,96 @@ export default function AdminPage() {
         </Card>
       </TabsContent>
        <TabsContent value="teams">
-        <Card>
-          <CardHeader>
-            <CardTitle>Equipes e Colaboradores</CardTitle>
-            <CardDescription>Visualize as equipes com base na liderança.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            {isLoading ? (
-                Array.from({ length: 3 }).map((_, i) => (
-                    <div key={i} className="mb-4">
-                        <Skeleton className="h-12 w-1/3 mb-2" />
-                        <div className="pl-6 space-y-2">
-                            <Skeleton className="h-8 w-2/3" />
-                            <Skeleton className="h-8 w-1/2" />
+        <div className="space-y-4">
+            <Card>
+                <CardHeader>
+                    <CardTitle>Diretores</CardTitle>
+                    <CardDescription>
+                        Usuários com permissão para visualizar todos os colaboradores.
+                    </CardDescription>
+                </CardHeader>
+                <CardContent>
+                    {isLoading ? (
+                        <div className="space-y-3">
+                            <Skeleton className="h-10 w-2/3" />
+                            <Skeleton className="h-10 w-1/2" />
                         </div>
-                    </div>
-                ))
-            ) : (
-            <Accordion type="multiple" className="w-full">
-              {[...teams.entries()].map(([leaderId, members]) => {
-                const leaderEmployee = employees?.find(e => e.id === leaderId);
-                const leaderName = leaderEmployee?.name || "Sem Líder";
+                    ) : directors.length > 0 ? (
+                        <ul className="space-y-3">
+                            {directors.map(director => (
+                                <li key={director.id} className="flex items-center gap-3">
+                                    <Avatar className="h-9 w-9">
+                                        <AvatarImage src={director.photoURL} alt={director.name} />
+                                        <AvatarFallback>{getInitials(director.name)}</AvatarFallback>
+                                    </Avatar>
+                                    <div>
+                                        <span className="font-medium">{director.name}</span>
+                                        <p className="text-sm text-muted-foreground">{director.position}</p>
+                                    </div>
+                                </li>
+                            ))}
+                        </ul>
+                    ) : (
+                        <p className="text-sm text-muted-foreground text-center">Nenhum diretor cadastrado.</p>
+                    )}
+                </CardContent>
+            </Card>
 
-                return (
-                  <AccordionItem value={leaderId} key={leaderId}>
-                    <AccordionTrigger>
-                        <div className="flex items-center gap-3">
-                            <Avatar className="h-9 w-9">
-                                <AvatarImage src={leaderEmployee?.photoURL} alt={leaderName} />
-                                <AvatarFallback>{getInitials(leaderName)}</AvatarFallback>
-                            </Avatar>
-                            <span className="font-medium">{leaderName}</span>
-                             <span className="ml-2 inline-flex items-center justify-center w-6 h-6 text-xs font-semibold text-white bg-primary rounded-full">
-                                {members.length}
-                            </span>
+            <Card>
+            <CardHeader>
+                <CardTitle>Equipes e Colaboradores</CardTitle>
+                <CardDescription>Visualize as equipes com base na liderança.</CardDescription>
+            </CardHeader>
+            <CardContent>
+                {isLoading ? (
+                    Array.from({ length: 3 }).map((_, i) => (
+                        <div key={i} className="mb-4">
+                            <Skeleton className="h-12 w-1/3 mb-2" />
+                            <div className="pl-6 space-y-2">
+                                <Skeleton className="h-8 w-2/3" />
+                                <Skeleton className="h-8 w-1/2" />
+                            </div>
                         </div>
-                    </AccordionTrigger>
-                    <AccordionContent>
-                      <ul className="pl-6 space-y-3">
-                        {members.map((member) => (
-                          <li key={member.id} className="flex items-center gap-3 text-sm">
-                            <User className="h-4 w-4 text-muted-foreground" />
-                            <span className="font-medium">{member.name}</span>
-                            <span className="text-muted-foreground">({member.position})</span>
-                          </li>
-                        ))}
-                      </ul>
-                    </AccordionContent>
-                  </AccordionItem>
-                )
-              })}
-            </Accordion>
-            )}
-          </CardContent>
-        </Card>
+                    ))
+                ) : (
+                <Accordion type="multiple" className="w-full">
+                {[...teams.entries()].map(([leaderId, members]) => {
+                    const leaderEmployee = employees?.find(e => e.id === leaderId);
+                    const leaderName = leaderEmployee?.name || "Sem Líder";
+
+                    return (
+                    <AccordionItem value={leaderId} key={leaderId}>
+                        <AccordionTrigger>
+                            <div className="flex items-center gap-3">
+                                <Avatar className="h-9 w-9">
+                                    <AvatarImage src={leaderEmployee?.photoURL} alt={leaderName} />
+                                    <AvatarFallback>{getInitials(leaderName)}</AvatarFallback>
+                                </Avatar>
+                                <span className="font-medium">{leaderName}</span>
+                                <span className="ml-2 inline-flex items-center justify-center w-6 h-6 text-xs font-semibold text-white bg-primary rounded-full">
+                                    {members.length}
+                                </span>
+                            </div>
+                        </AccordionTrigger>
+                        <AccordionContent>
+                        <ul className="pl-6 space-y-3">
+                            {members.map((member) => (
+                            <li key={member.id} className="flex items-center gap-3 text-sm">
+                                <User className="h-4 w-4 text-muted-foreground" />
+                                <span className="font-medium">{member.name}</span>
+                                <span className="text-muted-foreground">({member.position})</span>
+                            </li>
+                            ))}
+                        </ul>
+                        </AccordionContent>
+                    </AccordionItem>
+                    )
+                })}
+                </Accordion>
+                )}
+            </CardContent>
+            </Card>
+        </div>
       </TabsContent>
       <TabsContent value="settings">
         <Card>
@@ -530,3 +569,5 @@ export default function AdminPage() {
     </>
   );
 }
+
+    
