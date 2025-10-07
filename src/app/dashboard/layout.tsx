@@ -12,17 +12,41 @@ import {
   SidebarMenuButton,
   SidebarTrigger,
 } from "@/components/ui/sidebar";
-import { currentUser } from "@/lib/data";
 import { PageHeaderController } from "@/components/page-header-controller";
 import { Settings } from "lucide-react";
 import Link from "next/link";
 import { LogoutButton } from "@/components/logout-button";
+import { useUser, useCollection, useFirestore } from "@/firebase";
+import { useMemo } from 'react';
+import type { Employee } from "@/lib/types";
+import { collection } from "firebase/firestore";
 
 export default function DashboardLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const { user } = useUser();
+  const firestore = useFirestore();
+
+  const employeesCollection = useMemo(
+    () => (firestore ? collection(firestore, "employees") : null),
+    [firestore]
+  );
+  const { data: employees } = useCollection<Employee>(employeesCollection);
+
+  const currentUserEmployee = useMemo(() => {
+    if (!user || !employees) return null;
+    return employees.find(e => e.email === user.email);
+  }, [user, employees]);
+
+  const adminEmails = useMemo(() => {
+    if (!employees) return [];
+    return employees.filter(e => e.role === 'Admin').map(e => e.email);
+  }, [employees]);
+
+  const userRole = currentUserEmployee?.role;
+
   return (
     <SidebarProvider>
       <Sidebar collapsible="icon">
@@ -35,11 +59,11 @@ export default function DashboardLayout({
               <SidebarTrigger className="hidden md:flex" />
             </SidebarMenuItem>
           </SidebarMenu>
-          <MainNav userRole={currentUser.role} />
+          {userRole && <MainNav userRole={userRole} />}
         </SidebarContent>
         <SidebarFooter>
             <SidebarMenu>
-                {currentUser.role === 'Admin' && (
+                {(adminEmails.includes(user?.email || '')) && (
                   <SidebarMenuItem>
                       <SidebarMenuButton asChild tooltip="Configurações">
                           <Link href="/dashboard/admin">
