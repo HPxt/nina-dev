@@ -90,12 +90,24 @@ export default function RiskAnalysisPage() {
   
 
   const barChartData = useMemo(() => {
-    return selectedEmployees.map(emp => ({
-      name: emp.name.split(' ')[0],
-      risk: emp.riskScore ?? 0,
-      fill: chartColors[selectedEmployees.indexOf(emp) % chartColors.length],
-    }));
+    return selectedEmployees.map(emp => {
+      const risk = emp.riskScore ?? 0;
+      let fillColor;
+      if (risk >= 5) {
+        fillColor = "hsl(var(--destructive))"; // Vermelho
+      } else if (risk > 2) {
+        fillColor = "hsl(var(--muted-foreground))"; // Cinza
+      } else {
+        fillColor = "hsl(var(--chart-1))"; // Verde
+      }
+      return {
+        name: emp.name.split(' ')[0],
+        risk: risk,
+        fill: fillColor,
+      }
+    });
   }, [selectedEmployees]);
+
 
   const lineChartData = useMemo(() => {
     const dateMap = new Map<string, any>();
