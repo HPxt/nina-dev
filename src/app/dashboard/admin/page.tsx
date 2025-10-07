@@ -250,6 +250,18 @@ export default function AdminPage() {
     if (!firestore || !employees) return;
     
     const employeeDocRef = doc(firestore, "employees", employeeId);
+    
+    // If newLeaderId is an empty string, it means "Sem Líder" was selected
+    if (newLeaderId === "") {
+        const dataToSave = {
+            leaderId: "",
+            leader: "",
+            leaderEmail: ""
+        };
+        setDocumentNonBlocking(employeeDocRef, dataToSave, { merge: true });
+        return;
+    }
+
     const newLeader = leaders.find(l => l.id === newLeaderId);
 
     const dataToSave = {
@@ -427,10 +439,9 @@ export default function AdminPage() {
                         disabled={!leaders || leaders.length === 0}
                       >
                         <SelectTrigger className="w-[180px]">
-                          <SelectValue placeholder="Selecione um líder" />
+                          <SelectValue placeholder="Sem Líder" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="">Sem Líder</SelectItem>
                           {leaders
                             .filter(leader => leader.id !== employee.id) // Cannot be their own leader
                             .map((leader) => (
