@@ -39,7 +39,20 @@ export default function DashboardLayout({
 
   const currentUserEmployee = useMemo(() => {
     if (!user || !employees) return null;
-    return employees.find(e => e.email === user.email);
+    const employeeData = employees.find(e => e.email === user.email);
+
+    if (!employeeData) return null;
+
+    // Enhance permissions for admins
+    if (employeeData.isAdmin) {
+      return {
+        ...employeeData,
+        role: 'Líder',
+        isDirector: true,
+      };
+    }
+
+    return employeeData;
   }, [user, employees]);
 
   return (
