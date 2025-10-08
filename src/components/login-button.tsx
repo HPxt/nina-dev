@@ -85,7 +85,7 @@ export function LoginButton() {
     <Button
       onClick={handleLogin}
       variant="outline"
-      className="w-full bg-white text-slate-800"
+      className="w-full bg-white text-slate-800 hover:bg-white"
       disabled={isLoading}
     >
       {isLoading ? (
