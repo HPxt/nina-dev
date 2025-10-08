@@ -27,6 +27,7 @@ export interface Employee {
   team?: string;
   diagnosis?: Diagnosis;
   riskScore?: number;
+  isUnderManagement?: boolean;
 }
 
 export interface Interaction {

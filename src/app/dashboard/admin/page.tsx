@@ -58,6 +58,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { EmployeeFormDialog } from "@/components/employee-form-dialog";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
+import { Label } from "@/components/ui/label";
 
 
 const roles: Role[] = ["Colaborador", "Líder", "Diretor"];
@@ -316,6 +317,12 @@ export default function AdminPage() {
     
     setDocumentNonBlocking(employeeDocRef, dataToSave, { merge: true });
   };
+  
+  const handleManagementToggle = (employeeId: string, isUnderManagement: boolean) => {
+    if (!firestore) return;
+    const docRef = doc(firestore, "employees", employeeId);
+    setDocumentNonBlocking(docRef, { isUnderManagement }, { merge: true });
+  }
 
   const isLoading = isUserLoading || areEmployeesLoading;
 
@@ -433,23 +440,12 @@ export default function AdminPage() {
                     <FilterComponent title="Cargo" filterKey="position" options={uniqueValues.positions} />
                   </TableHead>
                   <TableHead>
-                     <FilterComponent title="Eixo" filterKey="axis" options={uniqueValues.axes} />
-                  </TableHead>
-                  <TableHead>
-                    <FilterComponent title="Área" filterKey="area" options={uniqueValues.areas} />
-                  </TableHead>
-                  <TableHead>
-                    <FilterComponent title="Segmento" filterKey="segment" options={uniqueValues.segments} />
-                  </TableHead>
-                  <TableHead>
                     <FilterComponent title="Líder" filterKey="leader" options={uniqueValues.leaders} />
-                  </TableHead>
-                  <TableHead>
-                    <FilterComponent title="Cidade" filterKey="city" options={uniqueValues.cities} />
                   </TableHead>
                   <TableHead>
                     <FilterComponent title="Função" filterKey="role" options={uniqueValues.roles} />
                   </TableHead>
+                  <TableHead>Gerenciamento</TableHead>
                   <TableHead className="text-right">Ações</TableHead>
                 </TableRow>
               </TableHeader>
@@ -459,12 +455,9 @@ export default function AdminPage() {
                         <TableCell><Skeleton className="h-5 w-24" /></TableCell>
                         <TableCell><Skeleton className="h-5 w-32" /></TableCell>
                         <TableCell><Skeleton className="h-5 w-20" /></TableCell>
-                        <TableCell><Skeleton className="h-5 w-20" /></TableCell>
-                        <TableCell><Skeleton className="h-5 w-20" /></TableCell>
-                        <TableCell><Skeleton className="h-5 w-20" /></TableCell>
                         <TableCell><Skeleton className="h-9 w-[180px]" /></TableCell>
-                        <TableCell><Skeleton className="h-5 w-20" /></TableCell>
                         <TableCell><Skeleton className="h-9 w-[180px]" /></TableCell>
+                        <TableCell><Skeleton className="h-6 w-12" /></TableCell>
                         <TableCell className="text-right"><Skeleton className="h-8 w-8 rounded-full" /></TableCell>
                     </TableRow>
                 ))}
@@ -473,9 +466,6 @@ export default function AdminPage() {
                     <TableCell className="font-medium">{employee.name}</TableCell>
                     <TableCell>{employee.email}</TableCell>
                     <TableCell>{employee.position}</TableCell>
-                    <TableCell>{employee.axis}</TableCell>
-                    <TableCell>{employee.area}</TableCell>
-                    <TableCell>{employee.segment}</TableCell>
                     <TableCell>
                        <Select 
                         value={employee.leaderId || "no-leader"}
@@ -497,7 +487,6 @@ export default function AdminPage() {
                         </SelectContent>
                       </Select>
                     </TableCell>
-                    <TableCell>{employee.city}</TableCell>
                     <TableCell>
                       <Select 
                         value={employee.role}
@@ -514,6 +503,16 @@ export default function AdminPage() {
                           ))}
                         </SelectContent>
                       </Select>
+                    </TableCell>
+                    <TableCell>
+                        <div className="flex items-center space-x-2">
+                            <Switch 
+                                id={`management-${employee.id}`}
+                                checked={employee.isUnderManagement}
+                                onCheckedChange={(checked) => handleManagementToggle(employee.id, checked)}
+                            />
+                            <Label htmlFor={`management-${employee.id}`}>{employee.isUnderManagement ? 'Sim' : 'Não'}</Label>
+                        </div>
                     </TableCell>
                     <TableCell className="text-right">
                         <DropdownMenu>
@@ -716,5 +715,3 @@ export default function AdminPage() {
     </>
   );
 }
-
-    

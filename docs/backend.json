@@ -68,6 +68,10 @@
         "riskScore": {
           "type": "number",
           "description": "Risk score of the employee based on health, satisfaction, and performance."
+        },
+        "isUnderManagement": {
+            "type": "boolean",
+            "description": "Indicates if the employee is under 1:1 management."
         }
       },
       "required": [
@@ -244,9 +248,19 @@
   },
   "auth": {
     "providers": [
-      "password",
-      "anonymous"
-    ]
+      "google.com"
+    ],
+    "customClaims": {
+      "role": {
+        "type": "string",
+        "enum": [
+          "Admin",
+          "Diretor",
+          "Líder",
+          "Colaborador"
+        ]
+      }
+    }
   },
   "firestore": {
     "structure": [
