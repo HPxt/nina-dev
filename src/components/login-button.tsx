@@ -42,7 +42,7 @@ export function LoginButton() {
 
       setIsVerifying(true);
 
-      // Acesso especial para o administrador
+      // Acesso especial para o administrador mestre
       if (user.email === 'matheus@3ainvestimentos.com.br') {
         router.push("/dashboard");
         setIsVerifying(false);
@@ -56,11 +56,20 @@ export function LoginButton() {
         const querySnapshot = await getDocs(q);
         
         if (querySnapshot.empty) {
-          throw new Error("Seu perfil não tem permissão de acesso.");
+          throw new Error("Usuário não encontrado no sistema.");
         }
 
-        // Se o usuário existe na coleção de funcionários, o acesso é permitido.
-        router.push("/dashboard");
+        const employeeDoc = querySnapshot.docs[0];
+        const employeeData = employeeDoc.data() as Employee;
+
+        // Verifica se o usuário tem a função ou permissão necessária
+        const hasAccess = employeeData.role === 'Líder' || employeeData.isDirector === true || employeeData.isAdmin === true;
+
+        if (hasAccess) {
+          router.push("/dashboard");
+        } else {
+          throw new Error("Seu perfil de 'Colaborador' não tem permissão de acesso.");
+        }
 
       } catch (error: any) {
         toast({
