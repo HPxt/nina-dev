@@ -61,7 +61,7 @@ export default function LeadershipDashboard() {
   }, [user, employees]);
 
   useEffect(() => {
-    if (currentUserEmployee?.role === 'Líder') {
+    if (currentUserEmployee?.role === 'Líder' && !currentUserEmployee.isDirector) {
       setLeaderFilter(currentUserEmployee.id);
     }
   }, [currentUserEmployee]);
@@ -73,7 +73,7 @@ export default function LeadershipDashboard() {
 
       setLoadingInteractions(true);
       const managedEmployeeIds = employees
-        .filter(e => e.isUnderManagement && (currentUserEmployee.role === 'Admin' || currentUserEmployee.role === 'Diretor' || e.leaderId === currentUserEmployee.id))
+        .filter(e => e.isUnderManagement && (currentUserEmployee.isAdmin || currentUserEmployee.isDirector || e.leaderId === currentUserEmployee.id))
         .map(e => e.id);
 
       const interactionsMap = new Map<string, Interaction[]>();
@@ -102,7 +102,7 @@ export default function LeadershipDashboard() {
     return employees
       .filter(e => {
          if (!e.isUnderManagement) return false;
-         if (currentUserEmployee.role === 'Admin' || currentUserEmployee.role === 'Diretor') return true;
+         if (currentUserEmployee.isAdmin || currentUserEmployee.isDirector) return true;
          if (currentUserEmployee.role === 'Líder') return e.leaderId === currentUserEmployee.id;
          return false;
       })
@@ -126,7 +126,6 @@ export default function LeadershipDashboard() {
                 isSameYear(parseISO(int.date), yearOfPreviousMonth)
             );
             
-            // Se não teve no mês passado, é 'Pendente', independentemente do dia do mês atual.
             if (!hadOneOnOneLastMonth && getMonth(now) !== 0) { // getMonth() === 0 é Janeiro
                  status = "Pendente";
             } else if (currentDay <= 10) {
@@ -157,22 +156,8 @@ export default function LeadershipDashboard() {
   const leadersWithTeams = useMemo(() => {
     if (!employees) return [];
     
-    const leaderIds = new Set<string>();
-    
-    // Get all unique leader IDs from the employees list
-    employees.forEach(employee => {
-      if (employee.leaderId) {
-        leaderIds.add(employee.leaderId);
-      }
-    });
-    
-    // Map leader IDs to leader names
-    return Array.from(leaderIds)
-      .map(leaderId => {
-        const leader = employees.find(e => e.id === leaderId);
-        return leader ? { id: leader.id, name: leader.name } : null;
-      })
-      .filter(leader => leader !== null) // Remove any nulls if leader not found
+    return employees
+      .filter(e => e.role === 'Líder')
       .sort((a, b) => a!.name.localeCompare(b!.name));
       
   }, [employees]);
@@ -186,8 +171,6 @@ export default function LeadershipDashboard() {
         return "destructive";
       case "Pendente":
         return "secondary";
-      case "Em dia":
-        return "outline"; // This status is no longer in use based on recent changes
       default:
         return "outline";
     }
@@ -208,7 +191,7 @@ export default function LeadershipDashboard() {
   }
   
   const isLoading = areEmployeesLoading || loadingInteractions;
-  const isLeader = currentUserEmployee?.role === 'Líder';
+  const isLeaderOnly = currentUserEmployee?.role === 'Líder' && !currentUserEmployee.isDirector && !currentUserEmployee.isAdmin;
 
   return (
     <div className="space-y-6">
@@ -221,14 +204,13 @@ export default function LeadershipDashboard() {
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-            <Select onValueChange={setLeaderFilter} value={leaderFilter} disabled={isLoading || isLeader}>
+            <Select onValueChange={setLeaderFilter} value={leaderFilter} disabled={isLoading || isLeaderOnly}>
               <SelectTrigger>
                 <SelectValue placeholder="Todas as Equipes" />
               </SelectTrigger>
               <SelectContent>
-                {!isLeader && <SelectItem value="all">Todas as Equipes</SelectItem>}
+                {!isLeaderOnly && <SelectItem value="all">Todas as Equipes</SelectItem>}
                 {leadersWithTeams.map((leader) => (
-                  leader &&
                   <SelectItem key={leader.id} value={leader.id}>
                     {leader.name}
                   </SelectItem>

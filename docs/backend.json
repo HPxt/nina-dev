@@ -57,7 +57,7 @@
           "type": "string",
           "description": "City where the employee is based."
         },
-        "roleId": {
+        "role": {
           "type": "string",
           "description": "Reference to Role. (Relationship: Role 1:N Employee)"
         },
@@ -72,6 +72,14 @@
         "isUnderManagement": {
             "type": "boolean",
             "description": "Indicates if the employee is under 1:1 management."
+        },
+        "isDirector": {
+            "type": "boolean",
+            "description": "Indicates if the user has director-level permissions."
+        },
+        "isAdmin": {
+            "type": "boolean",
+            "description": "Indicates if the user has admin-level permissions."
         }
       },
       "required": [
@@ -85,7 +93,7 @@
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "Role",
       "type": "object",
-      "description": "Represents a role within the organization (e.g., Collaborator, Leader, Director, Admin).",
+      "description": "Represents a role within the organization (e.g., Collaborator, Leader).",
       "properties": {
         "id": {
           "type": "string",
@@ -254,8 +262,6 @@
       "role": {
         "type": "string",
         "enum": [
-          "Admin",
-          "Diretor",
           "Líder",
           "Colaborador"
         ]

@@ -1,3 +1,4 @@
+
 "use client";
 
 import Link from "next/link";
@@ -8,7 +9,7 @@ import {
   ClipboardList,
   ClipboardCheck,
 } from "lucide-react";
-import type { Role } from "@/lib/types";
+import type { Employee } from "@/lib/types";
 import {
   SidebarMenu,
   SidebarMenuItem,
@@ -16,19 +17,29 @@ import {
 } from "@/components/ui/sidebar";
 
 const navItems = [
-  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/dashboard/individual-tracking", label: "Acompanhamento", icon: ClipboardList, roles: ["Líder", "Diretor", "Admin"] },
-  { href: "/dashboard/pdi", label: "Plano de Desenvolvimento", icon: ClipboardCheck, roles: ["Líder", "Diretor", "Admin"] },
-  { href: "/dashboard/risk-analysis", label: "Análise de Risco", icon: ShieldAlert, roles: ["Líder", "Diretor", "Admin"] },
+  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard, requiresAuth: true },
+  { href: "/dashboard/individual-tracking", label: "Acompanhamento", icon: ClipboardList, requiresAuth: (user: Employee) => user.role === "Líder" || user.isDirector || user.isAdmin },
+  { href: "/dashboard/pdi", label: "Plano de Desenvolvimento", icon: ClipboardCheck, requiresAuth: (user: Employee) => user.role === "Líder" || user.isDirector || user.isAdmin },
+  { href: "/dashboard/risk-analysis", label: "Análise de Risco", icon: ShieldAlert, requiresAuth: (user: Employee) => user.role === "Líder" || user.isDirector || user.isAdmin },
 ];
 
-export function MainNav({ userRole }: { userRole: Role }) {
+export function MainNav({ user }: { user: Employee }) {
   const pathname = usePathname();
+
+  const canShowItem = (item: typeof navItems[0]) => {
+    if (typeof item.requiresAuth === 'boolean') {
+      return item.requiresAuth;
+    }
+    if (typeof item.requiresAuth === 'function') {
+      return item.requiresAuth(user);
+    }
+    return true; // Show by default if no auth rule
+  };
 
   return (
     <SidebarMenu>
       {navItems.map((item) => {
-        if (item.roles && !item.roles.includes(userRole)) {
+        if (!canShowItem(item)) {
           return null;
         }
         

@@ -1,7 +1,7 @@
 
-export type Role = "Colaborador" | "Líder" | "Diretor" | "Admin";
+export type Role = "Colaborador" | "Líder";
 
-export type OneOnOneStatus = "Executada" | "Atrasado" | "Pendente" | "Em dia";
+export type OneOnOneStatus = "Executada" | "Atrasado" | "Pendente";
 
 export interface User {
   id: string;
@@ -30,6 +30,8 @@ export interface Employee {
   diagnosis?: Diagnosis;
   riskScore?: number;
   isUnderManagement?: boolean;
+  isDirector?: boolean;
+  isAdmin?: boolean;
 }
 
 export interface Interaction {

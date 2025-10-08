@@ -54,9 +54,8 @@ export function LoginButton() {
 
         const employeeDoc = querySnapshot.docs[0];
         const employeeData = employeeDoc.data() as Employee;
-        const allowedRoles: (string | undefined)[] = ["Admin", "Diretor", "Líder"];
 
-        if (allowedRoles.includes(employeeData.role)) {
+        if (employeeData.role === 'Líder' || employeeData.isAdmin || employeeData.isDirector) {
           router.push("/dashboard");
         } else {
           throw new Error("Seu perfil não tem permissão de acesso.");

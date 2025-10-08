@@ -54,7 +54,7 @@ export default function PdiPage() {
 
   const managedEmployees = useMemo(() => {
     if (!currentUserEmployee || !employees) return [];
-    if (currentUserEmployee.role === 'Admin' || currentUserEmployee.role === 'Diretor') {
+    if (currentUserEmployee.isAdmin || currentUserEmployee.isDirector) {
         return employees;
     }
     if (currentUserEmployee.role === 'Líder') {

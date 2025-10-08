@@ -1,7 +1,7 @@
 
 "use client";
 
-import type { Employee } from "@/lib/types";
+import type { Employee, Role } from "@/lib/types";
 import {
   Card,
   CardContent,
@@ -52,7 +52,6 @@ import { setDocumentNonBlocking } from "@/firebase/non-blocking-updates";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Role } from "@/lib/types";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { EmployeeFormDialog } from "@/components/employee-form-dialog";
@@ -61,7 +60,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Label } from "@/components/ui/label";
 
 
-const roles: Role[] = ["Colaborador", "Líder", "Diretor"];
+const roles: Role[] = ["Colaborador", "Líder"];
 
 type SortConfig = {
   key: keyof Employee;
@@ -115,17 +114,17 @@ export default function AdminPage() {
         const segments = [...new Set(employees.map(e => e.segment).filter(Boolean))].sort();
         const leaderNames = [...new Set(employees.map(e => e.leader).filter(Boolean))].sort();
         const cities = [...new Set(employees.map(e => e.city).filter(Boolean))].sort();
-        const roles = [...new Set(employees.map(e => e.role).filter(e => e !== 'Admin'))].sort() as Role[];
+        const roleValues = [...new Set(employees.map(e => e.role).filter(Boolean))].sort() as Role[];
 
-        const leaders = employees.filter(e => e.role === 'Líder' || e.role === 'Diretor' || e.role === 'Admin');
-        const directors = employees.filter(e => e.role === 'Diretor').sort((a,b) => a.name.localeCompare(b.name));
-        const admins = employees.filter(e => e.role === 'Admin').sort((a,b) => a.name.localeCompare(b.name));
+        const leaders = employees.filter(e => e.role === 'Líder');
+        const directors = employees.filter(e => e.isDirector).sort((a,b) => a.name.localeCompare(b.name));
+        const admins = employees.filter(e => e.isAdmin).sort((a,b) => a.name.localeCompare(b.name));
 
         return { 
           leaders,
           directors,
           admins,
-          uniqueValues: { positions, axes, areas, segments, leaders: leaderNames, cities, roles }
+          uniqueValues: { positions, axes, areas, segments, leaders: leaderNames, cities, roles: roleValues }
         };
     }, [employees]);
 
@@ -135,7 +134,6 @@ export default function AdminPage() {
     
     let filtered = employees.filter(employee => {
         return (
-            (employee.role !== 'Admin') &&
             (!filters.email || employee.email?.toLowerCase().includes(filters.email.toLowerCase())) &&
             (!filters.name || employee.name?.toLowerCase().includes(filters.name.toLowerCase())) &&
             (filters.position.size === 0 || (employee.position && filters.position.has(employee.position))) &&
@@ -183,7 +181,7 @@ export default function AdminPage() {
   
     const leaderIdToNameMap = new Map<string, string>();
     employees.forEach(e => {
-        if(e.role === 'Líder' || e.role === 'Diretor' || e.role === 'Admin') {
+        if(e.role === 'Líder') {
             leaderIdToNameMap.set(e.id, e.name);
         }
     });
@@ -508,7 +506,7 @@ export default function AdminPage() {
                         <div className="flex items-center space-x-2">
                             <Switch 
                                 id={`management-${employee.id}`}
-                                checked={employee.isUnderManagement}
+                                checked={!!employee.isUnderManagement}
                                 onCheckedChange={(checked) => handleManagementToggle(employee.id, checked)}
                             />
                             <Label htmlFor={`management-${employee.id}`}>{employee.isUnderManagement ? 'Sim' : 'Não'}</Label>
@@ -651,7 +649,6 @@ export default function AdminPage() {
                             <CardTitle className="text-xl">Administradores</CardTitle>
                             <CardDescription>Gerencie quem tem acesso de administrador.</CardDescription>
                         </div>
-                        <Button>Gerenciar Admins</Button>
                     </div>
                 </CardHeader>
                 <CardContent>

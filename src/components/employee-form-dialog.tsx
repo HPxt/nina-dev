@@ -35,6 +35,7 @@ import { doc } from "firebase/firestore";
 import { setDocumentNonBlocking } from "@/firebase/non-blocking-updates";
 import { useToast } from "@/hooks/use-toast";
 import type { Employee, Role } from "@/lib/types";
+import { Switch } from "./ui/switch";
 
 const formSchema = z.object({
   id3a: z.string().min(1, "O ID externo é obrigatório."),
@@ -48,6 +49,8 @@ const formSchema = z.object({
   city: z.string().optional(),
   role: z.string().optional(),
   photoURL: z.string().url().optional().or(z.literal('')),
+  isDirector: z.boolean().optional(),
+  isAdmin: z.boolean().optional(),
 });
 
 type EmployeeFormData = z.infer<typeof formSchema>;
@@ -85,6 +88,8 @@ export function EmployeeFormDialog({
       city: "",
       role: "Colaborador",
       photoURL: "",
+      isDirector: false,
+      isAdmin: false,
     },
   });
 
@@ -102,6 +107,8 @@ export function EmployeeFormDialog({
         city: employee.city || "",
         role: employee.role || "Colaborador",
         photoURL: employee.photoURL || "",
+        isDirector: !!employee.isDirector,
+        isAdmin: !!employee.isAdmin,
       });
     } else {
       form.reset({
@@ -116,6 +123,8 @@ export function EmployeeFormDialog({
         city: "",
         role: "Colaborador",
         photoURL: "",
+        isDirector: false,
+        isAdmin: false,
       });
     }
   }, [employee, form]);
@@ -341,6 +350,48 @@ export function EmployeeFormDialog({
                 </FormItem>
               )}
             />
+             <div className="space-y-4">
+                <FormField
+                    control={form.control}
+                    name="isDirector"
+                    render={({ field }) => (
+                        <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
+                        <div className="space-y-0.5">
+                            <FormLabel>Permissão de Diretor</FormLabel>
+                            <FormDescription>
+                                Permite visualizar todas as equipes e colaboradores.
+                            </FormDescription>
+                        </div>
+                        <FormControl>
+                            <Switch
+                            checked={field.value}
+                            onCheckedChange={field.onChange}
+                            />
+                        </FormControl>
+                        </FormItem>
+                    )}
+                />
+                <FormField
+                    control={form.control}
+                    name="isAdmin"
+                    render={({ field }) => (
+                        <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
+                        <div className="space-y-0.5">
+                            <FormLabel>Permissão de Administrador</FormLabel>
+                            <FormDescription>
+                            Concede acesso às configurações gerais do sistema.
+                            </FormDescription>
+                        </div>
+                        <FormControl>
+                            <Switch
+                            checked={field.value}
+                            onCheckedChange={field.onChange}
+                            />
+                        </FormControl>
+                        </FormItem>
+                    )}
+                />
+             </div>
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
                 Cancelar

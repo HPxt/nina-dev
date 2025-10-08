@@ -42,14 +42,6 @@ export default function DashboardLayout({
     return employees.find(e => e.email === user.email);
   }, [user, employees]);
 
-  const adminEmails = useMemo(() => {
-    if (!employees) return [];
-    return employees.filter(e => e.role === 'Admin').map(e => e.email);
-  }, [employees]);
-
-  const userRole = currentUserEmployee?.role;
-  const isUserAdmin = user?.email ? adminEmails.includes(user.email) : false;
-
   return (
     <SidebarProvider>
       <Sidebar collapsible="icon">
@@ -62,11 +54,11 @@ export default function DashboardLayout({
               <SidebarTrigger className="hidden md:flex" />
             </SidebarMenuItem>
           </SidebarMenu>
-          {userRole && <MainNav userRole={userRole} />}
+          {currentUserEmployee && <MainNav user={currentUserEmployee} />}
         </SidebarContent>
         <SidebarFooter>
             <SidebarMenu>
-                {isUserAdmin && (
+                {currentUserEmployee?.isAdmin && (
                   <SidebarMenuItem>
                       <SidebarMenuButton asChild tooltip="Configurações">
                           <Link href="/dashboard/admin">
