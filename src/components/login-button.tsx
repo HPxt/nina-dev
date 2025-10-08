@@ -49,17 +49,12 @@ export function LoginButton() {
         const querySnapshot = await getDocs(q);
         
         if (querySnapshot.empty) {
-          throw new Error("Usuário não encontrado no sistema.");
-        }
-
-        const employeeDoc = querySnapshot.docs[0];
-        const employeeData = employeeDoc.data() as Employee;
-
-        if (employeeData.role === 'Líder' || employeeData.isAdmin || employeeData.isDirector) {
-          router.push("/dashboard");
-        } else {
           throw new Error("Seu perfil não tem permissão de acesso.");
         }
+
+        // Se o usuário existe na coleção de funcionários, o acesso é permitido.
+        router.push("/dashboard");
+
       } catch (error: any) {
         toast({
           variant: "destructive",
@@ -77,7 +72,7 @@ export function LoginButton() {
     if (user) {
         verifyAccess();
     }
-  }, [user, isUserLoading, firestore, router, auth, toast]);
+  }, [user, isUserLoading, firestore, router, auth, toast, isVerifying]);
 
   const isLoading = isUserLoading || isVerifying;
 
