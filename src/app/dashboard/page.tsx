@@ -5,7 +5,7 @@ import { useState, useMemo, useEffect } from "react";
 import type { Employee, Interaction } from "@/lib/types";
 import { useCollection, useFirestore, useMemoFirebase, useUser } from "@/firebase";
 import { collection, getDocs, query } from "firebase/firestore";
-import { differenceInDays, parseISO } from "date-fns";
+import { parseISO, isSameMonth, startOfMonth, endOfMonth, isAfter, getDate, getDaysInMonth } from "date-fns";
 
 import {
   Card,
@@ -32,10 +32,6 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import {
-  SelectGroup,
-  SelectLabel,
-} from "@/components/ui/select";
 
 type OneOnOneStatus = "Em dia" | "Atenção" | "Atrasado";
 
@@ -92,7 +88,9 @@ export default function LeadershipDashboard() {
   
   const trackedEmployees = useMemo((): TrackedEmployee[] => {
     if (!employees || !currentUserEmployee) return [];
-
+  
+    const now = new Date();
+  
     return employees
       .filter(e => {
          if (!e.isUnderManagement) return false;
@@ -109,17 +107,18 @@ export default function LeadershipDashboard() {
         const lastOneOnOne = oneOnOnes.length > 0 ? oneOnOnes[0] : undefined;
         
         let status: OneOnOneStatus;
-        if (!lastOneOnOne) {
-            status = "Atrasado";
+        const hadOneOnOneThisMonth = lastOneOnOne && isSameMonth(parseISO(lastOneOnOne.date), now);
+  
+        if (hadOneOnOneThisMonth) {
+          status = "Em dia";
         } else {
-            const daysSinceLast = differenceInDays(new Date(), parseISO(lastOneOnOne.date));
-            if (daysSinceLast <= 15) {
-                status = "Em dia";
-            } else if (daysSinceLast <= 30) {
-                status = "Atenção";
-            } else {
-                status = "Atrasado";
-            }
+          if (getDate(now) >= getDaysInMonth(now) - 5) { // Considering last 5 days as "late" period
+            status = "Atrasado";
+          } else if (getDate(now) >= 10) {
+            status = "Atenção";
+          } else {
+            status = "Atenção"; // Default to attention if not on track and before the 10th
+          }
         }
         
         return {
@@ -266,8 +265,8 @@ export default function LeadershipDashboard() {
                                 </div>
                             </div>
                         </TableCell>
-                        <TableCell><Skeleton className="h-5 w-20" /></TableCell>
-                        <TableCell><Skeleton className="h-5 w-24" /></TableCell>
+                        <TableCell className="hidden md:table-cell"><Skeleton className="h-5 w-20" /></TableCell>
+                        <TableCell className="hidden sm:table-cell"><Skeleton className="h-5 w-24" /></TableCell>
                         <TableCell><Skeleton className="h-6 w-20 rounded-full" /></TableCell>
                     </TableRow>
                 ))
@@ -312,4 +311,5 @@ export default function LeadershipDashboard() {
       </Card>
     </div>
   );
-}
+
+    
