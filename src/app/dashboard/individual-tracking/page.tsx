@@ -152,8 +152,8 @@ export default function IndividualTrackingPage() {
     let isNotesEmpty = true;
 
     if (interactionType === '1:1') {
-        notesToSave = oneOnoneNotes;
-        isNotesEmpty = Object.values(oneOnoneNotes).every(note => note?.trim() === '');
+        notesToSave = oneOnOneNotes;
+        isNotesEmpty = Object.values(oneOnOneNotes).every(note => note?.trim() === '');
     } else {
         notesToSave = simpleNotes;
         isNotesEmpty = simpleNotes.trim() === '';
@@ -321,7 +321,7 @@ export default function IndividualTrackingPage() {
                     </DialogDescription>
                   }
                 </DialogHeader>
-                <div className="grid gap-4 py-4 max-h-[60vh] overflow-y-auto pr-6">
+                <div className="grid gap-4 py-4 max-h-[60vh] overflow-y-auto px-6">
                   <div className="space-y-2">
                     <Label htmlFor="interaction-type">Tipo de Interação</Label>
                     <Select 
@@ -357,7 +357,7 @@ export default function IndividualTrackingPage() {
                         </div>
                         <div className="space-y-2">
                             <Label htmlFor="personal-life">Como está a vida pessoal do liderado?</Label>
-                            <Textarea id="personal-life" value={oneOnOneNotes.personalLife} onChange={e => handleOneOn-OneNotesChange('personalLife', e.target.value)} />
+                            <Textarea id="personal-life" value={oneOnOneNotes.personalLife} onChange={e => handleOneOnOneNotesChange('personalLife', e.target.value)} />
                         </div>
                         <div className="space-y-2">
                             <Label htmlFor="observations">Observações</Label>
@@ -404,3 +404,5 @@ export default function IndividualTrackingPage() {
     </div>
   );
 }
+
+    
