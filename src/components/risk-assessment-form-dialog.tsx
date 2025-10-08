@@ -18,14 +18,14 @@ import type { Employee } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 const riskCategories = [
-  { id: "performance", label: "Performance", red: "Dificuldade em atingir as metas", neutral: "Atingiu as metas (100% do target)", green: "Superação consistente das metas" },
-  { id: "quality", label: "Qualidade/Cliente", red: "Recebeu feedback negativo de clientes", neutral: "Sem feedback notável (nem positivo, nem negativo)", green: "Recebeu feedback positivo espontâneo de clientes" },
-  { id: "remuneration", label: "Remuneração", red: "Remuneração abaixo da referência", neutral: "Remuneração na referência de mercado/função", green: "Remuneração acima da referência" },
-  { id: "development", label: "Desenvolvimento", red: "Resistência a feedback e a novas práticas", neutral: "Aceita feedback e implementa o básico", green: "Busca proativa por feedback e implementação imediata" },
-  { id: "processes", label: "Processos/Ferramentas", red: "Dificuldades com ferramentas ou processos internos", neutral: "Utiliza ferramentas e segue processos corretamente", green: "Domínio das ferramentas e processos" },
-  { id: "presence", label: "Presença/Rotina", red: "Ausência do escritório (não justificada)", neutral: "Presença e disponibilidade dentro do esperado", green: "Alta disponibilidade e presença estratégica" },
-  { id: "engagement", label: "Engajamento", red: "Baixo engajamento nas reuniões de equipe", neutral: "Participação básica e passiva nas reuniões", green: "Engajamento ativo e contribuições valiosas nas reuniões" },
+  { id: "performance", label: "Performance", weight: 2, red: "Dificuldade em atingir as metas", neutral: "Atingiu as metas (100% do target)", green: "Superação consistente das metas" },
+  { id: "quality", label: "Atendimento", weight: 1, red: "Recebeu feedback negativo de clientes", neutral: "Sem feedback notável (nem positivo, nem negativo)", green: "Recebeu feedback positivo espontâneo de clientes" },
+  { id: "remuneration", label: "Remuneração", weight: 3, red: "Remuneração abaixo da referência", neutral: "Remuneração na referência de mercado/função", green: "Remuneração acima da referência" },
+  { id: "development", label: "Desenvolvimento", weight: 1, red: "Resistência a feedback e a novas práticas", neutral: "Aceita feedback e implementa o básico", green: "Busca proativa por feedback e implementação imediata" },
+  { id: "processes", label: "Processos", weight: 1, red: "Dificuldades com ferramentas ou processos internos", neutral: "Utiliza ferramentas e segue processos corretamente", green: "Domínio das ferramentas e processos" },
+  { id: "engagementAndPresence", label: "Engajamento e presença", weight: 2, red: "Baixo engajamento ou ausência injustificada", neutral: "Participação e presença dentro do esperado", green: "Engajamento ativo e alta disponibilidade" },
 ];
+
 
 type Selections = {
   [key: string]: "red" | "neutral" | "green";
@@ -56,7 +56,14 @@ export function RiskAssessmentFormDialog({ open, onOpenChange, employee, onSave,
   }, [open]);
 
   const totalScore = useMemo(() => {
-    return Object.values(selections).reduce((sum, value) => sum + SCORES[value], 0);
+    return riskCategories.reduce((sum, category) => {
+        const selectionValue = selections[category.id];
+        if (selectionValue) {
+            const score = SCORES[selectionValue];
+            return sum + (score * category.weight);
+        }
+        return sum;
+    }, 0);
   }, [selections]);
 
   const handleSelectionChange = (categoryId: string, value: "red" | "neutral" | "green") => {
@@ -68,7 +75,7 @@ export function RiskAssessmentFormDialog({ open, onOpenChange, employee, onSave,
     riskCategories.forEach(cat => {
         const selection = selections[cat.id];
         const selectionText = cat[selection];
-        const score = SCORES[selection];
+        const score = SCORES[selection] * cat.weight;
         details += `${cat.label}: ${selectionText} (Pontuação: ${score})\n`;
     });
     onSave(totalScore, details);
@@ -101,7 +108,7 @@ export function RiskAssessmentFormDialog({ open, onOpenChange, employee, onSave,
               >
                 <Label className={cn("flex flex-col items-start justify-start rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground cursor-pointer", selections[category.id] === 'red' && "border-destructive")}>
                   <RadioGroupItem value="red" id={`${category.id}-red`} className="sr-only" />
-                  <span className="font-semibold text-destructive mb-2">Red Flag (+1)</span>
+                  <span className="font-semibold text-destructive mb-2">Red Flag (+{category.weight})</span>
                   <span className="text-sm">{category.red}</span>
                 </Label>
                 <Label className={cn("flex flex-col items-start justify-start rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground cursor-pointer", selections[category.id] === 'neutral' && "border-primary")}>
@@ -111,7 +118,7 @@ export function RiskAssessmentFormDialog({ open, onOpenChange, employee, onSave,
                 </Label>
                 <Label className={cn("flex flex-col items-start justify-start rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground cursor-pointer", selections[category.id] === 'green' && "border-green-600")}>
                   <RadioGroupItem value="green" id={`${category.id}-green`} className="sr-only" />
-                  <span className="font-semibold text-green-600 mb-2">Green Flag (-1)</span>
+                  <span className="font-semibold text-green-600 mb-2">Green Flag (-{category.weight})</span>
                   <span className="text-sm">{category.green}</span>
                 </Label>
               </RadioGroup>
