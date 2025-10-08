@@ -26,7 +26,7 @@ import {
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
-import { MoreHorizontal, PlusCircle, Upload, ArrowUpDown, X, Filter, User, ShieldCheck } from "lucide-react";
+import { MoreHorizontal, PlusCircle, Upload, ArrowUpDown, X, Filter, User, ShieldCheck, FileDown } from "lucide-react";
 import { 
   DropdownMenu, 
   DropdownMenuContent, 
@@ -58,6 +58,7 @@ import { EmployeeFormDialog } from "@/components/employee-form-dialog";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 
 
 const roles: Role[] = ["Colaborador", "Líder"];
@@ -73,6 +74,8 @@ export default function AdminPage() {
   const [isConfirmDeleteDialogOpen, setIsConfirmDeleteDialogOpen] = useState(false);
   const [selectedEmployee, setSelectedEmployee] = useState<Employee | undefined>(undefined);
   const [employeeToDelete, setEmployeeToDelete] = useState<Employee | null>(null);
+  const [selectedForBackup, setSelectedForBackup] = useState<string[]>([]);
+
 
   const firestore = useFirestore();
   const { user, isUserLoading } = useUser();
@@ -328,6 +331,42 @@ export default function AdminPage() {
     setDocumentNonBlocking(docRef, { [field]: value }, { merge: true });
   }
 
+  const handleSelectForBackup = (employeeId: string) => {
+    setSelectedForBackup(prev => 
+        prev.includes(employeeId) 
+        ? prev.filter(id => id !== employeeId) 
+        : [...prev, employeeId]
+    );
+  };
+
+  const handleSelectAllForBackup = () => {
+    if (!filteredAndSortedEmployees) return;
+    if (selectedForBackup.length === filteredAndSortedEmployees.length) {
+        setSelectedForBackup([]);
+    } else {
+        setSelectedForBackup(filteredAndSortedEmployees.map(e => e.id));
+    }
+  };
+
+  const handleExport = (format: 'csv' | 'pdf') => {
+    if (selectedForBackup.length === 0) {
+        toast({
+            variant: 'destructive',
+            title: 'Nenhum colaborador selecionado',
+            description: 'Por favor, selecione pelo menos um colaborador para exportar.',
+        });
+        return;
+    }
+    
+    toast({
+        title: 'Exportação Iniciada',
+        description: `Exportando dados de ${selectedForBackup.length} colaborador(es) para ${format.toUpperCase()}. A funcionalidade completa está em desenvolvimento.`,
+    });
+    console.log(`Exporting ${format} for employees:`, selectedForBackup);
+    // TODO: Implement actual export logic here
+  };
+
+
   const isLoading = isUserLoading || areEmployeesLoading;
 
   const FilterComponent = ({ title, filterKey, options, children }: { title: string, filterKey: keyof typeof filters, options: string[], children?: React.ReactNode }) => (
@@ -362,10 +401,11 @@ export default function AdminPage() {
   return (
     <>
     <Tabs defaultValue="employees">
-      <TabsList className="grid w-full grid-cols-3">
+      <TabsList className="grid w-full grid-cols-4">
         <TabsTrigger value="employees">Funcionários</TabsTrigger>
         <TabsTrigger value="teams">Equipes</TabsTrigger>
         <TabsTrigger value="settings">Geral</TabsTrigger>
+        <TabsTrigger value="backup">Backup</TabsTrigger>
       </TabsList>
       <TabsContent value="employees">
         <Card>
@@ -483,7 +523,7 @@ export default function AdminPage() {
                         <SelectTrigger className="w-[180px]">
                           <SelectValue placeholder="Sem Líder" />
                         </SelectTrigger>
-                        <SelectContent className="max-h-96 overflow-y-auto">
+                        <SelectContent>
                           <SelectItem value="no-leader">Sem Líder</SelectItem>
                           {leaders
                             .filter(leader => leader.id !== employee.id) // Cannot be their own leader
@@ -710,6 +750,71 @@ export default function AdminPage() {
           </CardContent>
         </Card>
       </TabsContent>
+      <TabsContent value="backup">
+        <Card>
+            <CardHeader>
+                <CardTitle>Backup de Dados de Colaboradores</CardTitle>
+                <CardDescription>
+                    Selecione os colaboradores para exportar o histórico completo de interações e PDI.
+                </CardDescription>
+            </CardHeader>
+            <CardContent>
+                <div className="border rounded-md">
+                    <Table>
+                        <TableHeader>
+                            <TableRow>
+                                <TableHead className="w-[50px]">
+                                    <Checkbox
+                                        checked={filteredAndSortedEmployees && selectedForBackup.length === filteredAndSortedEmployees.length}
+                                        onCheckedChange={handleSelectAllForBackup}
+                                        aria-label="Selecionar todos"
+                                    />
+                                </TableHead>
+                                <TableHead>Nome</TableHead>
+                                <TableHead>Email</TableHead>
+                                <TableHead>Cargo</TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            {isLoading ? (
+                                Array.from({ length: 5 }).map((_, i) => (
+                                    <TableRow key={i}>
+                                        <TableCell><Skeleton className="h-5 w-5" /></TableCell>
+                                        <TableCell><Skeleton className="h-5 w-24" /></TableCell>
+                                        <TableCell><Skeleton className="h-5 w-32" /></TableCell>
+                                        <TableCell><Skeleton className="h-5 w-20" /></TableCell>
+                                    </TableRow>
+                                ))
+                            ) : filteredAndSortedEmployees.map((employee) => (
+                                <TableRow key={employee.id} data-state={selectedForBackup.includes(employee.id) && "selected"}>
+                                    <TableCell>
+                                        <Checkbox
+                                            checked={selectedForBackup.includes(employee.id)}
+                                            onCheckedChange={() => handleSelectForBackup(employee.id)}
+                                            aria-label={`Selecionar ${employee.name}`}
+                                        />
+                                    </TableCell>
+                                    <TableCell className="font-medium">{employee.name}</TableCell>
+                                    <TableCell>{employee.email}</TableCell>
+                                    <TableCell>{employee.position}</TableCell>
+                                </TableRow>
+                            ))}
+                        </TableBody>
+                    </Table>
+                </div>
+                <div className="flex justify-end gap-2 mt-4">
+                    <Button variant="outline" onClick={() => handleExport('csv')} disabled={selectedForBackup.length === 0}>
+                        <FileDown className="mr-2 h-4 w-4" />
+                        Exportar para CSV
+                    </Button>
+                    <Button variant="outline" onClick={() => handleExport('pdf')} disabled={selectedForBackup.length === 0}>
+                        <FileDown className="mr-2 h-4 w-4" />
+                        Exportar para PDF
+                    </Button>
+                </div>
+            </CardContent>
+        </Card>
+      </TabsContent>
     </Tabs>
     <CsvUploadDialog open={isCsvDialogOpen} onOpenChange={setIsCsvDialogOpen} />
     <EmployeeFormDialog 
@@ -739,3 +844,4 @@ export default function AdminPage() {
     </>
   );
 }
+
