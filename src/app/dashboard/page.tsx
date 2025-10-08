@@ -61,6 +61,13 @@ export default function LeadershipDashboard() {
   }, [user, employees]);
 
   useEffect(() => {
+    if (currentUserEmployee?.role === 'Líder') {
+      setLeaderFilter(currentUserEmployee.id);
+    }
+  }, [currentUserEmployee]);
+
+
+  useEffect(() => {
     const fetchInteractions = async () => {
       if (!firestore || !employees || !currentUserEmployee) return;
 
@@ -123,7 +130,7 @@ export default function LeadershipDashboard() {
             if (!hadOneOnOneLastMonth && getMonth(now) !== 0) { // getMonth() === 0 é Janeiro
                  status = "Pendente";
             } else if (currentDay <= 10) {
-                status = "Pendente"; // Alterado de "Em dia" para "Pendente"
+                status = "Pendente";
             } else {
                 status = "Atrasado";
             }
@@ -178,9 +185,9 @@ export default function LeadershipDashboard() {
       case "Atrasado":
         return "destructive";
       case "Pendente":
-        return "secondary"; // Cinza para pendente
+        return "secondary";
       case "Em dia":
-        return "outline"; // Verde para em dia (agora não será usado)
+        return "outline"; // This status is no longer in use based on recent changes
       default:
         return "outline";
     }
@@ -201,6 +208,7 @@ export default function LeadershipDashboard() {
   }
   
   const isLoading = areEmployeesLoading || loadingInteractions;
+  const isLeader = currentUserEmployee?.role === 'Líder';
 
   return (
     <div className="space-y-6">
@@ -213,12 +221,12 @@ export default function LeadershipDashboard() {
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-            <Select onValueChange={setLeaderFilter} value={leaderFilter} disabled={isLoading}>
+            <Select onValueChange={setLeaderFilter} value={leaderFilter} disabled={isLoading || isLeader}>
               <SelectTrigger>
                 <SelectValue placeholder="Todas as Equipes" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">Todas as Equipes</SelectItem>
+                {!isLeader && <SelectItem value="all">Todas as Equipes</SelectItem>}
                 {leadersWithTeams.map((leader) => (
                   leader &&
                   <SelectItem key={leader.id} value={leader.id}>
@@ -331,4 +339,4 @@ export default function LeadershipDashboard() {
       </Card>
     </div>
   );
-    
+}
