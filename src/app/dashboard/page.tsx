@@ -5,7 +5,7 @@ import { useState, useMemo, useEffect } from "react";
 import type { Employee, Interaction } from "@/lib/types";
 import { useCollection, useFirestore, useMemoFirebase, useUser } from "@/firebase";
 import { collection, getDocs, query } from "firebase/firestore";
-import { parseISO, isSameMonth, startOfMonth, endOfMonth, isAfter, getDate, getDaysInMonth } from "date-fns";
+import { parseISO, isSameMonth, getDate, getDaysInMonth } from "date-fns";
 
 import {
   Card,
@@ -53,7 +53,7 @@ export default function LeadershipDashboard() {
   const [interactions, setInteractions] = useState<Map<string, Interaction[]>>(new Map());
   const [loadingInteractions, setLoadingInteractions] = useState(true);
 
-  const [teamFilter, setTeamFilter] = useState("all");
+  const [leaderFilter, setLeaderFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState<"all" | OneOnOneStatus>("all");
   const [periodFilter, setPeriodFilter] = useState("all"); // Not implemented yet, but state is ready
 
@@ -112,13 +112,17 @@ export default function LeadershipDashboard() {
         if (hadOneOnOneThisMonth) {
           status = "Em dia";
         } else {
-          if (getDate(now) >= getDaysInMonth(now) - 5) { // Considering last 5 days as "late" period
-            status = "Atrasado";
-          } else if (getDate(now) >= 10) {
-            status = "Atenção";
-          } else {
-            status = "Atenção"; // Default to attention if not on track and before the 10th
-          }
+            const currentDayOfMonth = getDate(now);
+            // Before day 10, no action required yet
+            if (currentDayOfMonth < 10) {
+                 status = "Em dia"; 
+            // From day 10 onwards, it's "Atenção"
+            } else if (currentDayOfMonth >= 10 && currentDayOfMonth < getDaysInMonth(now) - 5) {
+                 status = "Atenção";
+            // In the last 5 days of the month, it becomes "Atrasado"
+            } else {
+                 status = "Atrasado";
+            }
         }
         
         return {
@@ -132,28 +136,34 @@ export default function LeadershipDashboard() {
 
   const filteredEmployees = useMemo(() => {
     return trackedEmployees.filter(member => {
-        const teamMatch = teamFilter === 'all' || member.team === teamFilter;
+        const leaderMatch = leaderFilter === 'all' || member.leaderId === leaderFilter;
         const statusMatch = statusFilter === 'all' || member.oneOnOneStatus === statusFilter;
         // Period filter logic would go here
-        return teamMatch && statusMatch;
+        return leaderMatch && statusMatch;
     }).sort((a, b) => a.name.localeCompare(b.name));
-  }, [trackedEmployees, teamFilter, statusFilter]);
+  }, [trackedEmployees, leaderFilter, statusFilter]);
 
-  const teamsWithLeaders = useMemo(() => {
+  const leadersWithTeams = useMemo(() => {
     if (!employees) return [];
-  
-    const teamsMap = new Map<string, string>(); // Map<TeamName, LeaderName>
-  
+    
+    const leaderIds = new Set<string>();
+    
+    // Get all unique leader IDs from the employees list
     employees.forEach(employee => {
-      if (employee.team) {
-        if (!teamsMap.has(employee.team)) {
-          const leader = employees.find(e => e.id === employee.leaderId);
-          teamsMap.set(employee.team, leader ? leader.name : "Sem Líder");
-        }
+      if (employee.leaderId) {
+        leaderIds.add(employee.leaderId);
       }
     });
-  
-    return Array.from(teamsMap.entries()).sort((a, b) => a[0].localeCompare(b[0]));
+    
+    // Map leader IDs to leader names
+    return Array.from(leaderIds)
+      .map(leaderId => {
+        const leader = employees.find(e => e.id === leaderId);
+        return leader ? { id: leader.id, name: leader.name } : null;
+      })
+      .filter(leader => leader !== null) // Remove any nulls if leader not found
+      .sort((a, b) => a!.name.localeCompare(b!.name));
+      
   }, [employees]);
 
 
@@ -169,6 +179,7 @@ export default function LeadershipDashboard() {
   };
 
   const getInitials = (name: string) => {
+    if (!name) return '';
     const names = name.split(" ");
     if (names.length > 1) {
       return `${names[0][0]}${names[names.length - 1][0]}`;
@@ -194,15 +205,16 @@ export default function LeadershipDashboard() {
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-            <Select onValueChange={setTeamFilter} value={teamFilter} disabled={isLoading}>
+            <Select onValueChange={setLeaderFilter} value={leaderFilter} disabled={isLoading}>
               <SelectTrigger>
                 <SelectValue placeholder="Todas as Equipes" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Todas as Equipes</SelectItem>
-                {teamsWithLeaders.map(([team, leader]) => (
-                  <SelectItem key={team} value={team}>
-                    {team} (Líder: {leader})
+                {leadersWithTeams.map((leader) => (
+                  leader &&
+                  <SelectItem key={leader.id} value={leader.id}>
+                    Equipe de {leader.name}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -247,7 +259,7 @@ export default function LeadershipDashboard() {
             <TableHeader>
               <TableRow>
                 <TableHead>Membro</TableHead>
-                <TableHead className="hidden md:table-cell">Equipe</TableHead>
+                <TableHead className="hidden md:table-cell">Líder</TableHead>
                 <TableHead className="hidden sm:table-cell">Última 1:1</TableHead>
                 <TableHead>Status</TableHead>
               </TableRow>
@@ -287,7 +299,7 @@ export default function LeadershipDashboard() {
                         </div>
                       </div>
                     </TableCell>
-                    <TableCell className="hidden md:table-cell">{member.team}</TableCell>
+                    <TableCell className="hidden md:table-cell">{member.leader}</TableCell>
                     <TableCell className="hidden sm:table-cell">
                       {formatDate(member.lastOneOnOne)}
                     </TableCell>
