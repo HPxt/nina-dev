@@ -65,7 +65,33 @@ export default function IndividualTrackingPage() {
   
   const currentUserEmployee = useMemo(() => {
     if (!user || !employees) return null;
-    return employees.find(e => e.email === user.email);
+    // Special override for the admin user
+    if (user.email === 'matheus@3ainvestimentos.com.br') {
+        const employeeData = employees.find(e => e.email === user.email) || {};
+        return {
+            ...employeeData,
+            name: user.displayName || 'Admin',
+            email: user.email,
+            isAdmin: true,
+            isDirector: true,
+            role: 'Líder',
+        } as Employee;
+    }
+
+    const employeeData = employees.find(e => e.email === user.email);
+
+    if (!employeeData) return null;
+
+    // Enhance permissions for other admins
+    if (employeeData.isAdmin) {
+      return {
+        ...employeeData,
+        role: 'Líder',
+        isDirector: true,
+      };
+    }
+    
+    return employeeData;
   }, [user, employees]);
 
 
@@ -223,7 +249,7 @@ export default function IndividualTrackingPage() {
             <SelectContent>
               {sortedEmployees.map((member) => (
                 <SelectItem key={member.id} value={member.id}>
-                  {member.name}
+                  {member.name} {member.area && `(${member.area})`}
                 </SelectItem>
               ))}
             </SelectContent>

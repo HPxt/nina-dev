@@ -56,7 +56,33 @@ export default function RiskAnalysisPage() {
 
   const currentUserEmployee = useMemo(() => {
     if (!user || !employees) return null;
-    return employees.find(e => e.email === user.email);
+    // Special override for the admin user
+    if (user.email === 'matheus@3ainvestimentos.com.br') {
+        const employeeData = employees.find(e => e.email === user.email) || {};
+        return {
+            ...employeeData,
+            name: user.displayName || 'Admin',
+            email: user.email,
+            isAdmin: true,
+            isDirector: true,
+            role: 'Líder',
+        } as Employee;
+    }
+
+    const employeeData = employees.find(e => e.email === user.email);
+
+    if (!employeeData) return null;
+
+    // Enhance permissions for other admins
+    if (employeeData.isAdmin) {
+      return {
+        ...employeeData,
+        role: 'Líder',
+        isDirector: true,
+      };
+    }
+    
+    return employeeData;
   }, [user, employees]);
 
   const managedEmployees = useMemo(() => {
@@ -169,6 +195,15 @@ export default function RiskAnalysisPage() {
   };
   
   const isLoading = areEmployeesLoading || loadingInteractions;
+  
+  const getSelectedEmployeesText = () => {
+    if (selectedEmployees.length === 0) {
+      return areEmployeesLoading ? "Carregando..." : "Selecione colaboradores...";
+    }
+    return selectedEmployees
+      .map(e => `${e.name} ${e.area ? `(${e.area})` : ''}`)
+      .join(', ');
+  }
 
   return (
     <div className="space-y-6">
@@ -188,7 +223,7 @@ export default function RiskAnalysisPage() {
                         disabled={areEmployeesLoading}
                     >
                         <span className="truncate">
-                        {selectedEmployees.length > 0 ? selectedEmployees.map(e => e.name).join(', ') : areEmployeesLoading ? "Carregando..." : "Selecione colaboradores..."}
+                          {getSelectedEmployeesText()}
                         </span>
                         <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                     </Button>
@@ -213,7 +248,7 @@ export default function RiskAnalysisPage() {
                                     )}>
                                         <Check className="h-4 w-4" />
                                     </div>
-                                    {employee.name}
+                                    {employee.name} {employee.area && `(${employee.area})`}
                                 </CommandItem>
                                 ))}
                             </CommandGroup>
