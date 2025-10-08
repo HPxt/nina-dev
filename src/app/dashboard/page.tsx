@@ -119,10 +119,11 @@ export default function LeadershipDashboard() {
                 isSameYear(parseISO(int.date), yearOfPreviousMonth)
             );
             
-            if (!hadOneOnOneLastMonth && getMonth(now) !== 0) { // Add a check for january case
+            // Se não teve no mês passado, é 'Pendente', independentemente do dia do mês atual.
+            if (!hadOneOnOneLastMonth && getMonth(now) !== 0) { // getMonth() === 0 é Janeiro
                  status = "Pendente";
             } else if (currentDay <= 10) {
-                status = "Em dia";
+                status = "Pendente"; // Alterado de "Em dia" para "Pendente"
             } else {
                 status = "Atrasado";
             }
@@ -174,12 +175,14 @@ export default function LeadershipDashboard() {
     switch (status) {
       case "Executada":
         return "default";
-      case "Em dia":
-        return "secondary";
       case "Atrasado":
         return "destructive";
       case "Pendente":
-          return "outline";
+        return "secondary"; // Cinza para pendente
+      case "Em dia":
+        return "outline"; // Verde para em dia (agora não será usado)
+      default:
+        return "outline";
     }
   };
 
@@ -231,7 +234,6 @@ export default function LeadershipDashboard() {
               <SelectContent>
                 <SelectItem value="all">Todos os Status</SelectItem>
                 <SelectItem value="Executada">Executada</SelectItem>
-                <SelectItem value="Em dia">Em dia</SelectItem>
                 <SelectItem value="Atrasado">Atrasado</SelectItem>
                 <SelectItem value="Pendente">Pendente</SelectItem>
               </SelectContent>

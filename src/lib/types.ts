@@ -1,7 +1,7 @@
 
 export type Role = "Colaborador" | "Líder" | "Diretor" | "Admin";
 
-export type OneOnOneStatus = "Executada" | "Em dia" | "Atrasado" | "Pendente";
+export type OneOnOneStatus = "Executada" | "Atrasado" | "Pendente" | "Em dia";
 
 export interface User {
   id: string;
