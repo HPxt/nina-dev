@@ -32,6 +32,10 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+  SelectGroup,
+  SelectLabel,
+} from "@/components/ui/select";
 
 type OneOnOneStatus = "Em dia" | "Atenção" | "Atrasado";
 
@@ -136,9 +140,21 @@ export default function LeadershipDashboard() {
     }).sort((a, b) => a.name.localeCompare(b.name));
   }, [trackedEmployees, teamFilter, statusFilter]);
 
-  const teams = useMemo(() => {
+  const teamsWithLeaders = useMemo(() => {
     if (!employees) return [];
-    return [...new Set(employees.map((m) => m.team).filter(Boolean))] as string[];
+  
+    const teamsMap = new Map<string, string>(); // Map<TeamName, LeaderName>
+  
+    employees.forEach(employee => {
+      if (employee.team) {
+        if (!teamsMap.has(employee.team)) {
+          const leader = employees.find(e => e.id === employee.leaderId);
+          teamsMap.set(employee.team, leader ? leader.name : "Sem Líder");
+        }
+      }
+    });
+  
+    return Array.from(teamsMap.entries()).sort((a, b) => a[0].localeCompare(b[0]));
   }, [employees]);
 
 
@@ -185,9 +201,9 @@ export default function LeadershipDashboard() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Todas as Equipes</SelectItem>
-                {teams.map((team) => (
+                {teamsWithLeaders.map(([team, leader]) => (
                   <SelectItem key={team} value={team}>
-                    {team}
+                    {team} (Líder: {leader})
                   </SelectItem>
                 ))}
               </SelectContent>
