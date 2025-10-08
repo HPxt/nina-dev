@@ -2,7 +2,7 @@
 "use client";
 
 import { useState, useMemo, useEffect } from "react";
-import type { Employee, Interaction, OneOnOneStatus } from "@/lib/types";
+import type { Employee, Interaction, InteractionStatus, InteractionType } from "@/lib/types";
 import { useCollection, useFirestore, useMemoFirebase, useUser } from "@/firebase";
 import { collection, getDocs, query } from "firebase/firestore";
 import { parseISO, isSameMonth, isSameYear, getMonth } from "date-fns";
@@ -34,9 +34,17 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 
 interface TrackedEmployee extends Employee {
-  lastOneOnOne?: string;
-  oneOnOneStatus: OneOnOneStatus;
+  lastInteraction?: string;
+  interactionStatus: InteractionStatus;
 }
+
+const interactionTypes: { value: InteractionType, label: string }[] = [
+    { value: "1:1", label: "1:1" },
+    { value: "Feedback", label: "Feedback" },
+    { value: "N3 Individual", label: "N3 Individual" },
+    { value: "Índice de Risco", label: "Índice de Risco" },
+];
+
 
 export default function LeadershipDashboard() {
   const firestore = useFirestore();
@@ -52,12 +60,37 @@ export default function LeadershipDashboard() {
   const [loadingInteractions, setLoadingInteractions] = useState(true);
 
   const [leaderFilter, setLeaderFilter] = useState("all");
-  const [statusFilter, setStatusFilter] = useState<"all" | OneOnOneStatus>("all");
-  const [periodFilter, setPeriodFilter] = useState("all"); // Not implemented yet, but state is ready
+  const [statusFilter, setStatusFilter] = useState<"all" | InteractionStatus>("all");
+  const [interactionTypeFilter, setInteractionTypeFilter] = useState<InteractionType>("1:1");
 
   const currentUserEmployee = useMemo(() => {
     if (!user || !employees) return null;
-    return employees.find(e => e.email === user.email);
+
+    if (user.email === 'matheus@3ainvestimentos.com.br') {
+        const employeeData = employees.find(e => e.email === user.email) || {};
+        return {
+            ...employeeData,
+            name: user.displayName || 'Admin',
+            email: user.email,
+            isAdmin: true,
+            isDirector: true,
+            role: 'Líder',
+        } as Employee;
+    }
+
+    const employeeData = employees.find(e => e.email === user.email);
+
+    if (!employeeData) return null;
+
+    if (employeeData.isAdmin) {
+      return {
+        ...employeeData,
+        role: 'Líder',
+        isDirector: true,
+      };
+    }
+
+    return employeeData;
   }, [user, employees]);
 
   useEffect(() => {
@@ -108,25 +141,25 @@ export default function LeadershipDashboard() {
       })
       .map(employee => {
         const employeeInteractions = interactions.get(employee.id) || [];
-        const oneOnOnes = employeeInteractions
-          .filter(int => int.type === "1:1")
+        const filteredInteractions = employeeInteractions
+          .filter(int => int.type === interactionTypeFilter)
           .sort((a, b) => parseISO(b.date).getTime() - parseISO(a.date).getTime());
         
-        const lastOneOnOne = oneOnOnes.length > 0 ? oneOnOnes[0] : undefined;
+        const lastInteraction = filteredInteractions.length > 0 ? filteredInteractions[0] : undefined;
         
-        let status: OneOnOneStatus;
+        let status: InteractionStatus;
         
-        const hadOneOnOneThisMonth = lastOneOnOne && isSameMonth(parseISO(lastOneOnOne.date), now);
+        const hadInteractionThisMonth = lastInteraction && isSameMonth(parseISO(lastInteraction.date), now);
 
-        if (hadOneOnOneThisMonth) {
+        if (hadInteractionThisMonth) {
             status = "Executada";
         } else {
-            const hadOneOnOneLastMonth = oneOnOnes.some(int => 
+            const hadInteractionLastMonth = filteredInteractions.some(int => 
                 getMonth(parseISO(int.date)) === previousMonth && 
                 isSameYear(parseISO(int.date), yearOfPreviousMonth)
             );
             
-            if (!hadOneOnOneLastMonth && getMonth(now) !== 0) { // getMonth() === 0 é Janeiro
+            if (!hadInteractionLastMonth && getMonth(now) !== 0) {
                  status = "Pendente";
             } else if (currentDay <= 10) {
                 status = "Pendente";
@@ -137,18 +170,17 @@ export default function LeadershipDashboard() {
         
         return {
           ...employee,
-          lastOneOnOne: lastOneOnOne?.date,
-          oneOnOneStatus: status,
+          lastInteraction: lastInteraction?.date,
+          interactionStatus: status,
         };
       });
-  }, [employees, interactions, currentUserEmployee]);
+  }, [employees, interactions, currentUserEmployee, interactionTypeFilter]);
 
 
   const filteredEmployees = useMemo(() => {
     return trackedEmployees.filter(member => {
         const leaderMatch = leaderFilter === 'all' || member.leaderId === leaderFilter;
-        const statusMatch = statusFilter === 'all' || member.oneOnOneStatus === statusFilter;
-        // Period filter logic would go here
+        const statusMatch = statusFilter === 'all' || member.interactionStatus === statusFilter;
         return leaderMatch && statusMatch;
     }).sort((a, b) => a.name.localeCompare(b.name));
   }, [trackedEmployees, leaderFilter, statusFilter]);
@@ -163,7 +195,7 @@ export default function LeadershipDashboard() {
   }, [employees]);
 
 
-  const getBadgeVariant = (status: OneOnOneStatus) => {
+  const getBadgeVariant = (status: InteractionStatus) => {
     switch (status) {
       case "Executada":
         return "default";
@@ -199,7 +231,7 @@ export default function LeadershipDashboard() {
         <CardHeader>
           <CardTitle>Filtros</CardTitle>
           <CardDescription>
-            Filtre as reuniões 1:1 por equipe, status e período.
+            Filtre as interações por equipe, tipo, status e período.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -217,6 +249,16 @@ export default function LeadershipDashboard() {
                 ))}
               </SelectContent>
             </Select>
+            <Select onValueChange={value => setInteractionTypeFilter(value as any)} value={interactionTypeFilter} disabled={isLoading}>
+                <SelectTrigger>
+                    <SelectValue placeholder="Tipo de Interação" />
+                </SelectTrigger>
+                <SelectContent>
+                    {interactionTypes.map(type => (
+                        <SelectItem key={type.value} value={type.value}>{type.label}</SelectItem>
+                    ))}
+                </SelectContent>
+            </Select>
             <Select onValueChange={value => setStatusFilter(value as any)} value={statusFilter} disabled={isLoading}>
               <SelectTrigger>
                 <SelectValue placeholder="Todos os Status" />
@@ -228,28 +270,15 @@ export default function LeadershipDashboard() {
                 <SelectItem value="Pendente">Pendente</SelectItem>
               </SelectContent>
             </Select>
-            <Select onValueChange={setPeriodFilter} value={periodFilter} disabled={true}>
-              <SelectTrigger>
-                <SelectValue placeholder="Todo o período" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todo o período</SelectItem>
-                {/* 
-                <SelectItem value="30">Últimos 30 dias</SelectItem>
-                <SelectItem value="60">Últimos 60 dias</SelectItem>
-                <SelectItem value="90">Últimos 90 dias</SelectItem> 
-                */}
-              </SelectContent>
-            </Select>
           </div>
         </CardContent>
       </Card>
 
       <Card>
         <CardHeader>
-          <CardTitle>Frequência de 1:1s</CardTitle>
+          <CardTitle>Frequência de Interações</CardTitle>
           <CardDescription>
-            Acompanhe a frequência das reuniões individuais com sua equipe.
+            Acompanhe a frequência das interações com sua equipe.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -258,7 +287,7 @@ export default function LeadershipDashboard() {
               <TableRow>
                 <TableHead>Membro</TableHead>
                 <TableHead className="hidden md:table-cell">Líder</TableHead>
-                <TableHead className="hidden sm:table-cell">Última 1:1</TableHead>
+                <TableHead className="hidden sm:table-cell">Última Interação</TableHead>
                 <TableHead>Status</TableHead>
               </TableRow>
             </TableHeader>
@@ -299,11 +328,11 @@ export default function LeadershipDashboard() {
                     </TableCell>
                     <TableCell className="hidden md:table-cell">{member.leader}</TableCell>
                     <TableCell className="hidden sm:table-cell">
-                      {formatDate(member.lastOneOnOne)}
+                      {formatDate(member.lastInteraction)}
                     </TableCell>
                     <TableCell>
-                      <Badge variant={getBadgeVariant(member.oneOnOneStatus)}>
-                        {member.oneOnOneStatus}
+                      <Badge variant={getBadgeVariant(member.interactionStatus)}>
+                        {member.interactionStatus}
                       </Badge>
                     </TableCell>
                   </TableRow>
@@ -322,3 +351,4 @@ export default function LeadershipDashboard() {
     </div>
   );
 }
+

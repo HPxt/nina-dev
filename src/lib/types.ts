@@ -1,7 +1,9 @@
 
+
 export type Role = "Colaborador" | "Líder";
 
-export type OneOnOneStatus = "Executada" | "Atrasado" | "Pendente";
+export type InteractionStatus = "Executada" | "Atrasado" | "Pendente";
+export type InteractionType = "1:1" | "Feedback" | "N3 Individual" | "Índice de Risco";
 
 export interface User {
   id: string;
@@ -36,7 +38,7 @@ export interface Employee {
 
 export interface Interaction {
   id: string;
-  type: "1:1" | "Feedback" | "N3 Individual" | "Índice de Risco";
+  type: InteractionType;
   date: string; // ISO 8601 string
   notes: string;
   authorId: string;
@@ -62,7 +64,7 @@ export interface TeamMember extends User {
   team: string;
   position: string;
   lastOneOnOne: string;
-  oneOnOneStatus: OneOnOneStatus;
+  oneOnOneStatus: InteractionStatus;
   risk: {
     score: number;
     health: number;
@@ -73,3 +75,4 @@ export interface TeamMember extends User {
   pdi: PDIAction[];
   diagnosis: Diagnosis;
 }
+
