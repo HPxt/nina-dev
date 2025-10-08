@@ -1,6 +1,6 @@
 
 
-import type { Interaction, OneOnOneNotes } from "@/lib/types";
+import type { Interaction, OneOnOneNotes, N3IndividualNotes } from "@/lib/types";
 import {
   MessageSquare,
   Users,
@@ -15,6 +15,7 @@ import {
     AccordionItem,
     AccordionTrigger,
   } from "@/components/ui/accordion"
+import { Separator } from "./ui/separator";
 
 const interactionIcons: Record<Interaction["type"], React.ReactNode> = {
   "1:1": <Calendar className="h-4 w-4" />,
@@ -39,6 +40,43 @@ const OneOnOneDetails = ({ notes }: { notes: OneOnOneNotes }) => (
       </AccordionItem>
     </Accordion>
   );
+
+  const N3IndividualDetails = ({ notes }: { notes: N3IndividualNotes }) => (
+    <Accordion type="single" collapsible className="w-full">
+      <AccordionItem value="item-1">
+        <AccordionTrigger>Visualizar detalhes do N3 Individual</AccordionTrigger>
+        <AccordionContent>
+            <div className="space-y-4 text-sm text-foreground/90 p-2">
+                <div>
+                    <h4 className="font-semibold mb-2">Indicadores Principais</h4>
+                    <div className="grid grid-cols-3 gap-4 text-center">
+                        <div>
+                            <p className="text-xs text-muted-foreground">Captação</p>
+                            <p className="font-mono">{notes.captacao || '-'}</p>
+                        </div>
+                        <div>
+                            <p className="text-xs text-muted-foreground">Churn PF</p>
+                            <p className="font-mono">{notes.churnPF || '-'}</p>
+                        </div>
+                        <div>
+                            <p className="text-xs text-muted-foreground">ROA</p>
+                            <p className="font-mono">{notes.roa || '-'}</p>
+                        </div>
+                    </div>
+                </div>
+                <Separator />
+                {notes.esforcos && <div><h4 className="font-semibold mb-1">Indicadores de Esforços</h4><p className="whitespace-pre-wrap">{notes.esforcos}</p></div>}
+                {notes.planoAcao && <div><h4 className="font-semibold mb-1">Plano de Ação</h4><p className="whitespace-pre-wrap">{notes.planoAcao}</p></div>}
+            </div>
+        </AccordionContent>
+      </AccordionItem>
+    </Accordion>
+  );
+
+  function isN3IndividualNotes(notes: any): notes is N3IndividualNotes {
+    return notes && (typeof notes.captacao !== 'undefined' || typeof notes.esforcos !== 'undefined');
+  }
+  
 
 export function Timeline({ interactions, isLoading }: { interactions: Interaction[]; isLoading: boolean }) {
   if (isLoading) {
@@ -91,8 +129,10 @@ export function Timeline({ interactions, isLoading }: { interactions: Interactio
             <div className="mt-2 text-sm">
                 {typeof item.notes === 'string' ? (
                      <p className="whitespace-pre-wrap">{item.notes}</p>
-                ) : item.notes ? (
-                    <OneOnOneDetails notes={item.notes} />
+                ) : item.type === '1:1' && item.notes ? (
+                    <OneOnOneDetails notes={item.notes as OneOnOneNotes} />
+                ) : item.type === 'N3 Individual' && isN3IndividualNotes(item.notes) ? (
+                    <N3IndividualDetails notes={item.notes as N3IndividualNotes} />
                 ) : null}
             </div>
           </div>
@@ -101,3 +141,4 @@ export function Timeline({ interactions, isLoading }: { interactions: Interactio
     </div>
   );
 }
+

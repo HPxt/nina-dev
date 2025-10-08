@@ -2,7 +2,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import type { Employee, Interaction, OneOnOneNotes } from "@/lib/types";
+import type { Employee, Interaction, OneOnOneNotes, N3IndividualNotes } from "@/lib/types";
 import {
   Card,
   CardContent,
@@ -35,8 +35,9 @@ import { useCollection, useFirestore, useMemoFirebase, useUser } from "@/firebas
 import { addDoc, collection, doc, serverTimestamp, setDoc } from "firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
 import { RiskAssessmentFormDialog } from "@/components/risk-assessment-form-dialog";
+import { Input } from "@/components/ui/input";
 
-type NewInteraction = Omit<Interaction, "id" | "date" | "authorId" | "notes"> & { notes: string | OneOnOneNotes };
+type NewInteraction = Omit<Interaction, "id" | "date" | "authorId" | "notes"> & { notes: string | OneOnOneNotes | N3IndividualNotes };
 
 const initialOneOnOneNotes: OneOnOneNotes = {
     companyGrowth: "",
@@ -44,6 +45,14 @@ const initialOneOnOneNotes: OneOnOneNotes = {
     teamGrowth: "",
     personalLife: "",
     observations: "",
+};
+
+const initialN3Notes: N3IndividualNotes = {
+    captacao: "",
+    churnPF: "",
+    roa: "",
+    esforcos: "",
+    planoAcao: ""
 };
 
 
@@ -54,6 +63,7 @@ export default function IndividualTrackingPage() {
   const [interactionType, setInteractionType] = useState<Interaction['type']>('1:1');
   const [simpleNotes, setSimpleNotes] = useState("");
   const [oneOnOneNotes, setOneOnOneNotes] = useState<OneOnOneNotes>(initialOneOnOneNotes);
+  const [n3Notes, setN3Notes] = useState<N3IndividualNotes>(initialN3Notes);
   const [isSaving, setIsSaving] = useState(false);
 
   const firestore = useFirestore();
@@ -135,6 +145,7 @@ export default function IndividualTrackingPage() {
   const resetForms = () => {
     setSimpleNotes("");
     setOneOnOneNotes(initialOneOnOneNotes);
+    setN3Notes(initialN3Notes);
     setInteractionType('1:1');
   }
 
@@ -148,12 +159,15 @@ export default function IndividualTrackingPage() {
         return;
     }
 
-    let notesToSave: string | OneOnOneNotes;
+    let notesToSave: string | OneOnOneNotes | N3IndividualNotes;
     let isNotesEmpty = true;
 
     if (interactionType === '1:1') {
         notesToSave = oneOnOneNotes;
         isNotesEmpty = Object.values(oneOnOneNotes).every(note => note?.trim() === '');
+    } else if (interactionType === 'N3 Individual') {
+        notesToSave = n3Notes;
+        isNotesEmpty = Object.values(n3Notes).every(note => note?.trim() === '');
     } else {
         notesToSave = simpleNotes;
         isNotesEmpty = simpleNotes.trim() === '';
@@ -264,6 +278,10 @@ export default function IndividualTrackingPage() {
     setOneOnOneNotes(prev => ({...prev, [field]: value}));
   }
 
+  const handleN3NotesChange = (field: keyof N3IndividualNotes, value: string) => {
+    setN3Notes(prev => ({...prev, [field]: value}));
+  }
+
 
   return (
     <div className="space-y-6">
@@ -362,6 +380,34 @@ export default function IndividualTrackingPage() {
                         <div className="space-y-2">
                             <Label htmlFor="observations">Observações</Label>
                             <Textarea id="observations" value={oneOnOneNotes.observations} onChange={e => handleOneOnOneNotesChange('observations', e.target.value)} />
+                        </div>
+                    </div>
+                  ) : interactionType === 'N3 Individual' ? (
+                    <div className="space-y-4">
+                        <div>
+                            <Label className="text-base font-semibold">Indicadores Principais</Label>
+                            <div className="grid grid-cols-3 gap-4 mt-2">
+                                <div className="space-y-2">
+                                    <Label htmlFor="captacao">Captação</Label>
+                                    <Input id="captacao" value={n3Notes.captacao} onChange={e => handleN3NotesChange('captacao', e.target.value)} />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="churnPF">Churn PF</Label>
+                                    <Input id="churnPF" value={n3Notes.churnPF} onChange={e => handleN3NotesChange('churnPF', e.target.value)} />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="roa">ROA</Label>
+                                    <Input id="roa" value={n3Notes.roa} onChange={e => handleN3NotesChange('roa', e.target.value)} />
+                                </div>
+                            </div>
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="esforcos" className="text-base font-semibold">Indicadores de Esforços</Label>
+                            <Textarea id="esforcos" value={n3Notes.esforcos} onChange={e => handleN3NotesChange('esforcos', e.target.value)} />
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="planoAcao" className="text-base font-semibold">Plano de Ação</Label>
+                            <Textarea id="planoAcao" value={n3Notes.planoAcao} onChange={e => handleN3NotesChange('planoAcao', e.target.value)} />
                         </div>
                     </div>
                   ) : (

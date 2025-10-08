@@ -44,11 +44,20 @@ export interface OneOnOneNotes {
     observations?: string;
 }
 
+export interface N3IndividualNotes {
+    captacao?: string;
+    churnPF?: string;
+    roa?: string;
+    esforcos?: string;
+    planoAcao?: string;
+}
+
+
 export interface Interaction {
   id: string;
   type: InteractionType;
   date: string; // ISO 8601 string
-  notes: string | OneOnOneNotes;
+  notes: string | OneOnOneNotes | N3IndividualNotes;
   authorId: string;
   riskScore?: number; // Add riskScore to interaction
 }
@@ -83,5 +92,6 @@ export interface TeamMember extends User {
   pdi: PDIAction[];
   diagnosis: Diagnosis;
 }
+
 
 
