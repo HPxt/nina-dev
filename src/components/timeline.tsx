@@ -1,5 +1,6 @@
 
-import type { Interaction } from "@/lib/types";
+
+import type { Interaction, OneOnOneNotes } from "@/lib/types";
 import {
   MessageSquare,
   Users,
@@ -8,6 +9,12 @@ import {
 } from "lucide-react";
 import { formatDate, cn } from "@/lib/utils";
 import { Skeleton } from "./ui/skeleton";
+import {
+    Accordion,
+    AccordionContent,
+    AccordionItem,
+    AccordionTrigger,
+  } from "@/components/ui/accordion"
 
 const interactionIcons: Record<Interaction["type"], React.ReactNode> = {
   "1:1": <Calendar className="h-4 w-4" />,
@@ -15,6 +22,23 @@ const interactionIcons: Record<Interaction["type"], React.ReactNode> = {
   "N3 Individual": <Users className="h-4 w-4" />,
   "Índice de Risco": <ShieldAlert className="h-4 w-4" />,
 };
+
+const OneOnOneDetails = ({ notes }: { notes: OneOnOneNotes }) => (
+    <Accordion type="single" collapsible className="w-full">
+      <AccordionItem value="item-1">
+        <AccordionTrigger>Visualizar detalhes do 1:1</AccordionTrigger>
+        <AccordionContent>
+            <div className="space-y-4 text-sm text-foreground/90 p-2">
+                {notes.companyGrowth && <div><h4 className="font-semibold mb-1">Crescimento (Empresa)</h4><p className="whitespace-pre-wrap">{notes.companyGrowth}</p></div>}
+                {notes.leaderGrowth && <div><h4 className="font-semibold mb-1">Crescimento (Líder)</h4><p className="whitespace-pre-wrap">{notes.leaderGrowth}</p></div>}
+                {notes.teamGrowth && <div><h4 className="font-semibold mb-1">Crescimento (Time)</h4><p className="whitespace-pre-wrap">{notes.teamGrowth}</p></div>}
+                {notes.personalLife && <div><h4 className="font-semibold mb-1">Vida Pessoal</h4><p className="whitespace-pre-wrap">{notes.personalLife}</p></div>}
+                {notes.observations && <div><h4 className="font-semibold mb-1">Observações</h4><p className="whitespace-pre-wrap">{notes.observations}</p></div>}
+            </div>
+        </AccordionContent>
+      </AccordionItem>
+    </Accordion>
+  );
 
 export function Timeline({ interactions, isLoading }: { interactions: Interaction[]; isLoading: boolean }) {
   if (isLoading) {
@@ -64,7 +88,13 @@ export function Timeline({ interactions, isLoading }: { interactions: Interactio
               )}
             </div>
             <p className="text-xs text-muted-foreground">{item.date ? formatDate(item.date) : 'Data indisponível'}</p>
-            <p className="mt-2 text-sm text-foreground/90 whitespace-pre-wrap">{item.notes}</p>
+            <div className="mt-2 text-sm">
+                {typeof item.notes === 'string' ? (
+                     <p className="whitespace-pre-wrap">{item.notes}</p>
+                ) : item.notes ? (
+                    <OneOnOneDetails notes={item.notes} />
+                ) : null}
+            </div>
           </div>
         </div>
       ))}

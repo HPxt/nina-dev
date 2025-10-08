@@ -2,7 +2,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import type { Employee, Interaction } from "@/lib/types";
+import type { Employee, Interaction, OneOnOneNotes } from "@/lib/types";
 import {
   Card,
   CardContent,
@@ -36,13 +36,24 @@ import { addDoc, collection, doc, serverTimestamp, setDoc } from "firebase/fires
 import { useToast } from "@/hooks/use-toast";
 import { RiskAssessmentFormDialog } from "@/components/risk-assessment-form-dialog";
 
-type NewInteraction = Omit<Interaction, "id" | "date" | "authorId">;
+type NewInteraction = Omit<Interaction, "id" | "date" | "authorId" | "notes"> & { notes: string | OneOnOneNotes };
+
+const initialOneOnOneNotes: OneOnOneNotes = {
+    companyGrowth: "",
+    leaderGrowth: "",
+    teamGrowth: "",
+    personalLife: "",
+    observations: "",
+};
+
 
 export default function IndividualTrackingPage() {
   const [selectedEmployeeId, setSelectedEmployeeId] = useState<string | null>(null);
   const [openInteractionDialog, setOpenInteractionDialog] = useState(false);
   const [openRiskDialog, setOpenRiskDialog] = useState(false);
-  const [newInteraction, setNewInteraction] = useState<NewInteraction>({ type: "1:1", notes: "" });
+  const [interactionType, setInteractionType] = useState<Interaction['type']>('1:1');
+  const [simpleNotes, setSimpleNotes] = useState("");
+  const [oneOnOneNotes, setOneOnOneNotes] = useState<OneOnOneNotes>(initialOneOnOneNotes);
   const [isSaving, setIsSaving] = useState(false);
 
   const firestore = useFirestore();
@@ -121,12 +132,34 @@ export default function IndividualTrackingPage() {
     setSelectedEmployeeId(id);
   };
   
-  const resetForm = () => {
-    setNewInteraction({ type: "1:1", notes: "" });
+  const resetForms = () => {
+    setSimpleNotes("");
+    setOneOnOneNotes(initialOneOnOneNotes);
+    setInteractionType('1:1');
   }
 
   const handleSaveInteraction = async () => {
-    if (!interactionsCollection || !user || !newInteraction.notes.trim()) {
+    if (!interactionsCollection || !user ) {
+        toast({
+            variant: "destructive",
+            title: "Erro de Validação",
+            description: "Não foi possível salvar, tente novamente.",
+        });
+        return;
+    }
+
+    let notesToSave: string | OneOnOneNotes;
+    let isNotesEmpty = true;
+
+    if (interactionType === '1:1') {
+        notesToSave = oneOnoneNotes;
+        isNotesEmpty = Object.values(oneOnoneNotes).every(note => note?.trim() === '');
+    } else {
+        notesToSave = simpleNotes;
+        isNotesEmpty = simpleNotes.trim() === '';
+    }
+
+    if (isNotesEmpty) {
         toast({
             variant: "destructive",
             title: "Erro de Validação",
@@ -138,7 +171,8 @@ export default function IndividualTrackingPage() {
     setIsSaving(true);
     
     const interactionToSave = {
-        ...newInteraction,
+        type: interactionType,
+        notes: notesToSave,
         authorId: user.uid,
         date: new Date().toISOString(),
     };
@@ -150,7 +184,7 @@ export default function IndividualTrackingPage() {
             description: "O registro da sua interação foi salvo com sucesso.",
         });
         setOpenInteractionDialog(false);
-        resetForm();
+        resetForms();
     } catch (error) {
         console.error("Error saving interaction: ", error);
         toast({
@@ -210,7 +244,7 @@ export default function IndividualTrackingPage() {
   const handleOpenChange = (isOpen: boolean) => {
     setOpenInteractionDialog(isOpen);
     if (!isOpen) {
-      resetForm();
+      resetForms();
     }
   }
 
@@ -220,12 +254,15 @@ export default function IndividualTrackingPage() {
     if (type === 'Índice de Risco') {
         setOpenInteractionDialog(false); // Fecha o modal atual
         setOpenRiskDialog(true); // Abre o modal de risco
-        // Resetamos o form para o default caso o usuário feche o modal de risco e abra o de interação de novo
-        resetForm(); 
+        resetForms();
     } else {
-        setNewInteraction({ type: type, notes: "" });
+        setInteractionType(type);
     }
   };
+  
+  const handleOneOnOneNotesChange = (field: keyof OneOnOneNotes, value: string) => {
+    setOneOnOneNotes(prev => ({...prev, [field]: value}));
+  }
 
 
   return (
@@ -275,7 +312,7 @@ export default function IndividualTrackingPage() {
                   Nova Interação
                 </Button>
               </DialogTrigger>
-              <DialogContent className="sm:max-w-[425px]">
+              <DialogContent className="sm:max-w-xl">
                 <DialogHeader>
                   <DialogTitle>Registrar Nova Interação</DialogTitle>
                   {selectedEmployee && 
@@ -284,11 +321,11 @@ export default function IndividualTrackingPage() {
                     </DialogDescription>
                   }
                 </DialogHeader>
-                <div className="grid gap-4 py-4">
+                <div className="grid gap-4 py-4 max-h-[60vh] overflow-y-auto pr-6">
                   <div className="space-y-2">
                     <Label htmlFor="interaction-type">Tipo de Interação</Label>
                     <Select 
-                        value={newInteraction.type} 
+                        value={interactionType} 
                         onValueChange={handleInteractionTypeChange}
                     >
                       <SelectTrigger id="interaction-type">
@@ -304,16 +341,41 @@ export default function IndividualTrackingPage() {
                       </SelectContent>
                     </Select>
                   </div>
-                  <div className="space-y-2">
-                      <Label htmlFor="notes">Anotações</Label>
-                      <Textarea
-                      id="notes"
-                      placeholder="Detalhes da conversa, pontos de ação, etc."
-                      className="min-h-[120px]"
-                      value={newInteraction.notes}
-                      onChange={(e) => setNewInteraction(prev => ({...prev, notes: e.target.value}))}
-                      />
-                  </div>
+                  {interactionType === '1:1' ? (
+                    <div className="space-y-4">
+                        <div className="space-y-2">
+                            <Label htmlFor="company-growth">Como você acredita que a empresa poderia contribuir para crescimento do liderado?</Label>
+                            <Textarea id="company-growth" value={oneOnOneNotes.companyGrowth} onChange={e => handleOneOnOneNotesChange('companyGrowth', e.target.value)} />
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="leader-growth">Como você acredita que o líder poderia contribuir para crescimento do liderado?</Label>
+                            <Textarea id="leader-growth" value={oneOnOneNotes.leaderGrowth} onChange={e => handleOneOnOneNotesChange('leaderGrowth', e.target.value)} />
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="team-growth">Como você acredita que o nosso time poderia contribuir para o seu crescimento?</Label>
+                            <Textarea id="team-growth" value={oneOnOneNotes.teamGrowth} onChange={e => handleOneOnOneNotesChange('teamGrowth', e.target.value)} />
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="personal-life">Como está a vida pessoal do liderado?</Label>
+                            <Textarea id="personal-life" value={oneOnOneNotes.personalLife} onChange={e => handleOneOn-OneNotesChange('personalLife', e.target.value)} />
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="observations">Observações</Label>
+                            <Textarea id="observations" value={oneOnOneNotes.observations} onChange={e => handleOneOnOneNotesChange('observations', e.target.value)} />
+                        </div>
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                        <Label htmlFor="notes">Anotações</Label>
+                        <Textarea
+                        id="notes"
+                        placeholder="Detalhes da conversa, pontos de ação, etc."
+                        className="min-h-[120px]"
+                        value={simpleNotes}
+                        onChange={(e) => setSimpleNotes(e.target.value)}
+                        />
+                    </div>
+                  )}
                 </div>
                 <DialogFooter>
                   <Button type="button" variant="outline" onClick={() => handleOpenChange(false)} disabled={isSaving}>Cancelar</Button>

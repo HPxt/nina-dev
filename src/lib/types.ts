@@ -36,11 +36,19 @@ export interface Employee {
   isAdmin?: boolean;
 }
 
+export interface OneOnOneNotes {
+    companyGrowth?: string;
+    leaderGrowth?: string;
+    teamGrowth?: string;
+    personalLife?: string;
+    observations?: string;
+}
+
 export interface Interaction {
   id: string;
   type: InteractionType;
   date: string; // ISO 8601 string
-  notes: string;
+  notes: string | OneOnOneNotes;
   authorId: string;
   riskScore?: number; // Add riskScore to interaction
 }
@@ -75,4 +83,5 @@ export interface TeamMember extends User {
   pdi: PDIAction[];
   diagnosis: Diagnosis;
 }
+
 
