@@ -59,6 +59,7 @@ import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
+import { exportData } from "@/lib/export";
 
 
 const roles: Role[] = ["Colaborador", "Líder"];
@@ -75,6 +76,7 @@ export default function AdminPage() {
   const [selectedEmployee, setSelectedEmployee] = useState<Employee | undefined>(undefined);
   const [employeeToDelete, setEmployeeToDelete] = useState<Employee | null>(null);
   const [selectedForBackup, setSelectedForBackup] = useState<string[]>([]);
+  const [isExporting, setIsExporting] = useState(false);
 
 
   const firestore = useFirestore();
@@ -348,22 +350,38 @@ export default function AdminPage() {
     }
   };
 
-  const handleExport = (format: 'csv' | 'pdf') => {
-    if (selectedForBackup.length === 0) {
-        toast({
-            variant: 'destructive',
-            title: 'Nenhum colaborador selecionado',
-            description: 'Por favor, selecione pelo menos um colaborador para exportar.',
-        });
-        return;
+  const handleExport = async (format: 'csv' | 'pdf') => {
+    if (!firestore || selectedForBackup.length === 0) {
+      toast({
+        variant: 'destructive',
+        title: 'Nenhum colaborador selecionado',
+        description: 'Por favor, selecione pelo menos um colaborador para exportar.',
+      });
+      return;
     }
-    
+  
+    setIsExporting(true);
     toast({
-        title: 'Exportação Iniciada',
-        description: `Exportando dados de ${selectedForBackup.length} colaborador(es) para ${format.toUpperCase()}. A funcionalidade completa está em desenvolvimento.`,
+      title: 'Exportação Iniciada',
+      description: `Gerando arquivo ${format.toUpperCase()} para ${selectedForBackup.length} colaborador(es)...`,
     });
-    console.log(`Exporting ${format} for employees:`, selectedForBackup);
-    // TODO: Implement actual export logic here
+  
+    try {
+      await exportData(firestore, selectedForBackup, format, employees ?? []);
+      toast({
+        title: 'Exportação Concluída',
+        description: `O download do seu arquivo ${format.toUpperCase()} deve começar em breve.`,
+      });
+    } catch (error) {
+      console.error(`Error exporting to ${format}:`, error);
+      toast({
+        variant: 'destructive',
+        title: `Erro na Exportação para ${format.toUpperCase()}`,
+        description: 'Não foi possível gerar o arquivo. Verifique o console para mais detalhes.',
+      });
+    } finally {
+      setIsExporting(false);
+    }
   };
 
 
@@ -765,7 +783,7 @@ export default function AdminPage() {
                             <TableRow>
                                 <TableHead className="w-[50px]">
                                     <Checkbox
-                                        checked={filteredAndSortedEmployees && selectedForBackup.length === filteredAndSortedEmployees.length}
+                                        checked={filteredAndSortedEmployees && selectedForBackup.length === filteredAndSortedEmployees.length && filteredAndSortedEmployees.length > 0}
                                         onCheckedChange={handleSelectAllForBackup}
                                         aria-label="Selecionar todos"
                                     />
@@ -803,13 +821,11 @@ export default function AdminPage() {
                     </Table>
                 </div>
                 <div className="flex justify-end gap-2 mt-4">
-                    <Button variant="outline" onClick={() => handleExport('csv')} disabled={selectedForBackup.length === 0}>
-                        <FileDown className="mr-2 h-4 w-4" />
-                        Exportar para CSV
+                    <Button variant="outline" onClick={() => handleExport('csv')} disabled={selectedForBackup.length === 0 || isExporting}>
+                        {isExporting ? 'Exportando...' : <><FileDown className="mr-2 h-4 w-4" /> Exportar para CSV</>}
                     </Button>
-                    <Button variant="outline" onClick={() => handleExport('pdf')} disabled={selectedForBackup.length === 0}>
-                        <FileDown className="mr-2 h-4 w-4" />
-                        Exportar para PDF
+                    <Button variant="outline" onClick={() => handleExport('pdf')} disabled={selectedForBackup.length === 0 || isExporting}>
+                       {isExporting ? 'Exportando...' : <><FileDown className="mr-2 h-4 w-4" /> Exportar para PDF</>}
                     </Button>
                 </div>
             </CardContent>
@@ -844,4 +860,3 @@ export default function AdminPage() {
     </>
   );
 }
-
