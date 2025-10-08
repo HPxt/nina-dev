@@ -50,8 +50,8 @@ export default function IndividualTrackingPage() {
   const { toast } = useToast();
 
   const employeesCollection = useMemoFirebase(
-    () => (firestore ? collection(firestore, "employees") : null),
-    [firestore]
+    () => (firestore && user ? collection(firestore, "employees") : null),
+    [firestore, user]
   );
   
   const { data: employees, isLoading: areEmployeesLoading } = useCollection<Employee>(employeesCollection);
