@@ -21,6 +21,10 @@ const titles: { [key: string]: { title: string; description?: string } } = {
     title: "Análise de Risco",
     description: "Compare e analise o índice de risco dos colaboradores.",
   },
+  "/dashboard/ranking": {
+    title: "Ranking de Líderes",
+    description: "Acompanhe o indicador de aderência das lideranças.",
+  },
   "/dashboard/admin": {
     title: "Configurações",
     description: "Configure os ajustes gerais do sistema.",
