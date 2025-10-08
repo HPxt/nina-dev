@@ -282,7 +282,6 @@ export default function RiskAnalysisPage() {
                     <Tooltip cursor={false} content={<ChartTooltipContent />} />
                     <Legend />
                     <ReferenceLine y={5} stroke="gray" strokeDasharray="3 3" label={{ value: 'Risco Alto', position: 'left', textAnchor: 'end', fill: 'gray' }} />
-                    <ReferenceLine y={2} stroke="gray" strokeDasharray="3 3" label={{ value: 'Risco Baixo', position: 'left', textAnchor: 'end', fill: 'gray' }} />
                     <Bar dataKey="risk" name="Índice de Risco" radius={4} />
                     </BarChart>
                 </ChartContainer>
