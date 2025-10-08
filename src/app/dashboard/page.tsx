@@ -5,7 +5,7 @@ import { useState, useMemo, useEffect } from "react";
 import type { Employee, Interaction } from "@/lib/types";
 import { useCollection, useFirestore, useMemoFirebase, useUser } from "@/firebase";
 import { collection, getDocs, query } from "firebase/firestore";
-import { parseISO, isSameMonth, getDate, getDaysInMonth } from "date-fns";
+import { parseISO, isSameMonth, getDate, getDaysInMonth, endOfMonth } from "date-fns";
 
 import {
   Card,
@@ -113,15 +113,19 @@ export default function LeadershipDashboard() {
           status = "Em dia";
         } else {
             const currentDayOfMonth = getDate(now);
-            // Before day 10, no action required yet
-            if (currentDayOfMonth < 10) {
-                 status = "Em dia"; 
-            // From day 10 onwards, it's "Atenção"
-            } else if (currentDayOfMonth >= 10 && currentDayOfMonth < getDaysInMonth(now) - 5) {
+            const daysInMonth = getDaysInMonth(now);
+            
+            // If it's the last 5 days of the month and no 1:1, it's late.
+            if (currentDayOfMonth > daysInMonth - 5) {
+                status = "Atrasado";
+            }
+            // If it's day 10 or later and no 1:1, it's a warning.
+            else if (currentDayOfMonth >= 10) {
                  status = "Atenção";
-            // In the last 5 days of the month, it becomes "Atrasado"
-            } else {
-                 status = "Atrasado";
+            }
+            // Before day 10, if no 1:1 happened, it's still considered "on time" as there's time.
+            else {
+                 status = "Em dia";
             }
         }
         
@@ -326,3 +330,6 @@ export default function LeadershipDashboard() {
 
     
 
+
+
+    
