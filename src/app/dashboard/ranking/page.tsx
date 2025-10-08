@@ -18,6 +18,13 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Progress } from "@/components/ui/progress";
 import { Crown, Medal, Trophy } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 interface LeaderRanking extends Employee {
   adherenceScore: number;
@@ -28,6 +35,7 @@ interface LeaderRanking extends Employee {
 export default function RankingPage() {
   const firestore = useFirestore();
   const { user } = useUser();
+  const [axisFilter, setAxisFilter] = useState("all");
 
   const employeesCollection = useMemoFirebase(
     () => (firestore ? collection(firestore, "employees") : null),
@@ -62,10 +70,11 @@ export default function RankingPage() {
     fetchInteractions();
   }, [employees, firestore]);
   
-  const leaderRankings = useMemo((): LeaderRanking[] => {
-    if (!employees || interactions.size === 0) return [];
+  const { leaderRankings, uniqueAxes } = useMemo(() => {
+    if (!employees || interactions.size === 0) return { leaderRankings: [], uniqueAxes: [] };
 
     const leaders = employees.filter(e => e.role === 'Líder');
+    const axes = [...new Set(leaders.map(l => l.axis).filter(Boolean))].sort();
     const now = new Date();
 
     const getInteractionStatus = (employee: Employee): InteractionStatus => {
@@ -100,7 +109,7 @@ export default function RankingPage() {
         }
     };
 
-    return leaders.map(leader => {
+    const rankings = leaders.map(leader => {
       const teamMembers = employees.filter(e => e.leaderId === leader.id && e.isUnderManagement);
       const totalCount = teamMembers.length;
       
@@ -124,7 +133,17 @@ export default function RankingPage() {
       };
     }).sort((a, b) => b.adherenceScore - a.adherenceScore);
 
+    return { leaderRankings: rankings, uniqueAxes: axes };
+
   }, [employees, interactions]);
+  
+  const filteredLeaderRankings = useMemo(() => {
+    if (axisFilter === "all") {
+        return leaderRankings;
+    }
+    return leaderRankings.filter(leader => leader.axis === axisFilter);
+  }, [leaderRankings, axisFilter]);
+
 
   const getInitials = (name: string) => {
     if (!name) return '';
@@ -147,10 +166,29 @@ export default function RankingPage() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Ranking de Aderência de Líderes</CardTitle>
-        <CardDescription>
-          Percentual de interações 1:1 mensais realizadas por cada líder com sua equipe.
-        </CardDescription>
+        <div className="flex justify-between items-start">
+          <div>
+            <CardTitle>Ranking de Aderência de Líderes</CardTitle>
+            <CardDescription>
+              Percentual de interações 1:1 mensais realizadas por cada líder com sua equipe.
+            </CardDescription>
+          </div>
+          <div className="w-[200px]">
+             <Select onValueChange={setAxisFilter} value={axisFilter} disabled={isLoading || uniqueAxes.length === 0}>
+              <SelectTrigger>
+                <SelectValue placeholder="Filtrar por Eixo" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos os Eixos</SelectItem>
+                {uniqueAxes.map((axis) => (
+                  <SelectItem key={axis} value={axis}>
+                    {axis}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
       </CardHeader>
       <CardContent>
         {isLoading ? (
@@ -168,7 +206,7 @@ export default function RankingPage() {
             </div>
         ) : (
             <ul className="space-y-6">
-                {leaderRankings.map((leader, index) => (
+                {filteredLeaderRankings.map((leader, index) => (
                     <li key={leader.id} className="flex items-center gap-4">
                         <div className="flex-shrink-0 w-8 text-center">
                             {getRankIcon(index)}
@@ -193,12 +231,13 @@ export default function RankingPage() {
                 ))}
             </ul>
         )}
-        {(!isLoading && leaderRankings.length === 0) && (
+        {(!isLoading && filteredLeaderRankings.length === 0) && (
             <div className="text-center py-10 text-muted-foreground">
-                <p>Nenhum líder com equipe gerenciada encontrado para exibir no ranking.</p>
+                <p>Nenhum líder encontrado para o eixo selecionado.</p>
             </div>
         )}
       </CardContent>
     </Card>
   );
 }
+
