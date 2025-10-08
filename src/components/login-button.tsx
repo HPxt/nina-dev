@@ -42,6 +42,13 @@ export function LoginButton() {
 
       setIsVerifying(true);
 
+      // Acesso especial para o administrador
+      if (user.email === 'matheus@3ainvestimentos.com.br') {
+        router.push("/dashboard");
+        setIsVerifying(false);
+        return;
+      }
+
       const employeesRef = collection(firestore, "employees");
       const q = query(employeesRef, where("email", "==", user.email));
       
@@ -80,7 +87,7 @@ export function LoginButton() {
     <Button
       onClick={handleLogin}
       variant="outline"
-      className="w-full bg-white text-slate-800 hover:bg-white"
+      className="w-full bg-white text-slate-800 hover:bg-white/90"
       disabled={isLoading}
     >
       {isLoading ? (
