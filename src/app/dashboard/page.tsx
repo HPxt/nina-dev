@@ -2,10 +2,10 @@
 "use client";
 
 import { useState, useMemo, useEffect } from "react";
-import type { Employee, Interaction } from "@/lib/types";
+import type { Employee, Interaction, OneOnOneStatus } from "@/lib/types";
 import { useCollection, useFirestore, useMemoFirebase, useUser } from "@/firebase";
 import { collection, getDocs, query } from "firebase/firestore";
-import { parseISO, isSameMonth, getDate, getDaysInMonth, endOfMonth } from "date-fns";
+import { parseISO, isSameMonth, isSameYear, getMonth } from "date-fns";
 
 import {
   Card,
@@ -32,8 +32,6 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-
-type OneOnOneStatus = "Em dia" | "Atenção" | "Atrasado";
 
 interface TrackedEmployee extends Employee {
   lastOneOnOne?: string;
@@ -90,7 +88,10 @@ export default function LeadershipDashboard() {
     if (!employees || !currentUserEmployee) return [];
   
     const now = new Date();
-  
+    const currentDay = now.getDate();
+    const previousMonth = getMonth(now) === 0 ? 11 : getMonth(now) - 1;
+    const yearOfPreviousMonth = previousMonth === 11 ? now.getFullYear() - 1 : now.getFullYear();
+
     return employees
       .filter(e => {
          if (!e.isUnderManagement) return false;
@@ -107,25 +108,23 @@ export default function LeadershipDashboard() {
         const lastOneOnOne = oneOnOnes.length > 0 ? oneOnOnes[0] : undefined;
         
         let status: OneOnOneStatus;
+        
         const hadOneOnOneThisMonth = lastOneOnOne && isSameMonth(parseISO(lastOneOnOne.date), now);
-  
+
         if (hadOneOnOneThisMonth) {
-          status = "Em dia";
+            status = "Executada";
         } else {
-            const currentDayOfMonth = getDate(now);
-            const daysInMonth = getDaysInMonth(now);
+            const hadOneOnOneLastMonth = oneOnOnes.some(int => 
+                getMonth(parseISO(int.date)) === previousMonth && 
+                isSameYear(parseISO(int.date), yearOfPreviousMonth)
+            );
             
-            // If it's the last 5 days of the month and no 1:1, it's late.
-            if (currentDayOfMonth > daysInMonth - 5) {
+            if (!hadOneOnOneLastMonth && getMonth(now) !== 0) { // Add a check for january case
+                 status = "Pendente";
+            } else if (currentDay <= 10) {
+                status = "Em dia";
+            } else {
                 status = "Atrasado";
-            }
-            // If it's day 10 or later and no 1:1, it's a warning.
-            else if (currentDayOfMonth >= 10) {
-                 status = "Atenção";
-            }
-            // Before day 10, if no 1:1 happened, it's still considered "on time" as there's time.
-            else {
-                 status = "Em dia";
             }
         }
         
@@ -173,12 +172,14 @@ export default function LeadershipDashboard() {
 
   const getBadgeVariant = (status: OneOnOneStatus) => {
     switch (status) {
-      case "Em dia":
+      case "Executada":
         return "default";
-      case "Atenção":
+      case "Em dia":
         return "secondary";
       case "Atrasado":
         return "destructive";
+      case "Pendente":
+          return "outline";
     }
   };
 
@@ -229,9 +230,10 @@ export default function LeadershipDashboard() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Todos os Status</SelectItem>
+                <SelectItem value="Executada">Executada</SelectItem>
                 <SelectItem value="Em dia">Em dia</SelectItem>
-                <SelectItem value="Atenção">Atenção</SelectItem>
                 <SelectItem value="Atrasado">Atrasado</SelectItem>
+                <SelectItem value="Pendente">Pendente</SelectItem>
               </SelectContent>
             </Select>
             <Select onValueChange={setPeriodFilter} value={periodFilter} disabled={true}>
@@ -327,9 +329,4 @@ export default function LeadershipDashboard() {
       </Card>
     </div>
   );
-
-    
-
-
-
     

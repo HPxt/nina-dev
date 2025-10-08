@@ -1,6 +1,8 @@
 
 export type Role = "Colaborador" | "Líder" | "Diretor" | "Admin";
 
+export type OneOnOneStatus = "Executada" | "Em dia" | "Atrasado" | "Pendente";
+
 export interface User {
   id: string;
   name: string;
@@ -58,7 +60,7 @@ export interface TeamMember extends User {
   team: string;
   position: string;
   lastOneOnOne: string;
-  oneOnOneStatus: "Em dia" | "Atenção" | "Atrasado";
+  oneOnOneStatus: OneOnOneStatus;
   risk: {
     score: number;
     health: number;
