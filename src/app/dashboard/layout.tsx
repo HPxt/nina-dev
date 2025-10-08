@@ -39,11 +39,25 @@ export default function DashboardLayout({
 
   const currentUserEmployee = useMemo(() => {
     if (!user || !employees) return null;
+
+    // Special override for the admin user
+    if (user.email === 'matheus@3ainvestimentos.com.br') {
+        const employeeData = employees.find(e => e.email === user.email) || {};
+        return {
+            ...employeeData,
+            name: user.displayName || 'Admin',
+            email: user.email,
+            isAdmin: true,
+            isDirector: true,
+            role: 'Líder',
+        } as Employee;
+    }
+
     const employeeData = employees.find(e => e.email === user.email);
 
     if (!employeeData) return null;
 
-    // Enhance permissions for admins
+    // Enhance permissions for other admins
     if (employeeData.isAdmin) {
       return {
         ...employeeData,
