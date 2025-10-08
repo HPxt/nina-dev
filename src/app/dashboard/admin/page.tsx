@@ -322,6 +322,12 @@ export default function AdminPage() {
     setDocumentNonBlocking(docRef, { isUnderManagement }, { merge: true });
   }
 
+  const handlePermissionToggle = (employeeId: string, field: 'isDirector' | 'isAdmin', value: boolean) => {
+    if (!firestore) return;
+    const docRef = doc(firestore, "employees", employeeId);
+    setDocumentNonBlocking(docRef, { [field]: value }, { merge: true });
+  }
+
   const isLoading = isUserLoading || areEmployeesLoading;
 
   const FilterComponent = ({ title, filterKey, options, children }: { title: string, filterKey: keyof typeof filters, options: string[], children?: React.ReactNode }) => (
@@ -333,7 +339,7 @@ export default function AdminPage() {
             <Filter className={`h-4 w-4 ${filters[filterKey] instanceof Set && (filters[filterKey] as Set<string>).size > 0 ? 'text-primary' : ''}`} />
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="start">
+        <DropdownMenuContent align="start" className="max-h-96 overflow-y-auto">
           {children ? children :
             <>
               {options.map((option, index) => (
@@ -444,6 +450,8 @@ export default function AdminPage() {
                     <FilterComponent title="Função" filterKey="role" options={uniqueValues.roles} />
                   </TableHead>
                   <TableHead>Gerenciamento</TableHead>
+                  <TableHead>Diretor</TableHead>
+                  <TableHead>Admin</TableHead>
                   <TableHead className="text-right">Ações</TableHead>
                 </TableRow>
               </TableHeader>
@@ -455,6 +463,8 @@ export default function AdminPage() {
                         <TableCell><Skeleton className="h-5 w-20" /></TableCell>
                         <TableCell><Skeleton className="h-9 w-[180px]" /></TableCell>
                         <TableCell><Skeleton className="h-9 w-[180px]" /></TableCell>
+                        <TableCell><Skeleton className="h-6 w-12" /></TableCell>
+                        <TableCell><Skeleton className="h-6 w-12" /></TableCell>
                         <TableCell><Skeleton className="h-6 w-12" /></TableCell>
                         <TableCell className="text-right"><Skeleton className="h-8 w-8 rounded-full" /></TableCell>
                     </TableRow>
@@ -473,7 +483,7 @@ export default function AdminPage() {
                         <SelectTrigger className="w-[180px]">
                           <SelectValue placeholder="Sem Líder" />
                         </SelectTrigger>
-                        <SelectContent>
+                        <SelectContent className="max-h-96 overflow-y-auto">
                           <SelectItem value="no-leader">Sem Líder</SelectItem>
                           {leaders
                             .filter(leader => leader.id !== employee.id) // Cannot be their own leader
@@ -509,7 +519,24 @@ export default function AdminPage() {
                                 checked={!!employee.isUnderManagement}
                                 onCheckedChange={(checked) => handleManagementToggle(employee.id, checked)}
                             />
-                            <Label htmlFor={`management-${employee.id}`}>{employee.isUnderManagement ? 'Sim' : 'Não'}</Label>
+                        </div>
+                    </TableCell>
+                    <TableCell>
+                        <div className="flex items-center space-x-2">
+                            <Switch 
+                                id={`director-${employee.id}`}
+                                checked={!!employee.isDirector}
+                                onCheckedChange={(checked) => handlePermissionToggle(employee.id, 'isDirector', checked)}
+                            />
+                        </div>
+                    </TableCell>
+                    <TableCell>
+                        <div className="flex items-center space-x-2">
+                            <Switch 
+                                id={`admin-${employee.id}`}
+                                checked={!!employee.isAdmin}
+                                onCheckedChange={(checked) => handlePermissionToggle(employee.id, 'isAdmin', checked)}
+                            />
                         </div>
                     </TableCell>
                     <TableCell className="text-right">
