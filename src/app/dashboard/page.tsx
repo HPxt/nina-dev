@@ -214,7 +214,7 @@ export default function LeadershipDashboard() {
                 {leadersWithTeams.map((leader) => (
                   leader &&
                   <SelectItem key={leader.id} value={leader.id}>
-                    Equipe de {leader.name}
+                    {leader.name}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -325,3 +325,4 @@ export default function LeadershipDashboard() {
   );
 
     
+
