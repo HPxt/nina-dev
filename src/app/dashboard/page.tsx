@@ -46,6 +46,7 @@ const interactionTypes: { value: InteractionType, label: string }[] = [
     { value: "Feedback", label: "Feedback" },
     { value: "N3 Individual", label: "N3 Individual" },
     { value: "Índice de Risco", label: "Índice de Risco" },
+    { value: "Diagnóstico PDI", label: "Diagnóstico PDI" },
 ];
 
 
@@ -134,7 +135,7 @@ export default function LeadershipDashboard() {
   
   const trackedEmployees = useMemo((): TrackedEmployee[] => {
     if (!employees || !currentUserEmployee) return [];
-
+  
     return employees
       .filter(e => {
          if (!e.isUnderManagement) return false;
@@ -143,40 +144,56 @@ export default function LeadershipDashboard() {
          return false;
       })
       .map(employee => {
-        const employeeInteractions = interactions.get(employee.id) || [];
-        
-        const interactionsInPeriod = employeeInteractions
-          .filter(int => {
-              const interactionDate = new Date(int.date);
-              const isInRange = dateRange?.from && dateRange?.to && isWithinInterval(interactionDate, { start: dateRange.from, end: dateRange.to });
-              return int.type === interactionTypeFilter && isInRange;
-          })
-          .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-        
-        const lastInteractionInPeriod = interactionsInPeriod.length > 0 ? interactionsInPeriod[0] : undefined;
-        
         let status: InteractionStatus;
-        if (lastInteractionInPeriod) {
-            status = "Executada";
-        } else {
-            // Se não houve interação no período, verificamos se o período já passou
-            if (dateRange?.to && new Date() > dateRange.to) {
-                status = "Atrasado";
-            } else {
-                status = "Pendente";
-            }
-        }
-        
-        // Pega a última interação geral para exibir a data, independente do período
-        const allTypedInteractions = employeeInteractions
-            .filter(int => int.type === interactionTypeFilter)
-            .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+        let lastInteractionDate: string | undefined;
+  
+        if (interactionTypeFilter === 'Diagnóstico PDI') {
+            const diagnosis = employee.diagnosis;
+            const diagnosisInPeriod = diagnosis && dateRange?.from && dateRange?.to &&
+                isWithinInterval(new Date(diagnosis.date), { start: dateRange.from, end: dateRange.to });
 
-        const lastOverallInteraction = allTypedInteractions.length > 0 ? allTypedInteractions[0] : undefined;
+            if (diagnosisInPeriod) {
+                status = "Executada";
+            } else {
+                if (dateRange?.to && new Date() > dateRange.to) {
+                    status = "Atrasado";
+                } else {
+                    status = "Pendente";
+                }
+            }
+            lastInteractionDate = diagnosis?.date;
+
+        } else {
+            const employeeInteractions = interactions.get(employee.id) || [];
+            
+            const interactionsInPeriod = employeeInteractions
+              .filter(int => {
+                  const interactionDate = new Date(int.date);
+                  const isInRange = dateRange?.from && dateRange?.to && isWithinInterval(interactionDate, { start: dateRange.from, end: dateRange.to });
+                  return int.type === interactionTypeFilter && isInRange;
+              })
+              .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+            
+            if (interactionsInPeriod.length > 0) {
+                status = "Executada";
+            } else {
+                if (dateRange?.to && new Date() > dateRange.to) {
+                    status = "Atrasado";
+                } else {
+                    status = "Pendente";
+                }
+            }
+            
+            const allTypedInteractions = employeeInteractions
+                .filter(int => int.type === interactionTypeFilter)
+                .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    
+            lastInteractionDate = allTypedInteractions.length > 0 ? allTypedInteractions[0].date : undefined;
+        }
         
         return {
           ...employee,
-          lastInteraction: lastOverallInteraction?.date,
+          lastInteraction: lastInteractionDate,
           interactionStatus: status,
         };
       });
