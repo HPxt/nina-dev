@@ -2,7 +2,7 @@
 
 export type Role = "Colaborador" | "Líder";
 
-export type InteractionStatus = "Executada" | "Atrasado" | "Pendente";
+export type InteractionStatus = "Executada" | "Pendente";
 export type InteractionType = "1:1" | "Feedback" | "N3 Individual" | "Índice de Risco" | "PDI";
 
 export interface User {
@@ -92,8 +92,3 @@ export interface TeamMember extends User {
   pdi: PDIAction[];
   diagnosis: Diagnosis;
 }
-
-
-
-
-

@@ -169,15 +169,7 @@ export default function LeadershipDashboard() {
                 return isInRange;
             });
 
-            if (actionsInPeriod.length > 0) {
-                status = "Executada";
-            } else {
-                if (dateRange?.to && new Date() > dateRange.to) {
-                    status = "Atrasado";
-                } else {
-                    status = "Pendente";
-                }
-            }
+            status = actionsInPeriod.length > 0 ? "Executada" : "Pendente";
             
             const allActions = employeePdiActions
               .sort((a, b) => new Date(b.startDate).getTime() - new Date(a.startDate).getTime());
@@ -195,15 +187,7 @@ export default function LeadershipDashboard() {
               })
               .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
             
-            if (interactionsInPeriod.length > 0) {
-                status = "Executada";
-            } else {
-                if (dateRange?.to && new Date() > dateRange.to) {
-                    status = "Atrasado";
-                } else {
-                    status = "Pendente";
-                }
-            }
+            status = interactionsInPeriod.length > 0 ? "Executada" : "Pendente";
             
             const allTypedInteractions = employeeInteractions
                 .filter(int => int.type === interactionTypeFilter)
@@ -243,10 +227,8 @@ export default function LeadershipDashboard() {
     switch (status) {
       case "Executada":
         return "default";
-      case "Atrasado":
-        return "destructive";
       case "Pendente":
-        return "secondary";
+        return "destructive";
       default:
         return "outline";
     }
@@ -310,7 +292,6 @@ export default function LeadershipDashboard() {
               <SelectContent>
                 <SelectItem value="all">Todos os Status</SelectItem>
                 <SelectItem value="Executada">Executada</SelectItem>
-                <SelectItem value="Atrasado">Atrasado</SelectItem>
                 <SelectItem value="Pendente">Pendente</SelectItem>
               </SelectContent>
             </Select>
@@ -396,5 +377,3 @@ export default function LeadershipDashboard() {
     </div>
   );
 }
-
-    
