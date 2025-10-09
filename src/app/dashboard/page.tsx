@@ -190,7 +190,13 @@ export default function LeadershipDashboard() {
                 int.type === 'N3 Individual' && isWithinInterval(parseISO(int.date), range)
             ).length;
 
-            status = executedCount >= totalRequired ? "Executada" : "Pendente";
+            if (executedCount >= totalRequired) {
+                status = "Executada";
+            } else if (executedCount > 0) {
+                status = `Realizado ${executedCount}/${totalRequired}`;
+            } else {
+                status = "Pendente";
+            }
 
         } else if (schedule) {
             const requiredMonthsInPeriod = schedule.filter(month => {
@@ -298,14 +304,10 @@ export default function LeadershipDashboard() {
 
 
   const getBadgeVariant = (status: InteractionStatus) => {
-    switch (status) {
-      case "Executada":
-        return "default";
-      case "Pendente":
-        return "destructive";
-      default:
-        return "outline";
-    }
+    if (status === "Executada") return "default";
+    if (status === "Pendente") return "destructive";
+    if (status.startsWith("Realizado")) return "secondary";
+    return "outline";
   };
 
   const getInitials = (name: string) => {
