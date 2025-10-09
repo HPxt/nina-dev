@@ -47,8 +47,7 @@ import {
 import { CsvUploadDialog } from "@/components/csv-upload-dialog";
 import { useState, useMemo } from "react";
 import { useCollection, useFirestore, useMemoFirebase, useUser } from "@/firebase";
-import { collection, doc, deleteDoc } from "firebase/firestore";
-import { setDocumentNonBlocking } from "@/firebase/non-blocking-updates";
+import { collection, doc, deleteDoc, updateDoc } from "firebase/firestore";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -105,10 +104,14 @@ export default function AdminPage() {
   
   const { data: employees, isLoading: areEmployeesLoading } = useCollection<Employee>(employeesCollection);
 
-  const handleRoleChange = (employeeId: string, newRole: Role) => {
+  const handleRoleChange = async (employeeId: string, newRole: Role) => {
     if (!firestore) return;
     const docRef = doc(firestore, "employees", employeeId);
-    setDocumentNonBlocking(docRef, { role: newRole }, { merge: true });
+    try {
+      await updateDoc(docRef, { role: newRole });
+    } catch (error) {
+       console.error("Error updating role:", error);
+    }
   };
   
     const { leaders, directors, admins, uniqueValues } = useMemo(() => {
@@ -132,6 +135,30 @@ export default function AdminPage() {
           uniqueValues: { positions, axes, areas, segments, leaders: leaderNames, cities, roles: roleValues }
         };
     }, [employees]);
+
+
+    const calculateAnnualInteractions = (employee: Employee) => {
+      let total = 0;
+      // PDI: semestral = 2/ano
+      total += 2;
+      // 1:1: trimestral = 4/ano
+      total += 4;
+      // Índice de Risco: mensal = 12/ano
+      total += 12;
+      // N3 Individual: varia com segmento
+      switch (employee.segment) {
+        case 'Private':
+          total += 12; // mensal
+          break;
+        case 'Exclusive':
+          total += 4; // trimestral
+          break;
+        default:
+          total += 2; // semestral
+          break;
+      }
+      return total;
+    };
 
 
   const filteredAndSortedEmployees = useMemo(() => {
@@ -294,7 +321,7 @@ export default function AdminPage() {
   };
 
 
-  const handleLeaderChange = (employeeId: string, newLeaderId: string) => {
+  const handleLeaderChange = async (employeeId: string, newLeaderId: string) => {
     if (!firestore || !employees) return;
     
     const employeeDocRef = doc(firestore, "employees", employeeId);
@@ -306,7 +333,11 @@ export default function AdminPage() {
             leader: "",
             leaderEmail: ""
         };
-        setDocumentNonBlocking(employeeDocRef, dataToSave, { merge: true });
+        try {
+            await updateDoc(employeeDocRef, dataToSave);
+        } catch(e) {
+            console.error(e)
+        }
         return;
     }
 
@@ -318,19 +349,31 @@ export default function AdminPage() {
         leaderEmail: newLeader?.email || ""
     };
     
-    setDocumentNonBlocking(employeeDocRef, dataToSave, { merge: true });
+    try {
+        await updateDoc(employeeDocRef, dataToSave);
+    } catch (error) {
+        console.error(error);
+    }
   };
   
-  const handleManagementToggle = (employeeId: string, isUnderManagement: boolean) => {
+  const handleManagementToggle = async (employeeId: string, isUnderManagement: boolean) => {
     if (!firestore) return;
     const docRef = doc(firestore, "employees", employeeId);
-    setDocumentNonBlocking(docRef, { isUnderManagement }, { merge: true });
+    try {
+        await updateDoc(docRef, { isUnderManagement });
+    } catch (error) {
+        console.error(error)
+    }
   }
 
-  const handlePermissionToggle = (employeeId: string, field: 'isDirector' | 'isAdmin', value: boolean) => {
+  const handlePermissionToggle = async (employeeId: string, field: 'isDirector' | 'isAdmin', value: boolean) => {
     if (!firestore) return;
     const docRef = doc(firestore, "employees", employeeId);
-    setDocumentNonBlocking(docRef, { [field]: value }, { merge: true });
+    try {
+        await updateDoc(docRef, { [field]: value });
+    } catch (error) {
+        console.error(error);
+    }
   }
 
   const handleSelectForBackup = (employeeId: string) => {
@@ -504,9 +547,8 @@ export default function AdminPage() {
                   <TableHead>
                     <FilterComponent title="Líder" filterKey="leader" options={uniqueValues.leaders} />
                   </TableHead>
-                  <TableHead>
-                    <FilterComponent title="Função" filterKey="role" options={uniqueValues.roles} />
-                  </TableHead>
+                  <TableHead>Interações / Ano</TableHead>
+                  <TableHead>Função</TableHead>
                   <TableHead>Gerenciamento</TableHead>
                   <TableHead>Diretor</TableHead>
                   <TableHead>Admin</TableHead>
@@ -519,7 +561,8 @@ export default function AdminPage() {
                         <TableCell><Skeleton className="h-5 w-24" /></TableCell>
                         <TableCell><Skeleton className="h-5 w-32" /></TableCell>
                         <TableCell><Skeleton className="h-5 w-20" /></TableCell>
-                        <TableCell><Skeleton className="h-9 w-[180px]" /></TableCell>
+                        <TableCell><Skeleton className="h-5 w-20" /></TableCell>
+                        <TableCell><Skeleton className="h-5 w-20" /></TableCell>
                         <TableCell><Skeleton className="h-9 w-[180px]" /></TableCell>
                         <TableCell><Skeleton className="h-6 w-12" /></TableCell>
                         <TableCell><Skeleton className="h-6 w-12" /></TableCell>
@@ -552,6 +595,9 @@ export default function AdminPage() {
                           ))}
                         </SelectContent>
                       </Select>
+                    </TableCell>
+                    <TableCell className="text-center font-medium">
+                      {calculateAnnualInteractions(employee)}
                     </TableCell>
                     <TableCell>
                       <Select 
@@ -860,3 +906,6 @@ export default function AdminPage() {
     </>
   );
 }
+
+
+    
