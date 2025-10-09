@@ -209,12 +209,34 @@ export default function LeadershipDashboard() {
   }, [employees, interactions, pdiActionsMap, currentUserEmployee, interactionTypeFilter, dateRange]);
 
 
-  const filteredEmployees = useMemo(() => {
-    return trackedEmployees.filter(member => {
+  const groupedAndFilteredEmployees = useMemo(() => {
+    const filtered = trackedEmployees.filter(member => {
         const leaderMatch = leaderFilter === 'all' || member.leaderId === leaderFilter;
         const statusMatch = statusFilter === 'all' || member.interactionStatus === statusFilter;
         return leaderMatch && statusMatch;
-    }).sort((a, b) => a.name.localeCompare(b.name));
+    });
+
+    const grouped = filtered.reduce((acc, employee) => {
+        const area = employee.area || "Sem Área";
+        if (!acc[area]) {
+            acc[area] = [];
+        }
+        acc[area].push(employee);
+        return acc;
+    }, {} as { [key: string]: TrackedEmployee[] });
+
+    // Sort employees within each group by name
+    for (const area in grouped) {
+        grouped[area].sort((a, b) => a.name.localeCompare(b.name));
+    }
+    
+    // Sort the groups (areas) alphabetically, keeping "Sem Área" last
+    return Object.entries(grouped).sort(([areaA], [areaB]) => {
+        if (areaA === "Sem Área") return 1;
+        if (areaB === "Sem Área") return -1;
+        return areaA.localeCompare(areaB);
+    });
+
   }, [trackedEmployees, leaderFilter, statusFilter]);
 
   const leadersWithTeams = useMemo(() => {
@@ -317,7 +339,6 @@ export default function LeadershipDashboard() {
               <TableRow>
                 <TableHead>Membro</TableHead>
                 <TableHead className="hidden md:table-cell">Líder</TableHead>
-                <TableHead className="hidden lg:table-cell">Área</TableHead>
                 <TableHead className="hidden sm:table-cell">Última Interação</TableHead>
                 <TableHead className="hidden sm:table-cell">Próxima Interação</TableHead>
                 <TableHead>Status</TableHead>
@@ -337,43 +358,50 @@ export default function LeadershipDashboard() {
                             </div>
                         </TableCell>
                         <TableCell className="hidden md:table-cell"><Skeleton className="h-5 w-20" /></TableCell>
-                        <TableCell className="hidden lg:table-cell"><Skeleton className="h-5 w-16" /></TableCell>
                         <TableCell className="hidden sm:table-cell"><Skeleton className="h-5 w-24" /></TableCell>
                         <TableCell className="hidden sm:table-cell"><Skeleton className="h-5 w-24" /></TableCell>
                         <TableCell><Skeleton className="h-6 w-20 rounded-full" /></TableCell>
                     </TableRow>
                 ))
-              ) : filteredEmployees.length > 0 ? (
-                filteredEmployees.map((member) => (
-                  <TableRow key={member.id}>
-                    <TableCell>
-                      <div className="flex items-center gap-3">
-                        <Avatar className="h-9 w-9">
-                          <AvatarImage src={member.photoURL} alt={member.name} />
-                          <AvatarFallback>{getInitials(member.name)}</AvatarFallback>
-                        </Avatar>
-                        <div className="grid gap-0.5">
-                          <span className="font-medium">{member.name}</span>
-                          <span className="text-xs text-muted-foreground hidden lg:inline">
-                            {member.position}
-                          </span>
-                        </div>
-                      </div>
-                    </TableCell>
-                    <TableCell className="hidden md:table-cell">{member.leader}</TableCell>
-                    <TableCell className="hidden lg:table-cell">{member.area}</TableCell>
-                    <TableCell className="hidden sm:table-cell">
-                      {formatDate(member.lastInteraction)}
-                    </TableCell>
-                    <TableCell className="hidden sm:table-cell">
-                        {formatDate(member.nextInteraction)}
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant={getBadgeVariant(member.interactionStatus)}>
-                        {member.interactionStatus}
-                      </Badge>
-                    </TableCell>
-                  </TableRow>
+              ) : groupedAndFilteredEmployees.length > 0 ? (
+                groupedAndFilteredEmployees.map(([area, members]) => (
+                  <React.Fragment key={area}>
+                    <TableRow className="bg-muted/50 hover:bg-muted/50">
+                      <TableCell colSpan={5} className="font-bold text-foreground">
+                        {area}
+                      </TableCell>
+                    </TableRow>
+                    {members.map((member) => (
+                        <TableRow key={member.id}>
+                            <TableCell>
+                            <div className="flex items-center gap-3">
+                                <Avatar className="h-9 w-9">
+                                <AvatarImage src={member.photoURL} alt={member.name} />
+                                <AvatarFallback>{getInitials(member.name)}</AvatarFallback>
+                                </Avatar>
+                                <div className="grid gap-0.5">
+                                <span className="font-medium">{member.name}</span>
+                                <span className="text-xs text-muted-foreground hidden lg:inline">
+                                    {member.position}
+                                </span>
+                                </div>
+                            </div>
+                            </TableCell>
+                            <TableCell className="hidden md:table-cell">{member.leader}</TableCell>
+                            <TableCell className="hidden sm:table-cell">
+                            {formatDate(member.lastInteraction)}
+                            </TableCell>
+                            <TableCell className="hidden sm:table-cell">
+                                {formatDate(member.nextInteraction)}
+                            </TableCell>
+                            <TableCell>
+                            <Badge variant={getBadgeVariant(member.interactionStatus)}>
+                                {member.interactionStatus}
+                            </Badge>
+                            </TableCell>
+                        </TableRow>
+                    ))}
+                  </React.Fragment>
                 ))
               ) : (
                 <TableRow>
@@ -389,3 +417,4 @@ export default function LeadershipDashboard() {
     </div>
   );
 }
+
