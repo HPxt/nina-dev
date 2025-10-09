@@ -15,7 +15,7 @@ import {
   ChartTooltip,
   ChartTooltipContent,
 } from "@/components/ui/chart";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, LineChart, Line, ReferenceLine, Legend } from "recharts";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, LineChart, Line, ReferenceLine, Legend, ReferenceArea } from "recharts";
 import { useCollection, useFirestore, useMemoFirebase, useUser } from "@/firebase";
 import { collection } from "firebase/firestore";
 import { Button } from "@/components/ui/button";
@@ -122,19 +122,19 @@ export default function RiskAnalysisPage() {
     return selectedEmployees.map(emp => {
       const risk = emp.riskScore ?? 0;
       let fillColor;
-      if (risk >= 5) {
+      if (risk > 0) {
         fillColor = "hsl(var(--destructive))";
-      } else if (risk > 2) {
-        fillColor = "hsl(var(--muted-foreground))";
-      } else {
+      } else if (risk < 0) {
         fillColor = "hsl(var(--chart-1))";
+      } else {
+        fillColor = "hsl(var(--muted-foreground))";
       }
       return {
         name: emp.name.split(' ')[0],
         risk: risk,
         fill: fillColor,
       }
-    });
+    }).sort((a,b) => b.risk - a.risk);
   }, [selectedEmployees]);
 
   const barChartConfig = {
@@ -214,20 +214,29 @@ export default function RiskAnalysisPage() {
             <CardContent className="flex-1 pb-0">
               {isLoading ? ( <Skeleton className="h-full w-full" /> ) : selectedEmployees.length > 0 ? (
                   <ChartContainer config={barChartConfig} className="w-full h-full min-h-[250px]">
-                    <BarChart accessibilityLayer data={barChartData}>
-                      <CartesianGrid vertical={false} />
-                      <XAxis
-                          dataKey="name"
-                          tickLine={false}
-                          tickMargin={10}
-                          axisLine={false}
+                    <BarChart
+                        accessibilityLayer
+                        data={barChartData}
+                        layout="vertical"
+                        margin={{ left: 10, right: 10 }}
+                    >
+                      <CartesianGrid horizontal={false} />
+                      <YAxis
+                        dataKey="name"
+                        type="category"
+                        tickLine={false}
+                        tickMargin={10}
+                        axisLine={false}
+                        tick={{ fill: "hsl(var(--foreground))" }}
                       />
-                      <YAxis />
+                       <XAxis dataKey="risk" type="number" />
                       <ChartTooltip
                         cursor={false}
                         content={<ChartTooltipContent />}
                       />
-                      <ReferenceLine y={5} stroke="gray" strokeDasharray="3 3" />
+                      <ReferenceArea x1={0} x2={Math.max(...barChartData.map(d => d.risk), 5)} y1={undefined} y2={undefined} fill="hsl(var(--destructive) / 0.1)" stroke="hsl(var(--destructive))" strokeDasharray="3 3" ifOverflow="visible">
+                         <Legend content={() => <div className="text-xs text-destructive text-center pt-1">Risco Potencial</div>} />
+                      </ReferenceArea>
                       <Bar dataKey="risk" name="Índice de Risco" radius={4} />
                     </BarChart>
                   </ChartContainer>
