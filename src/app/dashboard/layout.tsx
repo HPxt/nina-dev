@@ -12,7 +12,6 @@ import {
   SidebarMenu,
   SidebarMenuItem,
   SidebarMenuButton,
-  SidebarTrigger,
 } from "@/components/ui/sidebar";
 import { PageHeaderController } from "@/components/page-header-controller";
 import { Settings } from "lucide-react";
@@ -71,28 +70,22 @@ export default function DashboardLayout({
 
   return (
     <SidebarProvider>
-      <Sidebar collapsible="icon">
+      <Sidebar collapsible="none">
         <SidebarHeader>
-          {/* O trigger foi movido para o SidebarContent */}
         </SidebarHeader>
         <SidebarContent>
-          <SidebarMenu>
-            <SidebarMenuItem>
-              <SidebarTrigger className="hidden md:flex" />
-            </SidebarMenuItem>
-          </SidebarMenu>
           {currentUserEmployee && <MainNav user={currentUserEmployee} />}
         </SidebarContent>
         <SidebarFooter>
             <SidebarMenu>
                 {currentUserEmployee?.isAdmin && (
                   <SidebarMenuItem>
-                      <SidebarMenuButton asChild tooltip="Configurações">
-                          <Link href="/dashboard/admin">
-                              <Settings />
-                              <span>Configurações</span>
-                          </Link>
-                      </SidebarMenuButton>
+                      <Link href="/dashboard/admin" className="w-full">
+                        <SidebarMenuButton tooltip="Configurações">
+                            <Settings />
+                            <span>Configurações</span>
+                        </SidebarMenuButton>
+                      </Link>
                   </SidebarMenuItem>
                 )}
                 <SidebarMenuItem>

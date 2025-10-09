@@ -1,3 +1,4 @@
+
 "use client"
 
 import * as React from "react"
@@ -177,21 +178,6 @@ const Sidebar = React.forwardRef<
   ) => {
     const { isMobile, state, openMobile, setOpenMobile } = useSidebar()
 
-    if (collapsible === "none") {
-      return (
-        <div
-          className={cn(
-            "flex h-full w-[--sidebar-width] flex-col bg-sidebar text-sidebar-foreground",
-            className
-          )}
-          ref={ref}
-          {...props}
-        >
-          {children}
-        </div>
-      )
-    }
-
     if (isMobile) {
       return (
         <Sheet open={openMobile} onOpenChange={setOpenMobile} {...props}>
@@ -209,6 +195,24 @@ const Sidebar = React.forwardRef<
             <div className="flex h-full w-full flex-col">{children}</div>
           </SheetContent>
         </Sheet>
+      )
+    }
+    
+    if (collapsible === "none") {
+      return (
+        <>
+          <div className="w-[--sidebar-width] hidden md:block" />
+          <div
+            className={cn(
+              "fixed inset-y-0 z-10 hidden h-svh w-[--sidebar-width] flex-col border-r bg-sidebar text-sidebar-foreground md:flex",
+              className
+            )}
+            ref={ref}
+            {...props}
+          >
+            {children}
+          </div>
+        </>
       )
     }
 
@@ -492,7 +496,7 @@ const SidebarMenu = React.forwardRef<
   <ul
     ref={ref}
     data-sidebar="menu"
-    className={cn("flex w-full min-w-0 flex-col gap-1", className)}
+    className={cn("flex w-full min-w-0 flex-col gap-1 p-2", className)}
     {...props}
   />
 ))
