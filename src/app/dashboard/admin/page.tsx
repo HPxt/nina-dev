@@ -84,7 +84,6 @@ export default function AdminPage() {
   const { toast } = useToast();
 
   const initialFilters = {
-    email: "",
     name: "",
     position: new Set<string>(),
     axis: new Set<string>(),
@@ -187,7 +186,6 @@ export default function AdminPage() {
     
     let filtered = employees.filter(employee => {
         return (
-            (!filters.email || employee.email?.toLowerCase().includes(filters.email.toLowerCase())) &&
             (!filters.name || employee.name?.toLowerCase().includes(filters.name.toLowerCase())) &&
             (filters.position.size === 0 || (employee.position && filters.position.has(employee.position))) &&
             (filters.axis.size === 0 || (employee.axis && filters.axis.has(employee.axis))) &&
@@ -290,7 +288,7 @@ export default function AdminPage() {
     });
   };
 
-  const handleTextFilterChange = (filterName: 'email' | 'name', value: string) => {
+  const handleTextFilterChange = (filterName: 'name', value: string) => {
     setFilters(prev => ({ ...prev, [filterName]: value }));
   };
 
@@ -543,24 +541,8 @@ export default function AdminPage() {
                       </Popover>
                     </div>
                   </TableHead>
-                   <TableHead>
-                     <div className="flex items-center gap-1">
-                        <span>Email</span>
-                        <Popover>
-                          <PopoverTrigger asChild>
-                             <Button variant="ghost" size="icon" className="h-6 w-6">
-                                <Filter className={`h-4 w-4 ${filters.email ? 'text-primary' : ''}`} />
-                              </Button>
-                          </PopoverTrigger>
-                          <PopoverContent className="p-2">
-                              <Input
-                                  placeholder="Filtrar por email..."
-                                  value={filters.email}
-                                  onChange={(e) => handleTextFilterChange('email', e.target.value)}
-                              />
-                          </PopoverContent>
-                        </Popover>
-                      </div>
+                  <TableHead>
+                    <FilterComponent title="Segmento" filterKey="segment" options={uniqueValues.segments} />
                   </TableHead>
                   <TableHead>
                     <FilterComponent title="Cargo" filterKey="position" options={uniqueValues.positions} />
@@ -580,7 +562,7 @@ export default function AdminPage() {
                 {isLoading && Array.from({ length: 5 }).map((_, i) => (
                     <TableRow key={i}>
                         <TableCell><Skeleton className="h-5 w-24" /></TableCell>
-                        <TableCell><Skeleton className="h-5 w-32" /></TableCell>
+                        <TableCell><Skeleton className="h-5 w-20" /></TableCell>
                         <TableCell><Skeleton className="h-5 w-20" /></TableCell>
                         <TableCell><Skeleton className="h-5 w-20" /></TableCell>
                         <TableCell><Skeleton className="h-5 w-20" /></TableCell>
@@ -594,7 +576,7 @@ export default function AdminPage() {
                 {!isLoading && filteredAndSortedEmployees.map((employee) => (
                   <TableRow key={employee.id}>
                     <TableCell className="font-medium">{employee.name}</TableCell>
-                    <TableCell>{employee.email}</TableCell>
+                    <TableCell>{employee.segment}</TableCell>
                     <TableCell>{employee.position}</TableCell>
                     <TableCell>
                        <Select 
@@ -941,7 +923,3 @@ export default function AdminPage() {
 }
 
     
-
-    
-
-  
