@@ -14,6 +14,7 @@ import {
   ChartContainer,
   ChartTooltip,
   ChartTooltipContent,
+  type ChartConfig
 } from "@/components/ui/chart";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, LineChart, Line, ReferenceLine, Legend, ResponsiveContainer } from "recharts";
 import { useCollection, useFirestore, useMemoFirebase, useUser } from "@/firebase";
@@ -150,6 +151,12 @@ export default function RiskAnalysisPage() {
     });
   }, [selectedEmployees]);
 
+  const barChartConfig = {
+    risk: {
+      label: "Índice de Risco",
+    },
+  } satisfies ChartConfig
+
 
   const lineChartData = useMemo(() => {
     const dateMap = new Map<string, any>();
@@ -268,21 +275,21 @@ export default function RiskAnalysisPage() {
             </CardHeader>
             <CardContent className="h-[calc(100%-4rem)]">
               {isLoading ? ( <Skeleton className="h-full w-full" /> ) : selectedEmployees.length > 0 ? (
-                  <ResponsiveContainer width="100%" height="100%">
-                      <BarChart accessibilityLayer data={barChartData}>
-                        <CartesianGrid vertical={false} />
-                        <XAxis
-                            dataKey="name"
-                            tickLine={false}
-                            tickMargin={10}
-                            axisLine={false}
-                        />
-                        <YAxis />
-                        <Tooltip cursor={false} content={<ChartTooltipContent />} />
-                        <ReferenceLine y={5} stroke="gray" strokeDasharray="3 3" />
-                        <Bar dataKey="risk" name="Índice de Risco" radius={4} />
-                      </BarChart>
-                  </ResponsiveContainer>
+                  <ChartContainer config={barChartConfig}>
+                    <BarChart accessibilityLayer data={barChartData}>
+                      <CartesianGrid vertical={false} />
+                      <XAxis
+                          dataKey="name"
+                          tickLine={false}
+                          tickMargin={10}
+                          axisLine={false}
+                      />
+                      <YAxis />
+                      <ChartTooltip cursor={false} content={<ChartTooltipContent />} />
+                      <ReferenceLine y={5} stroke="gray" strokeDasharray="3 3" />
+                      <Bar dataKey="risk" name="Índice de Risco" radius={4} />
+                    </BarChart>
+                  </ChartContainer>
               ) : (
                   <div className="flex items-center justify-center h-full text-muted-foreground text-sm">
                       Selecione um colaborador.
@@ -299,12 +306,12 @@ export default function RiskAnalysisPage() {
             </CardHeader>
             <CardContent className="h-[calc(100%-4rem)]">
               {isLoading ? ( <Skeleton className="h-full w-full" /> ) : selectedEmployees.length > 0 ? (
-                  <ResponsiveContainer width="100%" height="100%">
+                  <ChartContainer config={lineChartConfig}>
                     <LineChart data={lineChartData} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
                         <CartesianGrid strokeDasharray="3 3" vertical={false} />
                         <XAxis dataKey="date" tickMargin={10} />
                         <YAxis />
-                        <Tooltip content={<ChartTooltipContent />} />
+                        <ChartTooltip content={<ChartTooltipContent />} />
                         <Legend />
                         {selectedEmployeeIds.map((id, index) => (
                             <Line 
@@ -318,7 +325,7 @@ export default function RiskAnalysisPage() {
                             />
                         ))}
                     </LineChart>
-                  </ResponsiveContainer>
+                  </ChartContainer>
               ) : (
                   <div className="flex items-center justify-center h-full text-muted-foreground text-sm">
                       Selecione um colaborador para ver o histórico.
