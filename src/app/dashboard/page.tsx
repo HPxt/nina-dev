@@ -105,7 +105,7 @@ export default function LeadershipDashboard() {
   }, [user, employees]);
 
   useEffect(() => {
-    if (currentUserEmployee?.role === 'Líder' && !currentUserEmployee.isDirector) {
+    if (currentUserEmployee?.role === 'Líder' && !currentUserEmployee.isDirector && !currentUserEmployee.isAdmin) {
       setLeaderFilter(currentUserEmployee.id);
     }
   }, [currentUserEmployee]);
