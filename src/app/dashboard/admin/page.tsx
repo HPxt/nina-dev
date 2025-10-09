@@ -148,13 +148,13 @@ export default function AdminPage() {
       // N3 Individual: varia com segmento
       switch (employee.segment) {
         case 'Alfa':
-          total += 52; // semanal
+          total += 48; // 4/mês * 12
           break;
         case 'Beta':
-          total += 26; // quinzenal
+          total += 24; // 2/mês * 12
           break;
         case 'Senior':
-            total += 12; // mensal
+            total += 12; // 1/mês * 12
             break;
       }
       return total;
@@ -168,10 +168,10 @@ export default function AdminPage() {
         ];
         switch (employee.segment) {
             case 'Alfa':
-                breakdown.push("N3 Individual: 52");
+                breakdown.push("N3 Individual: 48");
                 break;
             case 'Beta':
-                breakdown.push("N3 Individual: 26");
+                breakdown.push("N3 Individual: 24");
                 break;
             case 'Senior':
                 breakdown.push("N3 Individual: 12");
@@ -922,4 +922,5 @@ export default function AdminPage() {
   );
 }
 
+    
     
