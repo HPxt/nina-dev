@@ -156,9 +156,6 @@ export default function AdminPage() {
         case 'Senior':
             total += 12; // mensal
             break;
-        default:
-          total += 2; // semestral
-          break;
       }
       return total;
     };
@@ -909,5 +906,7 @@ export default function AdminPage() {
     </>
   );
 }
+
+    
 
     
