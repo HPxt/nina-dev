@@ -5,7 +5,8 @@ import { useState, useMemo, useEffect } from "react";
 import type { Employee, Interaction } from "@/lib/types";
 import { useCollection, useFirestore, useMemoFirebase } from "@/firebase";
 import { collection, getDocs, query } from "firebase/firestore";
-import { isSameYear } from "date-fns";
+import { isSameYear, differenceInMonths, startOfMonth, endOfMonth, isWithinInterval } from "date-fns";
+import { DateRange } from "react-day-picker";
 
 import {
   Card,
@@ -25,6 +26,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { DateRangePicker } from "@/components/ui/date-range-picker";
+
 
 interface LeaderRanking extends Employee {
   adherenceScore: number;
@@ -59,6 +62,11 @@ const calculateAnnualInteractions = (employee: Employee): number => {
 export default function RankingPage() {
   const firestore = useFirestore();
   const [axisFilter, setAxisFilter] = useState("all");
+  const [dateRange, setDateRange] = useState<DateRange | undefined>({
+    from: startOfMonth(new Date()),
+    to: endOfMonth(new Date()),
+  });
+
 
   const employeesCollection = useMemoFirebase(
     () => (firestore ? collection(firestore, "employees") : null),
@@ -95,11 +103,17 @@ export default function RankingPage() {
   
   const { leaderRankings, uniqueAxes } = useMemo(() => {
     if (!employees || interactions.size === 0) return { leaderRankings: [], uniqueAxes: [] };
-
+  
     const leaders = employees.filter(e => e.role === 'Líder');
     const axes = [...new Set(leaders.map(l => l.axis).filter(Boolean))].sort();
-    const now = new Date();
+    
+    // Calculate the number of months in the selected range for prorating
+    const monthsInRange = dateRange?.from && dateRange?.to 
+      ? differenceInMonths(dateRange.to, dateRange.from) + 1 
+      : 12;
+    const yearlyProportion = monthsInRange / 12;
 
+  
     const rankings = leaders.map(leader => {
       const teamMembers = employees.filter(e => e.leaderId === leader.id && e.isUnderManagement);
       
@@ -111,35 +125,44 @@ export default function RankingPage() {
           totalCount: 0,
         };
       }
-
-      const totalCount = teamMembers.reduce((acc, member) => acc + calculateAnnualInteractions(member), 0);
+  
+      // Calculate prorated total count based on the date range
+      const totalCount = teamMembers.reduce((acc, member) => {
+        const annualInteractions = calculateAnnualInteractions(member);
+        return acc + (annualInteractions * yearlyProportion);
+      }, 0);
       
+      // Calculate completed count within the date range
       const completedCount = teamMembers.reduce((acc, member) => {
           const memberInteractions = interactions.get(member.id) || [];
-          const interactionsThisYear = memberInteractions.filter(interaction => {
+          const interactionsInRange = memberInteractions.filter(interaction => {
               const interactionDate = new Date(interaction.date);
-              return isSameYear(interactionDate, now) && 
+              return dateRange?.from && dateRange?.to && isWithinInterval(interactionDate, { start: dateRange.from, end: dateRange.to }) &&
                      ['1:1', 'Feedback', 'N3 Individual', 'Índice de Risco'].includes(interaction.type);
           }).length;
           
-          const pdiActions = member.diagnosis?.status === 'Concluído' ? 2 : (member.diagnosis?.status === 'Em Andamento' ? 1 : 0);
+          // Prorate PDI actions as well, simplified for now
+          const annualPdiActions = 2; // Semestral
+          const expectedPdiInPeriod = annualPdiActions * yearlyProportion;
+          const completedPdiActions = (member.diagnosis?.status === 'Concluído' ? 2 : (member.diagnosis?.status === 'Em Andamento' ? 1 : 0));
+          const proratedCompletedPdi = Math.min(completedPdiActions, expectedPdiInPeriod);
 
-          return acc + interactionsThisYear + pdiActions;
+          return acc + interactionsInRange + proratedCompletedPdi;
       }, 0);
-
+  
       const adherenceScore = totalCount > 0 ? (completedCount / totalCount) * 100 : 0;
       
       return {
         ...leader,
         adherenceScore,
-        completedCount,
-        totalCount,
+        completedCount: Math.round(completedCount),
+        totalCount: Math.round(totalCount),
       };
     }).sort((a, b) => b.adherenceScore - a.adherenceScore);
-
+  
     return { leaderRankings: rankings, uniqueAxes: axes };
-
-  }, [employees, interactions]);
+  
+  }, [employees, interactions, dateRange]);
   
   const filteredLeaderRankings = useMemo(() => {
     if (axisFilter === "all") {
@@ -170,16 +193,17 @@ export default function RankingPage() {
   return (
     <Card>
       <CardHeader>
-        <div className="flex justify-between items-start">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
           <div>
             <CardTitle>Ranking de Aderência de Líderes</CardTitle>
             <CardDescription>
               Percentual de interações anuais realizadas por cada líder com sua equipe.
             </CardDescription>
           </div>
-          <div className="w-[200px]">
+          <div className="flex items-center gap-2">
+            <DateRangePicker date={dateRange} onDateChange={setDateRange} />
              <Select onValueChange={setAxisFilter} value={axisFilter} disabled={isLoading || uniqueAxes.length === 0}>
-              <SelectTrigger>
+              <SelectTrigger className="w-[180px]">
                 <SelectValue placeholder="Filtrar por Eixo" />
               </SelectTrigger>
               <SelectContent>
@@ -237,7 +261,7 @@ export default function RankingPage() {
         )}
         {(!isLoading && filteredLeaderRankings.length === 0) && (
             <div className="text-center py-10 text-muted-foreground">
-                <p>Nenhum líder encontrado para o eixo selecionado.</p>
+                <p>Nenhum líder encontrado para os filtros selecionados.</p>
             </div>
         )}
       </CardContent>
