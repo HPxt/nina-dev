@@ -203,8 +203,8 @@ export default function RiskAnalysisPage() {
             </CardContent>
         </Card>
 
-        <div className="grid gap-6 flex-1 lg:grid-cols-3">
-          <Card className="lg:col-span-1 flex flex-col">
+        <div className="grid gap-6 flex-1 lg:grid-cols-5">
+          <Card className="lg:col-span-2 flex flex-col">
             <CardHeader>
               <CardTitle>Distribuição de Risco Atual</CardTitle>
               <CardDescription>
@@ -218,7 +218,7 @@ export default function RiskAnalysisPage() {
                         accessibilityLayer
                         data={barChartData}
                         layout="vertical"
-                        margin={{ left: 10, right: 10 }}
+                        margin={{ left: 10, right: 30 }}
                     >
                       <CartesianGrid horizontal={false} />
                       <YAxis
@@ -234,9 +234,11 @@ export default function RiskAnalysisPage() {
                         cursor={false}
                         content={<ChartTooltipContent />}
                       />
-                      <ReferenceArea x1={0} x2={Math.max(...barChartData.map(d => d.risk), 5)} y1={undefined} y2={undefined} fill="hsl(var(--destructive) / 0.1)" stroke="hsl(var(--destructive))" strokeDasharray="3 3" ifOverflow="visible">
-                         <Legend content={() => <div className="text-xs text-destructive text-center pt-1">Risco Potencial</div>} />
-                      </ReferenceArea>
+                      <ReferenceArea x1={0} x2={Math.max(...barChartData.map(d => d.risk), 5)} y1={undefined} y2={undefined} fill="hsl(var(--destructive) / 0.1)" strokeOpacity={0.5} ifOverflow="visible" />
+                       <ReferenceLine y={0} stroke="hsl(var(--border))" strokeWidth={1} />
+                       <ReferenceLine x={5} stroke="hsl(var(--destructive))" strokeDasharray="3 3">
+                            <Legend content={() => <text x={0} y={0} dy={-5} dx={-15} fill="hsl(var(--destructive))" fontSize="10" textAnchor="middle">Risco Alto</text>} />
+                       </ReferenceLine>
                       <Bar dataKey="risk" name="Índice de Risco" radius={4} />
                     </BarChart>
                   </ChartContainer>
@@ -247,7 +249,7 @@ export default function RiskAnalysisPage() {
               )}
             </CardContent>
           </Card>
-          <Card className="lg:col-span-2 flex flex-col">
+          <Card className="lg:col-span-3 flex flex-col">
             <CardHeader>
               <CardTitle>Série Histórica do Índice de Risco</CardTitle>
               <CardDescription>
@@ -296,3 +298,4 @@ export default function RiskAnalysisPage() {
     </div>
   );
 }
+
