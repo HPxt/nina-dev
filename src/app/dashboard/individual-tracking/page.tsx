@@ -36,6 +36,7 @@ import { addDoc, collection, doc, serverTimestamp, setDoc } from "firebase/fires
 import { useToast } from "@/hooks/use-toast";
 import { RiskAssessmentFormDialog } from "@/components/risk-assessment-form-dialog";
 import { Input } from "@/components/ui/input";
+import { isSameMonth, isSameYear, parseISO } from "date-fns";
 
 type NewInteraction = Omit<Interaction, "id" | "date" | "authorId" | "notes"> & { notes: string | OneOnOneNotes | N3IndividualNotes };
 
@@ -150,7 +151,7 @@ export default function IndividualTrackingPage() {
   }
 
   const handleSaveInteraction = async () => {
-    if (!interactionsCollection || !user ) {
+    if (!interactionsCollection || !user || !interactions ) {
         toast({
             variant: "destructive",
             title: "Erro de Validação",
@@ -158,6 +159,25 @@ export default function IndividualTrackingPage() {
         });
         return;
     }
+
+    // Check for existing interaction of the same type in the current month
+    const now = new Date();
+    const hasExistingInteractionThisMonth = interactions.some(
+        (interaction) =>
+            interaction.type === interactionType &&
+            isSameMonth(parseISO(interaction.date), now) &&
+            isSameYear(parseISO(interaction.date), now)
+    );
+
+    if (hasExistingInteractionThisMonth) {
+        toast({
+            variant: "destructive",
+            title: "Registro Duplicado",
+            description: `Uma interação do tipo "${interactionType}" já foi registrada para este colaborador no mês corrente.`,
+        });
+        return;
+    }
+
 
     let notesToSave: string | OneOnOneNotes | N3IndividualNotes;
     let isNotesEmpty = true;
@@ -212,7 +232,7 @@ export default function IndividualTrackingPage() {
   };
 
   const handleSaveRiskAssessment = async (score: number, details: string) => {
-    if (!interactionsCollection || !user || !selectedEmployee) {
+    if (!interactionsCollection || !user || !selectedEmployee || !interactions) {
         toast({
             variant: "destructive",
             title: "Erro",
@@ -221,6 +241,24 @@ export default function IndividualTrackingPage() {
         return;
     }
     setIsSaving(true);
+
+     const now = new Date();
+     const hasExistingRiskAssessment = interactions.some(
+         (interaction) =>
+             interaction.type === 'Índice de Risco' &&
+             isSameMonth(parseISO(interaction.date), now) &&
+             isSameYear(parseISO(interaction.date), now)
+     );
+ 
+     if (hasExistingRiskAssessment) {
+         toast({
+             variant: "destructive",
+             title: "Registro Duplicado",
+             description: `Uma avaliação de "Índice de Risco" já foi registrada para este colaborador no mês corrente.`,
+         });
+         setIsSaving(false);
+         return;
+     }
 
     const interactionToSave = {
         type: 'Índice de Risco',
