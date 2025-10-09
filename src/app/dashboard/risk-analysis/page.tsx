@@ -14,17 +14,14 @@ import {
   ChartContainer,
   ChartTooltip,
   ChartTooltipContent,
-  type ChartConfig
 } from "@/components/ui/chart";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, LineChart, Line, ReferenceLine, Legend } from "recharts";
 import { useCollection, useFirestore, useMemoFirebase, useUser } from "@/firebase";
 import { collection } from "firebase/firestore";
 import { Button } from "@/components/ui/button";
-import { Check, ChevronsUpDown } from "lucide-react";
+import { Users } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
-import { cn } from "@/lib/utils";
+import { RiskAnalysisSelectionDialog } from "@/components/risk-analysis-selection-dialog";
 
 const chartColors = [
   "hsl(var(--chart-1))",
@@ -34,9 +31,16 @@ const chartColors = [
   "hsl(var(--chart-5))",
 ];
 
+type ChartConfig = {
+  [key: string]: {
+    label: string;
+    color: string;
+  };
+};
+
 export default function RiskAnalysisPage() {
   const [selectedEmployeeIds, setSelectedEmployeeIds] = useState<string[]>([]);
-  const [open, setOpen] = useState(false);
+  const [isSelectionDialogOpen, setIsSelectionDialogOpen] = useState(false);
 
   const firestore = useFirestore();
   const { user } = useUser();
@@ -49,7 +53,6 @@ export default function RiskAnalysisPage() {
 
   const currentUserEmployee = useMemo(() => {
     if (!user || !employees) return null;
-    // Special override for the admin user
     if (user.email === 'matheus@3ainvestimentos.com.br') {
         const employeeData = employees.find(e => e.email === user.email) || {};
         return {
@@ -61,12 +64,8 @@ export default function RiskAnalysisPage() {
             role: 'Líder',
         } as Employee;
     }
-
     const employeeData = employees.find(e => e.email === user.email);
-
     if (!employeeData) return null;
-
-    // Enhance permissions for other admins
     if (employeeData.isAdmin) {
       return {
         ...employeeData,
@@ -74,7 +73,6 @@ export default function RiskAnalysisPage() {
         isDirector: true,
       };
     }
-    
     return employeeData;
   }, [user, employees]);
 
@@ -88,11 +86,6 @@ export default function RiskAnalysisPage() {
     }
     return [];
   }, [currentUserEmployee, employees]);
-
-  const sortedEmployees = useMemo(() => {
-    if (!managedEmployees) return [];
-    return [...managedEmployees].sort((a, b) => a.name.localeCompare(b.name));
-  }, [managedEmployees]);
 
   const selectedEmployees = useMemo(() => {
     if (!employees) return [];
@@ -130,11 +123,11 @@ export default function RiskAnalysisPage() {
       const risk = emp.riskScore ?? 0;
       let fillColor;
       if (risk >= 5) {
-        fillColor = "hsl(var(--destructive))"; // Vermelho
+        fillColor = "hsl(var(--destructive))";
       } else if (risk > 2) {
-        fillColor = "hsl(var(--muted-foreground))"; // Cinza
+        fillColor = "hsl(var(--muted-foreground))";
       } else {
-        fillColor = "hsl(var(--chart-1))"; // Verde
+        fillColor = "hsl(var(--chart-1))";
       }
       return {
         name: emp.name.split(' ')[0],
@@ -185,24 +178,8 @@ export default function RiskAnalysisPage() {
     });
     return config;
   }, [selectedEmployees]);
-
-
-  const handleSelectEmployee = (id: string) => {
-    setSelectedEmployeeIds(prev =>
-      prev.includes(id) ? prev.filter(eId => eId !== id) : [...prev, id]
-    );
-  };
   
   const isLoading = areEmployeesLoading || loadingInteractions;
-  
-  const getSelectedEmployeesText = () => {
-    if (selectedEmployees.length === 0) {
-      return areEmployeesLoading ? "Carregando..." : "Selecione colaboradores...";
-    }
-    return selectedEmployees
-      .map(e => `${e.name} ${e.area ? `(${e.area})` : ''}`)
-      .join(', ');
-  }
 
   return (
     <div className="flex flex-col h-full space-y-6">
@@ -212,49 +189,17 @@ export default function RiskAnalysisPage() {
                 <CardDescription>Escolha um ou mais colaboradores para analisar os dados de risco.</CardDescription>
             </CardHeader>
             <CardContent>
-                <Popover open={open} onOpenChange={setOpen}>
-                    <PopoverTrigger asChild>
-                    <Button
-                        variant="outline"
-                        role="combobox"
-                        aria-expanded={open}
-                        className="w-full md:w-[400px] justify-between"
-                        disabled={areEmployeesLoading}
-                    >
-                        <span className="truncate">
-                          {getSelectedEmployeesText()}
-                        </span>
-                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                    </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-[400px] p-0">
-                    <Command>
-                        <CommandInput placeholder="Buscar colaborador..." />
-                        <CommandEmpty>Nenhum colaborador encontrado.</CommandEmpty>
-                        <CommandList>
-                            <CommandGroup>
-                                {sortedEmployees.map(employee => (
-                                <CommandItem
-                                    key={employee.id}
-                                    value={employee.name}
-                                    onSelect={() => handleSelectEmployee(employee.id)}
-                                >
-                                     <div className={cn(
-                                        "mr-2 flex h-4 w-4 items-center justify-center rounded-sm border border-primary",
-                                        selectedEmployeeIds.includes(employee.id)
-                                        ? "bg-primary text-primary-foreground"
-                                        : "opacity-50 [&_svg]:invisible"
-                                    )}>
-                                        <Check className="h-4 w-4" />
-                                    </div>
-                                    {employee.name} {employee.area && `(${employee.area})`}
-                                </CommandItem>
-                                ))}
-                            </CommandGroup>
-                        </CommandList>
-                    </Command>
-                    </PopoverContent>
-                </Popover>
+                <Button 
+                  variant="outline" 
+                  onClick={() => setIsSelectionDialogOpen(true)}
+                  className="w-full md:w-[400px]"
+                >
+                  <Users className="mr-2 h-4 w-4" />
+                  {selectedEmployeeIds.length > 0 
+                    ? `${selectedEmployeeIds.length} colaborador(es) selecionado(s)`
+                    : "Selecionar Colaboradores"
+                  }
+                </Button>
             </CardContent>
         </Card>
 
@@ -268,7 +213,7 @@ export default function RiskAnalysisPage() {
             </CardHeader>
             <CardContent className="flex-1 pb-0">
               {isLoading ? ( <Skeleton className="h-full w-full" /> ) : selectedEmployees.length > 0 ? (
-                  <ChartContainer config={barChartConfig} className="w-full h-full">
+                  <ChartContainer config={barChartConfig} className="w-full h-full min-h-[250px]">
                     <BarChart accessibilityLayer data={barChartData}>
                       <CartesianGrid vertical={false} />
                       <XAxis
@@ -302,7 +247,7 @@ export default function RiskAnalysisPage() {
             </CardHeader>
             <CardContent className="flex-1 pb-0">
               {isLoading ? ( <Skeleton className="h-full w-full" /> ) : selectedEmployees.length > 0 ? (
-                  <ChartContainer config={lineChartConfig} className="w-full h-full">
+                  <ChartContainer config={lineChartConfig} className="w-full h-full min-h-[250px]">
                     <LineChart data={lineChartData} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
                         <CartesianGrid strokeDasharray="3 3" vertical={false} />
                         <XAxis dataKey="date" tickMargin={10} />
@@ -318,6 +263,7 @@ export default function RiskAnalysisPage() {
                                 name={employees?.find(e => e.id === id)?.name}
                                 strokeWidth={2}
                                 dot={{ r: 4 }}
+                                connectNulls
                             />
                         ))}
                     </LineChart>
@@ -330,6 +276,14 @@ export default function RiskAnalysisPage() {
             </CardContent>
           </Card>
         </div>
+        <RiskAnalysisSelectionDialog 
+            open={isSelectionDialogOpen}
+            onOpenChange={setIsSelectionDialogOpen}
+            allEmployees={managedEmployees}
+            selectedIds={selectedEmployeeIds}
+            onSelectionChange={setSelectedEmployeeIds}
+            isLoading={areEmployeesLoading}
+        />
     </div>
   );
 }

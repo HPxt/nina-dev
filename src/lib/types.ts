@@ -3,7 +3,8 @@
 export type Role = "Colaborador" | "Líder";
 
 export type InteractionStatus = string;
-export type InteractionType = "1:1" | "Feedback" | "N3 Individual" | "Índice de Risco" | "PDI";
+// PDI is not a direct interaction type, it has its own table.
+export type InteractionType = "1:1" | "Feedback" | "N3 Individual" | "Índice de Risco";
 
 export interface User {
   id: string;
@@ -48,7 +49,7 @@ export interface N3IndividualNotes {
     captacao?: string;
     churnPF?: string;
     roa?: string;
-    esforcos?: string;
+esforcos?: string;
     planoAcao?: string;
 }
 

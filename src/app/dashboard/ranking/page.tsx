@@ -141,11 +141,17 @@ export default function RankingPage() {
                      ['1:1', 'N3 Individual', 'Índice de Risco'].includes(interaction.type);
           }).length;
           
-          // Prorate PDI actions as well, simplified for now
+          // Prorate PDI actions as well
           const annualPdiActions = 2; // Semestral
           const expectedPdiInPeriod = annualPdiActions * yearlyProportion;
-          const completedPdiActions = (member.diagnosis?.status === 'Concluído' ? 2 : (member.diagnosis?.status === 'Em Andamento' ? 1 : 0));
+          // Simplified: Count 'Completed' as 2, 'In Progress' as 1
+          const pdiStatusToValue = (member.diagnosis?.status === 'Concluído' ? 2 : (member.diagnosis?.status === 'Em Andamento' ? 1 : 0));
+          // Use PDI actions from history, assuming they are fetched, similar to interactions.
+          // This part of the logic might need adjustment if PDI actions aren't fetched globally.
+          // For now, let's use the diagnosis status as a proxy.
+          const completedPdiActions = pdiStatusToValue;
           const proratedCompletedPdi = Math.min(completedPdiActions, expectedPdiInPeriod);
+
 
           return acc + interactionsInRange + proratedCompletedPdi;
       }, 0);
