@@ -46,13 +46,13 @@ const calculateAnnualInteractions = (employee: Employee): number => {
     // N3 Individual: varia com segmento
     switch (employee.segment) {
     case 'Alfa':
-        total += 52; // semanal
+        total += 4 * 12; // 4 por mês
         break;
     case 'Beta':
-        total += 26; // quinzenal
+        total += 2 * 12; // 2 por mês
         break;
     case 'Senior':
-        total += 12; // mensal
+        total += 1 * 12; // 1 por mês
         break;
     }
     return total;

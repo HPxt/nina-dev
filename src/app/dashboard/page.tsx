@@ -5,7 +5,7 @@ import React, { useState, useMemo, useEffect } from "react";
 import type { Employee, Interaction, InteractionStatus, InteractionType, PDIAction } from "@/lib/types";
 import { useCollection, useFirestore, useMemoFirebase, useUser } from "@/firebase";
 import { collection, getDocs, query } from "firebase/firestore";
-import { isWithinInterval, startOfMonth, endOfMonth, getMonth, getYear, parseISO } from "date-fns";
+import { isWithinInterval, startOfMonth, endOfMonth, getMonth, getYear, parseISO, differenceInMonths } from "date-fns";
 import { DateRange } from "react-day-picker";
 
 import {
@@ -55,6 +55,12 @@ const interactionSchedules: { [key in InteractionType]?: number[] } = {
     'PDI': [0, 6], // Janeiro e Julho
     '1:1': [2, 5, 8, 11], // Março, Junho, Setembro, Dezembro
     'Índice de Risco': [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11], // Todos os meses
+};
+
+const n3IndividualSchedule = {
+    'Alfa': 4, // 4 por mês
+    'Beta': 2, // 2 por mês
+    'Senior': 1, // 1 por mês
 };
 
 
@@ -157,6 +163,8 @@ export default function LeadershipDashboard() {
   const trackedEmployees = useMemo((): TrackedEmployee[] => {
     if (!employees || !currentUserEmployee || !dateRange?.from || !dateRange?.to) return [];
   
+    const range = { start: dateRange.from, end: dateRange.to };
+  
     return employees
       .filter(e => {
         if (!e.isUnderManagement) return false;
@@ -170,44 +178,53 @@ export default function LeadershipDashboard() {
         let nextInteractionDate: string | undefined;
   
         const schedule = interactionSchedules[interactionTypeFilter];
-        const range = { start: dateRange.from!, end: dateRange.to! };
-  
-        if (schedule) {
-          // Lógica para interações com agendamento fixo
-          const requiredMonthsInPeriod = schedule.filter(month => {
-            // Checa se o mês está no período (simplificado, pode ser melhorado para abranger anos)
-            const fromMonth = getMonth(range.start);
-            const fromYear = getYear(range.start);
-            const toMonth = getMonth(range.end);
-            const toYear = getYear(range.end);
+        
+        if (interactionTypeFilter === 'N3 Individual') {
+            const segment = employee.segment as keyof typeof n3IndividualSchedule | undefined;
+            const requiredCount = segment ? n3IndividualSchedule[segment] : 0;
+            const monthsInRange = differenceInMonths(range.end, range.start) + 1;
+            const totalRequired = requiredCount * monthsInRange;
 
-            for (let y = fromYear; y <= toYear; y++) {
-                const startMonth = (y === fromYear) ? fromMonth : 0;
-                const endMonth = (y === toYear) ? toMonth : 11;
-                if (month >= startMonth && month <= endMonth) return true;
-            }
-            return false;
-          });
+            const employeeInteractions = interactions.get(employee.id) || [];
+            const executedCount = employeeInteractions.filter(int =>
+                int.type === 'N3 Individual' && isWithinInterval(parseISO(int.date), range)
+            ).length;
+
+            status = executedCount >= totalRequired ? "Executada" : "Pendente";
+
+        } else if (schedule) {
+            const requiredMonthsInPeriod = schedule.filter(month => {
+                const fromMonth = getMonth(range.start);
+                const fromYear = getYear(range.start);
+                const toMonth = getMonth(range.end);
+                const toYear = getYear(range.end);
+                for (let y = fromYear; y <= toYear; y++) {
+                    const startMonth = (y === fromYear) ? fromMonth : 0;
+                    const endMonth = (y === toYear) ? toMonth : 11;
+                    if (month >= startMonth && month <= endMonth) return true;
+                }
+                return false;
+            });
   
-          if (requiredMonthsInPeriod.length === 0) {
-            status = "Executada"; // Nenhuma interação obrigatória no período
-          } else {
-            let wasExecuted = false;
-            if (interactionTypeFilter === 'PDI') {
-              const employeePdiActions = pdiActionsMap.get(employee.id) || [];
-              wasExecuted = employeePdiActions.some(action => {
-                const actionDate = parseISO(action.startDate);
-                return isWithinInterval(actionDate, range) && requiredMonthsInPeriod.includes(getMonth(actionDate));
-              });
+            if (requiredMonthsInPeriod.length === 0) {
+                status = "Executada"; // Nenhuma interação obrigatória no período
             } else {
-              const employeeInteractions = interactions.get(employee.id) || [];
-              wasExecuted = employeeInteractions.some(int => {
-                const interactionDate = parseISO(int.date);
-                return int.type === interactionTypeFilter && isWithinInterval(interactionDate, range) && requiredMonthsInPeriod.includes(getMonth(interactionDate));
-              });
+                let wasExecuted = false;
+                if (interactionTypeFilter === 'PDI') {
+                    const employeePdiActions = pdiActionsMap.get(employee.id) || [];
+                    wasExecuted = employeePdiActions.some(action => {
+                        const actionDate = parseISO(action.startDate);
+                        return isWithinInterval(actionDate, range);
+                    });
+                } else {
+                    const employeeInteractions = interactions.get(employee.id) || [];
+                    wasExecuted = employeeInteractions.some(int => {
+                        const interactionDate = parseISO(int.date);
+                        return int.type === interactionTypeFilter && isWithinInterval(interactionDate, range);
+                    });
+                }
+                status = wasExecuted ? "Executada" : "Pendente";
             }
-            status = wasExecuted ? "Executada" : "Pendente";
-          }
         } else {
           // Lógica para interações sem agendamento fixo (ex: Feedback)
           const employeeInteractions = interactions.get(employee.id) || [];
@@ -220,12 +237,11 @@ export default function LeadershipDashboard() {
         // Encontrar a última interação e próxima data para exibição, independente do status
         if (interactionTypeFilter === 'PDI') {
           const allActions = (pdiActionsMap.get(employee.id) || [])
-            .filter(action => isWithinInterval(parseISO(action.startDate), range))
             .sort((a, b) => parseISO(b.startDate).getTime() - parseISO(a.startDate).getTime());
           lastInteractionDate = allActions.length > 0 ? allActions[0].startDate : undefined;
         } else {
           const allTypedInteractions = (interactions.get(employee.id) || [])
-            .filter(int => int.type === interactionTypeFilter && isWithinInterval(parseISO(int.date), range))
+            .filter(int => int.type === interactionTypeFilter)
             .sort((a, b) => parseISO(b.date).getTime() - parseISO(a.date).getTime());
           lastInteractionDate = allTypedInteractions.length > 0 ? allTypedInteractions[0].date : undefined;
           nextInteractionDate = allTypedInteractions.length > 0 ? allTypedInteractions[0].nextInteractionDate : undefined;
@@ -375,6 +391,7 @@ export default function LeadershipDashboard() {
               <TableRow>
                 <TableHead>Membro</TableHead>
                 <TableHead className="hidden md:table-cell">Líder</TableHead>
+                <TableHead className="hidden lg:table-cell">Área</TableHead>
                 <TableHead className="hidden sm:table-cell">Última Interação</TableHead>
                 <TableHead className="hidden sm:table-cell">Próxima Interação</TableHead>
                 <TableHead>Status</TableHead>
@@ -394,6 +411,7 @@ export default function LeadershipDashboard() {
                             </div>
                         </TableCell>
                         <TableCell className="hidden md:table-cell"><Skeleton className="h-5 w-20" /></TableCell>
+                        <TableCell className="hidden lg:table-cell"><Skeleton className="h-5 w-20" /></TableCell>
                         <TableCell className="hidden sm:table-cell"><Skeleton className="h-5 w-24" /></TableCell>
                         <TableCell className="hidden sm:table-cell"><Skeleton className="h-5 w-24" /></TableCell>
                         <TableCell><Skeleton className="h-6 w-20 rounded-full" /></TableCell>
@@ -403,7 +421,7 @@ export default function LeadershipDashboard() {
                 groupedAndFilteredEmployees.map(([area, members]) => (
                   <React.Fragment key={area}>
                     <TableRow className="bg-muted/50 hover:bg-muted/50">
-                      <TableCell colSpan={5} className="font-bold text-foreground">
+                      <TableCell colSpan={6} className="font-bold text-foreground">
                         {area}
                       </TableCell>
                     </TableRow>
@@ -424,6 +442,7 @@ export default function LeadershipDashboard() {
                             </div>
                             </TableCell>
                             <TableCell className="hidden md:table-cell">{member.leader}</TableCell>
+                            <TableCell className="hidden lg:table-cell">{member.area || 'N/A'}</TableCell>
                             <TableCell className="hidden sm:table-cell">
                             {formatDate(member.lastInteraction)}
                             </TableCell>
@@ -441,7 +460,7 @@ export default function LeadershipDashboard() {
                 ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={5} className="text-center h-24">
+                  <TableCell colSpan={6} className="text-center h-24">
                     Nenhum colaborador gerenciado encontrado ou correspondente aos filtros.
                   </TableCell>
                 </TableRow>
