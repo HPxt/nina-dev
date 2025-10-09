@@ -163,13 +163,13 @@ export default function LeadershipDashboard() {
         if (interactionTypeFilter === 'PDI') {
             const employeePdiActions = pdiActionsMap.get(employee.id) || [];
             
-            const completedActionsInPeriod = employeePdiActions.filter(action => {
-                const actionDate = new Date(action.endDate); // Assuming endDate marks completion
-                const isInRange = dateRange?.from && dateRange?.to && isWithinInterval(actionDate, { start: dateRange.from, end: dateRange.to });
-                return action.status === "Completed" && isInRange;
+            const actionsInPeriod = employeePdiActions.filter(action => {
+                const actionStartDate = new Date(action.startDate);
+                const isInRange = dateRange?.from && dateRange?.to && isWithinInterval(actionStartDate, { start: dateRange.from, end: dateRange.to });
+                return isInRange;
             });
 
-            if (completedActionsInPeriod.length > 0) {
+            if (actionsInPeriod.length > 0) {
                 status = "Executada";
             } else {
                 if (dateRange?.to && new Date() > dateRange.to) {
@@ -179,11 +179,10 @@ export default function LeadershipDashboard() {
                 }
             }
             
-            const allCompletedActions = employeePdiActions
-              .filter(action => action.status === "Completed")
-              .sort((a, b) => new Date(b.endDate).getTime() - new Date(a.endDate).getTime());
+            const allActions = employeePdiActions
+              .sort((a, b) => new Date(b.startDate).getTime() - new Date(a.startDate).getTime());
             
-            lastInteractionDate = allCompletedActions.length > 0 ? allCompletedActions[0].endDate : undefined;
+            lastInteractionDate = allActions.length > 0 ? allActions[0].startDate : undefined;
 
         } else {
             const employeeInteractions = interactions.get(employee.id) || [];
