@@ -2,7 +2,7 @@
 "use client";
 
 import { useState, useMemo, useEffect } from "react";
-import type { Employee, Interaction, InteractionStatus, InteractionType } from "@/lib/types";
+import type { Employee, Interaction, InteractionStatus, InteractionType, PDIAction } from "@/lib/types";
 import { useCollection, useFirestore, useMemoFirebase, useUser } from "@/firebase";
 import { collection, getDocs, query } from "firebase/firestore";
 import { isWithinInterval, startOfMonth, endOfMonth } from "date-fns";
@@ -46,7 +46,7 @@ const interactionTypes: { value: InteractionType, label: string }[] = [
     { value: "Feedback", label: "Feedback" },
     { value: "N3 Individual", label: "N3 Individual" },
     { value: "Índice de Risco", label: "Índice de Risco" },
-    { value: "Diagnóstico PDI", label: "Diagnóstico PDI" },
+    { value: "PDI", label: "PDI" },
 ];
 
 
@@ -61,7 +61,8 @@ export default function LeadershipDashboard() {
   const { data: employees, isLoading: areEmployeesLoading } = useCollection<Employee>(employeesCollection);
 
   const [interactions, setInteractions] = useState<Map<string, Interaction[]>>(new Map());
-  const [loadingInteractions, setLoadingInteractions] = useState(true);
+  const [pdiActionsMap, setPdiActionsMap] = useState<Map<string, PDIAction[]>>(new Map());
+  const [loadingData, setLoadingData] = useState(true);
 
   const [leaderFilter, setLeaderFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState<"all" | InteractionStatus>("all");
@@ -110,27 +111,39 @@ export default function LeadershipDashboard() {
 
 
   useEffect(() => {
-    const fetchInteractions = async () => {
+    const fetchData = async () => {
       if (!firestore || !employees || !currentUserEmployee) return;
-
-      setLoadingInteractions(true);
+  
+      setLoadingData(true);
       const managedEmployeeIds = employees
         .filter(e => e.isUnderManagement && (currentUserEmployee.isAdmin || currentUserEmployee.isDirector || e.leaderId === currentUserEmployee.id))
         .map(e => e.id);
-
+  
       const interactionsMap = new Map<string, Interaction[]>();
+      const pdiActionsMap = new Map<string, PDIAction[]>();
+  
       for (const id of managedEmployeeIds) {
         const interactionsQuery = query(collection(firestore, "employees", id, "interactions"));
-        const snapshot = await getDocs(interactionsQuery);
-        const employeeInteractions = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }) as Interaction);
+        const pdiActionsQuery = query(collection(firestore, "employees", id, "pdiActions"));
+  
+        const [interactionsSnapshot, pdiActionsSnapshot] = await Promise.all([
+          getDocs(interactionsQuery),
+          getDocs(pdiActionsQuery)
+        ]);
+  
+        const employeeInteractions = interactionsSnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }) as Interaction);
         interactionsMap.set(id, employeeInteractions);
+  
+        const employeePdiActions = pdiActionsSnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }) as PDIAction);
+        pdiActionsMap.set(id, employeePdiActions);
       }
       
       setInteractions(interactionsMap);
-      setLoadingInteractions(false);
+      setPdiActionsMap(pdiActionsMap);
+      setLoadingData(false);
     };
-
-    fetchInteractions();
+  
+    fetchData();
   }, [employees, firestore, currentUserEmployee]);
   
   const trackedEmployees = useMemo((): TrackedEmployee[] => {
@@ -147,12 +160,16 @@ export default function LeadershipDashboard() {
         let status: InteractionStatus;
         let lastInteractionDate: string | undefined;
   
-        if (interactionTypeFilter === 'Diagnóstico PDI') {
-            const diagnosis = employee.diagnosis;
-            const diagnosisInPeriod = diagnosis && dateRange?.from && dateRange?.to &&
-                isWithinInterval(new Date(diagnosis.date), { start: dateRange.from, end: dateRange.to });
+        if (interactionTypeFilter === 'PDI') {
+            const employeePdiActions = pdiActionsMap.get(employee.id) || [];
+            
+            const completedActionsInPeriod = employeePdiActions.filter(action => {
+                const actionDate = new Date(action.endDate); // Assuming endDate marks completion
+                const isInRange = dateRange?.from && dateRange?.to && isWithinInterval(actionDate, { start: dateRange.from, end: dateRange.to });
+                return action.status === "Completed" && isInRange;
+            });
 
-            if (diagnosisInPeriod) {
+            if (completedActionsInPeriod.length > 0) {
                 status = "Executada";
             } else {
                 if (dateRange?.to && new Date() > dateRange.to) {
@@ -161,7 +178,12 @@ export default function LeadershipDashboard() {
                     status = "Pendente";
                 }
             }
-            lastInteractionDate = diagnosis?.date;
+            
+            const allCompletedActions = employeePdiActions
+              .filter(action => action.status === "Completed")
+              .sort((a, b) => new Date(b.endDate).getTime() - new Date(a.endDate).getTime());
+            
+            lastInteractionDate = allCompletedActions.length > 0 ? allCompletedActions[0].endDate : undefined;
 
         } else {
             const employeeInteractions = interactions.get(employee.id) || [];
@@ -197,7 +219,7 @@ export default function LeadershipDashboard() {
           interactionStatus: status,
         };
       });
-  }, [employees, interactions, currentUserEmployee, interactionTypeFilter, dateRange]);
+  }, [employees, interactions, pdiActionsMap, currentUserEmployee, interactionTypeFilter, dateRange]);
 
 
   const filteredEmployees = useMemo(() => {
@@ -245,7 +267,7 @@ export default function LeadershipDashboard() {
       return new Date(dateString).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
   }
   
-  const isLoading = areEmployeesLoading || loadingInteractions;
+  const isLoading = areEmployeesLoading || loadingData;
   const isLeaderOnly = currentUserEmployee?.role === 'Líder' && !currentUserEmployee.isDirector && !currentUserEmployee.isAdmin;
 
   return (
