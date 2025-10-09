@@ -183,24 +183,29 @@ export default function LeadershipDashboard() {
         if (interactionTypeFilter === 'N3 Individual') {
             const segment = employee.segment as keyof typeof n3IndividualSchedule | undefined;
             const requiredCount = segment ? n3IndividualSchedule[segment] : 0;
-            const monthsInRange = differenceInMonths(range.end, range.start) + 1;
-            const totalRequired = requiredCount * monthsInRange;
-
-            if (totalRequired === 0) {
-              status = "N/A";
+            
+            if (requiredCount === 0) {
+                status = "N/A";
             } else {
-              const employeeInteractions = interactions.get(employee.id) || [];
-              const executedCount = employeeInteractions.filter(int =>
-                  int.type === 'N3 Individual' && isWithinInterval(parseISO(int.date), range)
-              ).length;
+                const monthsInRange = differenceInMonths(range.end, range.start) + 1;
+                const totalRequired = requiredCount * monthsInRange;
 
-              if (executedCount >= totalRequired) {
-                  status = "Executada";
-              } else if (executedCount > 0) {
-                  status = `Realizado ${executedCount}/${totalRequired}`;
-              } else {
-                  status = "Pendente";
-              }
+                if (totalRequired === 0) {
+                    status = "N/A";
+                } else {
+                    const employeeInteractions = interactions.get(employee.id) || [];
+                    const executedCount = employeeInteractions.filter(int =>
+                        int.type === 'N3 Individual' && isWithinInterval(parseISO(int.date), range)
+                    ).length;
+
+                    if (executedCount >= totalRequired) {
+                        status = "Executada";
+                    } else if (executedCount > 0) {
+                        status = `Realizado ${executedCount}/${totalRequired}`;
+                    } else {
+                        status = "Pendente";
+                    }
+                }
             }
 
         } else if (schedule) {
@@ -218,7 +223,7 @@ export default function LeadershipDashboard() {
             });
   
             if (requiredMonthsInPeriod.length === 0) {
-                status = "N/A"; // Nenhuma interação obrigatória no período
+                status = "N/A";
             } else {
                 let wasExecuted = false;
                 if (interactionTypeFilter === 'PDI') {
@@ -242,7 +247,7 @@ export default function LeadershipDashboard() {
           const interactionsInPeriod = employeeInteractions.filter(int =>
             int.type === interactionTypeFilter && isWithinInterval(parseISO(int.date), range)
           );
-          status = interactionsInPeriod.length > 0 ? "Executada" : "N/A";
+          status = interactionsInPeriod.length > 0 ? "Executada" : "Pendente";
         }
   
         // Encontrar a última interação e próxima data para exibição, independente do status
