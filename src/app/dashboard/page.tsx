@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import type { Employee, Interaction, InteractionStatus, InteractionType, PDIAction } from "@/lib/types";
 import { useCollection, useFirestore, useMemoFirebase, useUser } from "@/firebase";
 import { collection, getDocs, query } from "firebase/firestore";
@@ -417,4 +417,3 @@ export default function LeadershipDashboard() {
     </div>
   );
 }
-
