@@ -183,26 +183,21 @@ export default function LeadershipDashboard() {
         if (interactionTypeFilter === 'N3 Individual') {
             const segment = employee.segment as keyof typeof n3IndividualSchedule | undefined;
             const requiredCount = segment ? n3IndividualSchedule[segment] : 0;
-            
-            if (requiredCount === 0) {
+            const monthsInRange = differenceInMonths(range.end, range.start) + 1;
+            const totalRequired = requiredCount * monthsInRange;
+
+            if (totalRequired === 0) {
                 status = "N/A";
             } else {
-                const monthsInRange = differenceInMonths(range.end, range.start) + 1;
-                const totalRequired = requiredCount * monthsInRange;
+                const employeeInteractions = interactions.get(employee.id) || [];
+                const executedCount = employeeInteractions.filter(int =>
+                    int.type === 'N3 Individual' && isWithinInterval(parseISO(int.date), range)
+                ).length;
 
-                if (totalRequired === 0) {
-                    status = "N/A";
+                if (executedCount >= totalRequired) {
+                    status = "Executada";
                 } else {
-                    const employeeInteractions = interactions.get(employee.id) || [];
-                    const executedCount = employeeInteractions.filter(int =>
-                        int.type === 'N3 Individual' && isWithinInterval(parseISO(int.date), range)
-                    ).length;
-
-                    if (executedCount >= totalRequired) {
-                        status = "Executada";
-                    } else {
-                        status = `Realizado ${executedCount}/${totalRequired}`;
-                    }
+                    status = `Realizado ${executedCount}/${totalRequired}`;
                 }
             }
 
@@ -365,12 +360,21 @@ export default function LeadershipDashboard() {
             </Select>
             <Select onValueChange={value => setInteractionTypeFilter(value as any)} value={interactionTypeFilter} disabled={isLoading}>
                 <SelectTrigger>
-                    <SelectValue placeholder="Tipo de Interação" />
+                    <SelectValue>
+                      {
+                        interactionTypes.find(type => type.value === interactionTypeFilter)?.label
+                      }
+                      <span className="text-muted-foreground ml-2">
+                        {
+                          interactionTypes.find(type => type.value === interactionTypeFilter)?.description
+                        }
+                      </span>
+                    </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
                     {interactionTypes.map(type => (
                         <SelectItem key={type.value} value={type.value}>
-                            <div className="flex flex-col">
+                            <div className="flex items-center gap-2">
                                 <span>{type.label}</span>
                                 <span className="text-xs text-muted-foreground">{type.description}</span>
                             </div>
