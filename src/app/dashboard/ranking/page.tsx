@@ -2,10 +2,10 @@
 "use client";
 
 import { useState, useMemo, useEffect } from "react";
-import type { Employee, Interaction, InteractionStatus } from "@/lib/types";
-import { useCollection, useFirestore, useMemoFirebase, useUser } from "@/firebase";
+import type { Employee, Interaction } from "@/lib/types";
+import { useCollection, useFirestore, useMemoFirebase } from "@/firebase";
 import { collection, getDocs, query } from "firebase/firestore";
-import { parseISO, isSameMonth, getMonth, isSameYear } from "date-fns";
+import { isSameYear } from "date-fns";
 
 import {
   Card,
@@ -32,9 +32,32 @@ interface LeaderRanking extends Employee {
   totalCount: number;
 }
 
+const calculateAnnualInteractions = (employee: Employee): number => {
+    let total = 0;
+    // PDI: semestral = 2/ano
+    total += 2;
+    // 1:1: trimestral = 4/ano
+    total += 4;
+    // Índice de Risco: mensal = 12/ano
+    total += 12;
+    // N3 Individual: varia com segmento
+    switch (employee.segment) {
+    case 'Alfa':
+        total += 52; // semanal
+        break;
+    case 'Beta':
+        total += 26; // quinzenal
+        break;
+    case 'Senior':
+        total += 12; // mensal
+        break;
+    }
+    return total;
+};
+
+
 export default function RankingPage() {
   const firestore = useFirestore();
-  const { user } = useUser();
   const [axisFilter, setAxisFilter] = useState("all");
 
   const employeesCollection = useMemoFirebase(
@@ -77,43 +100,10 @@ export default function RankingPage() {
     const axes = [...new Set(leaders.map(l => l.axis).filter(Boolean))].sort();
     const now = new Date();
 
-    const getInteractionStatus = (employee: Employee): InteractionStatus => {
-        const employeeInteractions = interactions.get(employee.id) || [];
-        const oneOnOnes = employeeInteractions
-          .filter(int => int.type === "1:1")
-          .sort((a, b) => parseISO(b.date).getTime() - parseISO(a.date).getTime());
-        
-        const lastOneOnOne = oneOnOnes.length > 0 ? oneOnOnes[0] : undefined;
-        
-        const hadOneOnOneThisMonth = lastOneOnOne && isSameMonth(parseISO(lastOneOnOne.date), now);
-
-        if (hadOneOnOneThisMonth) {
-            return "Executada";
-        }
-        
-        const currentDay = now.getDate();
-        const previousMonth = getMonth(now) === 0 ? 11 : getMonth(now) - 1;
-        const yearOfPreviousMonth = previousMonth === 11 ? now.getFullYear() - 1 : now.getFullYear();
-
-        const hadOneOnOneLastMonth = oneOnOnes.some(int => 
-            getMonth(parseISO(int.date)) === previousMonth && 
-            isSameYear(parseISO(int.date), yearOfPreviousMonth)
-        );
-        
-        if (!hadOneOnOneLastMonth && getMonth(now) !== 0) {
-             return "Pendente";
-        } else if (currentDay <= 10) {
-            return "Pendente"; 
-        } else {
-            return "Atrasado";
-        }
-    };
-
     const rankings = leaders.map(leader => {
       const teamMembers = employees.filter(e => e.leaderId === leader.id && e.isUnderManagement);
-      const totalCount = teamMembers.length;
       
-      if (totalCount === 0) {
+      if (teamMembers.length === 0) {
         return {
           ...leader,
           adherenceScore: 0,
@@ -122,8 +112,22 @@ export default function RankingPage() {
         };
       }
 
-      const completedCount = teamMembers.filter(member => getInteractionStatus(member) === 'Executada').length;
-      const adherenceScore = (completedCount / totalCount) * 100;
+      const totalCount = teamMembers.reduce((acc, member) => acc + calculateAnnualInteractions(member), 0);
+      
+      const completedCount = teamMembers.reduce((acc, member) => {
+          const memberInteractions = interactions.get(member.id) || [];
+          const interactionsThisYear = memberInteractions.filter(interaction => {
+              const interactionDate = new Date(interaction.date);
+              return isSameYear(interactionDate, now) && 
+                     ['1:1', 'Feedback', 'N3 Individual', 'Índice de Risco'].includes(interaction.type);
+          }).length;
+          
+          const pdiActions = member.diagnosis?.status === 'Concluído' ? 2 : (member.diagnosis?.status === 'Em Andamento' ? 1 : 0);
+
+          return acc + interactionsThisYear + pdiActions;
+      }, 0);
+
+      const adherenceScore = totalCount > 0 ? (completedCount / totalCount) * 100 : 0;
       
       return {
         ...leader,
@@ -170,7 +174,7 @@ export default function RankingPage() {
           <div>
             <CardTitle>Ranking de Aderência de Líderes</CardTitle>
             <CardDescription>
-              Percentual de interações 1:1 mensais realizadas por cada líder com sua equipe.
+              Percentual de interações anuais realizadas por cada líder com sua equipe.
             </CardDescription>
           </div>
           <div className="w-[200px]">
@@ -240,4 +244,3 @@ export default function RankingPage() {
     </Card>
   );
 }
-
