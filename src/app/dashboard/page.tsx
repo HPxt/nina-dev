@@ -43,8 +43,8 @@ interface TrackedEmployee extends Employee {
 }
 
 const interactionTypes: { value: InteractionType, label: string, description: string }[] = [
-    { value: "1:1", label: "1:1", description: "Trimestral" },
-    { value: "PDI", label: "PDI", description: "Semestral" },
+    { value: "1:1", label: "1:1", description: "Trimestral (Mar, Jun, Set, Dez)" },
+    { value: "PDI", label: "PDI", description: "Semestral (Jan, Jul)" },
     { value: "Índice de Risco", label: "Índice de Risco", description: "Mensal" },
     { value: "N3 Individual", label: "N3 Individual", description: "Segmento" },
     { value: "Feedback", label: "Feedback", description: "Sob demanda" },
@@ -200,54 +200,52 @@ export default function LeadershipDashboard() {
 
                     if (executedCount >= totalRequired) {
                         status = "Executada";
-                    } else if (executedCount > 0) {
-                        status = `Realizado ${executedCount}/${totalRequired}`;
                     } else {
-                        status = "Pendente";
+                        status = `Realizado ${executedCount}/${totalRequired}`;
                     }
                 }
             }
 
         } else if (schedule) {
-            const requiredMonthsInPeriod = schedule.filter(month => {
-                const fromMonth = getMonth(range.start);
-                const fromYear = getYear(range.start);
-                const toMonth = getMonth(range.end);
-                const toYear = getYear(range.end);
-                for (let y = fromYear; y <= toYear; y++) {
-                    const startMonth = (y === fromYear) ? fromMonth : 0;
-                    const endMonth = (y === toYear) ? toMonth : 11;
-                    if (month >= startMonth && month <= endMonth) return true;
-                }
-                return false;
-            });
+            const fromMonth = getMonth(range.start);
+            const fromYear = getYear(range.start);
+            const toMonth = getMonth(range.end);
+            const toYear = getYear(range.end);
+
+            let requiredCountInPeriod = 0;
+            for (let y = fromYear; y <= toYear; y++) {
+                const startMonth = (y === fromYear) ? fromMonth : 0;
+                const endMonth = (y === toYear) ? toMonth : 11;
+                requiredCountInPeriod += schedule.filter(month => month >= startMonth && month <= endMonth).length;
+            }
   
-            if (requiredMonthsInPeriod.length === 0) {
+            if (requiredCountInPeriod === 0) {
                 status = "N/A";
             } else {
-                let wasExecuted = false;
+                let executedCount = 0;
                 if (interactionTypeFilter === 'PDI') {
                     const employeePdiActions = pdiActionsMap.get(employee.id) || [];
-                    wasExecuted = employeePdiActions.some(action => {
-                        const actionDate = parseISO(action.startDate);
-                        return isWithinInterval(actionDate, range);
-                    });
+                    executedCount = employeePdiActions.filter(action => isWithinInterval(parseISO(action.startDate), range)).length;
                 } else {
                     const employeeInteractions = interactions.get(employee.id) || [];
-                    wasExecuted = employeeInteractions.some(int => {
-                        const interactionDate = parseISO(int.date);
-                        return int.type === interactionTypeFilter && isWithinInterval(interactionDate, range);
-                    });
+                    executedCount = employeeInteractions.filter(int => 
+                        int.type === interactionTypeFilter && isWithinInterval(parseISO(int.date), range)
+                    ).length;
                 }
-                status = wasExecuted ? "Executada" : "Pendente";
+                
+                if (executedCount >= requiredCountInPeriod) {
+                    status = "Executada";
+                } else {
+                    status = `Realizado ${executedCount}/${requiredCountInPeriod}`;
+                }
             }
         } else {
           // Lógica para interações sem agendamento fixo (ex: Feedback)
           const employeeInteractions = interactions.get(employee.id) || [];
-          const interactionsInPeriod = employeeInteractions.filter(int =>
+          const wasExecuted = employeeInteractions.some(int =>
             int.type === interactionTypeFilter && isWithinInterval(parseISO(int.date), range)
           );
-          status = interactionsInPeriod.length > 0 ? "Executada" : "Pendente";
+          status = wasExecuted ? "Executada" : "Pendente";
         }
   
         // Encontrar a última interação e próxima data para exibição, independente do status
