@@ -14,9 +14,8 @@ import {
   ChartContainer,
   ChartTooltip,
   ChartTooltipContent,
-  ChartConfig,
 } from "@/components/ui/chart";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, LineChart, Line, ReferenceLine, Legend } from "recharts";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, LineChart, Line, ReferenceLine, Legend, ResponsiveContainer } from "recharts";
 import { useCollection, useFirestore, useMemoFirebase, useUser } from "@/firebase";
 import { collection } from "firebase/firestore";
 import {
@@ -206,7 +205,7 @@ export default function RiskAnalysisPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="flex flex-col h-full space-y-6">
         <Card>
             <CardHeader>
                 <CardTitle>Seleção de Colaboradores</CardTitle>
@@ -259,76 +258,75 @@ export default function RiskAnalysisPage() {
             </CardContent>
         </Card>
 
-      <div className="grid gap-6 lg:grid-cols-2">
-        <Card className="lg:col-span-2">
-          <CardHeader>
-            <CardTitle>Distribuição de Risco Atual</CardTitle>
-            <CardDescription>
-              Visualização do índice de risco atual por membro da equipe.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-             {isLoading ? ( <Skeleton className="h-[300px] w-full" /> ) : selectedEmployees.length > 0 ? (
-                <ChartContainer config={{}} className="min-h-[300px] w-full">
-                    <BarChart accessibilityLayer data={barChartData}>
-                    <CartesianGrid vertical={false} />
-                    <XAxis
-                        dataKey="name"
-                        tickLine={false}
-                        tickMargin={10}
-                        axisLine={false}
-                    />
-                    <YAxis />
-                    <Tooltip cursor={false} content={<ChartTooltipContent />} />
-                    <Legend />
-                    <ReferenceLine y={5} stroke="gray" strokeDasharray="3 3" label={{ value: 'Risco Alto', position: 'left', textAnchor: 'end', fill: 'gray' }} />
-                    <Bar dataKey="risk" name="Índice de Risco" radius={4} />
-                    </BarChart>
-                </ChartContainer>
-            ) : (
-                <div className="flex items-center justify-center h-[300px] text-muted-foreground text-sm">
-                    Selecione pelo menos um colaborador para ver o gráfico.
-                </div>
-            )}
-          </CardContent>
-        </Card>
-        <Card className="lg:col-span-2">
-          <CardHeader>
-            <CardTitle>Série Histórica do Índice de Risco</CardTitle>
-            <CardDescription>
-              Evolução das pontuações de risco dos colaboradores selecionados.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-             {isLoading ? ( <Skeleton className="h-[300px] w-full" /> ) : selectedEmployees.length > 0 ? (
-                <ChartContainer config={lineChartConfig} className="min-h-[300px] w-full">
-                <LineChart data={lineChartData} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                    <XAxis dataKey="date" tickMargin={10} />
-                    <YAxis />
-                    <Tooltip content={<ChartTooltipContent />} />
-                    <Legend />
-                    {selectedEmployeeIds.map((id, index) => (
-                        <Line 
-                            key={id} 
-                            type="monotone" 
-                            dataKey={id} 
-                            stroke={chartColors[index % chartColors.length]} 
-                            name={employees?.find(e => e.id === id)?.name}
-                            strokeWidth={2}
-                            dot={{ r: 4 }}
+        <div className="grid gap-6 flex-1 lg:grid-cols-3">
+          <Card className="lg:col-span-1">
+            <CardHeader>
+              <CardTitle>Distribuição de Risco Atual</CardTitle>
+              <CardDescription>
+                Índice de risco atual por membro.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="h-[calc(100%-4rem)]">
+              {isLoading ? ( <Skeleton className="h-full w-full" /> ) : selectedEmployees.length > 0 ? (
+                  <ResponsiveContainer width="100%" height="100%">
+                      <BarChart accessibilityLayer data={barChartData}>
+                        <CartesianGrid vertical={false} />
+                        <XAxis
+                            dataKey="name"
+                            tickLine={false}
+                            tickMargin={10}
+                            axisLine={false}
                         />
-                    ))}
-                </LineChart>
-                </ChartContainer>
-            ) : (
-                <div className="flex items-center justify-center h-[300px] text-muted-foreground text-sm">
-                    Selecione pelo menos um colaborador para ver o histórico.
-                </div>
-            )}
-          </CardContent>
-        </Card>
-      </div>
+                        <YAxis />
+                        <Tooltip cursor={false} content={<ChartTooltipContent />} />
+                        <ReferenceLine y={5} stroke="gray" strokeDasharray="3 3" />
+                        <Bar dataKey="risk" name="Índice de Risco" radius={4} />
+                      </BarChart>
+                  </ResponsiveContainer>
+              ) : (
+                  <div className="flex items-center justify-center h-full text-muted-foreground text-sm">
+                      Selecione um colaborador.
+                  </div>
+              )}
+            </CardContent>
+          </Card>
+          <Card className="lg:col-span-2">
+            <CardHeader>
+              <CardTitle>Série Histórica do Índice de Risco</CardTitle>
+              <CardDescription>
+                Evolução das pontuações de risco.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="h-[calc(100%-4rem)]">
+              {isLoading ? ( <Skeleton className="h-full w-full" /> ) : selectedEmployees.length > 0 ? (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={lineChartData} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                        <XAxis dataKey="date" tickMargin={10} />
+                        <YAxis />
+                        <Tooltip content={<ChartTooltipContent />} />
+                        <Legend />
+                        {selectedEmployeeIds.map((id, index) => (
+                            <Line 
+                                key={id} 
+                                type="monotone" 
+                                dataKey={id} 
+                                stroke={lineChartConfig[id]?.color || chartColors[index % chartColors.length]} 
+                                name={employees?.find(e => e.id === id)?.name}
+                                strokeWidth={2}
+                                dot={{ r: 4 }}
+                            />
+                        ))}
+                    </LineChart>
+                  </ResponsiveContainer>
+              ) : (
+                  <div className="flex items-center justify-center h-full text-muted-foreground text-sm">
+                      Selecione um colaborador para ver o histórico.
+                  </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
     </div>
   );
 }
