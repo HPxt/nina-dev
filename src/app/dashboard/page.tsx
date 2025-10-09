@@ -5,7 +5,8 @@ import { useState, useMemo, useEffect } from "react";
 import type { Employee, Interaction, InteractionStatus, InteractionType } from "@/lib/types";
 import { useCollection, useFirestore, useMemoFirebase, useUser } from "@/firebase";
 import { collection, getDocs, query } from "firebase/firestore";
-import { parseISO, isSameMonth, isSameYear, getMonth } from "date-fns";
+import { isWithinInterval, startOfMonth, endOfMonth } from "date-fns";
+import { DateRange } from "react-day-picker";
 
 import {
   Card,
@@ -32,6 +33,8 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { DateRangePicker } from "@/components/ui/date-range-picker";
+
 
 interface TrackedEmployee extends Employee {
   lastInteraction?: string;
@@ -62,6 +65,11 @@ export default function LeadershipDashboard() {
   const [leaderFilter, setLeaderFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState<"all" | InteractionStatus>("all");
   const [interactionTypeFilter, setInteractionTypeFilter] = useState<InteractionType>("1:1");
+  const [dateRange, setDateRange] = useState<DateRange | undefined>({
+    from: startOfMonth(new Date()),
+    to: endOfMonth(new Date()),
+  });
+
 
   const currentUserEmployee = useMemo(() => {
     if (!user || !employees) return null;
@@ -126,11 +134,6 @@ export default function LeadershipDashboard() {
   
   const trackedEmployees = useMemo((): TrackedEmployee[] => {
     if (!employees || !currentUserEmployee) return [];
-  
-    const now = new Date();
-    const currentDay = now.getDate();
-    const previousMonth = getMonth(now) === 0 ? 11 : getMonth(now) - 1;
-    const yearOfPreviousMonth = previousMonth === 11 ? now.getFullYear() - 1 : now.getFullYear();
 
     return employees
       .filter(e => {
@@ -141,40 +144,43 @@ export default function LeadershipDashboard() {
       })
       .map(employee => {
         const employeeInteractions = interactions.get(employee.id) || [];
-        const filteredInteractions = employeeInteractions
-          .filter(int => int.type === interactionTypeFilter)
-          .sort((a, b) => parseISO(b.date).getTime() - parseISO(a.date).getTime());
         
-        const lastInteraction = filteredInteractions.length > 0 ? filteredInteractions[0] : undefined;
+        const interactionsInPeriod = employeeInteractions
+          .filter(int => {
+              const interactionDate = new Date(int.date);
+              const isInRange = dateRange?.from && dateRange?.to && isWithinInterval(interactionDate, { start: dateRange.from, end: dateRange.to });
+              return int.type === interactionTypeFilter && isInRange;
+          })
+          .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+        
+        const lastInteractionInPeriod = interactionsInPeriod.length > 0 ? interactionsInPeriod[0] : undefined;
         
         let status: InteractionStatus;
-        
-        const hadInteractionThisMonth = lastInteraction && isSameMonth(parseISO(lastInteraction.date), now);
-
-        if (hadInteractionThisMonth) {
+        if (lastInteractionInPeriod) {
             status = "Executada";
         } else {
-            const hadInteractionLastMonth = filteredInteractions.some(int => 
-                getMonth(parseISO(int.date)) === previousMonth && 
-                isSameYear(parseISO(int.date), yearOfPreviousMonth)
-            );
-            
-            if (!hadInteractionLastMonth && getMonth(now) !== 0) {
-                 status = "Pendente";
-            } else if (currentDay <= 10) {
-                status = "Pendente";
-            } else {
+            // Se não houve interação no período, verificamos se o período já passou
+            if (dateRange?.to && new Date() > dateRange.to) {
                 status = "Atrasado";
+            } else {
+                status = "Pendente";
             }
         }
         
+        // Pega a última interação geral para exibir a data, independente do período
+        const allTypedInteractions = employeeInteractions
+            .filter(int => int.type === interactionTypeFilter)
+            .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
+        const lastOverallInteraction = allTypedInteractions.length > 0 ? allTypedInteractions[0] : undefined;
+        
         return {
           ...employee,
-          lastInteraction: lastInteraction?.date,
+          lastInteraction: lastOverallInteraction?.date,
           interactionStatus: status,
         };
       });
-  }, [employees, interactions, currentUserEmployee, interactionTypeFilter]);
+  }, [employees, interactions, currentUserEmployee, interactionTypeFilter, dateRange]);
 
 
   const filteredEmployees = useMemo(() => {
@@ -235,7 +241,7 @@ export default function LeadershipDashboard() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
             <Select onValueChange={setLeaderFilter} value={leaderFilter} disabled={isLoading || isLeaderOnly}>
               <SelectTrigger>
                 <SelectValue placeholder="Todas as Equipes" />
@@ -270,6 +276,7 @@ export default function LeadershipDashboard() {
                 <SelectItem value="Pendente">Pendente</SelectItem>
               </SelectContent>
             </Select>
+            <DateRangePicker date={dateRange} onDateChange={setDateRange} />
           </div>
         </CardContent>
       </Card>
@@ -352,3 +359,4 @@ export default function LeadershipDashboard() {
   );
 }
 
+    
