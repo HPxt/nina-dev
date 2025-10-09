@@ -39,6 +39,7 @@ import { DateRangePicker } from "@/components/ui/date-range-picker";
 interface TrackedEmployee extends Employee {
   lastInteraction?: string;
   interactionStatus: InteractionStatus;
+  nextInteraction?: string;
 }
 
 const interactionTypes: { value: InteractionType, label: string }[] = [
@@ -159,6 +160,7 @@ export default function LeadershipDashboard() {
       .map(employee => {
         let status: InteractionStatus;
         let lastInteractionDate: string | undefined;
+        let nextInteractionDate: string | undefined;
   
         if (interactionTypeFilter === 'PDI') {
             const employeePdiActions = pdiActionsMap.get(employee.id) || [];
@@ -194,12 +196,14 @@ export default function LeadershipDashboard() {
                 .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
     
             lastInteractionDate = allTypedInteractions.length > 0 ? allTypedInteractions[0].date : undefined;
+            nextInteractionDate = allTypedInteractions.length > 0 ? allTypedInteractions[0].nextInteractionDate : undefined;
         }
         
         return {
           ...employee,
           lastInteraction: lastInteractionDate,
           interactionStatus: status,
+          nextInteraction: nextInteractionDate,
         };
       });
   }, [employees, interactions, pdiActionsMap, currentUserEmployee, interactionTypeFilter, dateRange]);
@@ -314,6 +318,7 @@ export default function LeadershipDashboard() {
                 <TableHead>Membro</TableHead>
                 <TableHead className="hidden md:table-cell">Líder</TableHead>
                 <TableHead className="hidden sm:table-cell">Última Interação</TableHead>
+                <TableHead className="hidden sm:table-cell">Próxima Interação</TableHead>
                 <TableHead>Status</TableHead>
               </TableRow>
             </TableHeader>
@@ -331,6 +336,7 @@ export default function LeadershipDashboard() {
                             </div>
                         </TableCell>
                         <TableCell className="hidden md:table-cell"><Skeleton className="h-5 w-20" /></TableCell>
+                        <TableCell className="hidden sm:table-cell"><Skeleton className="h-5 w-24" /></TableCell>
                         <TableCell className="hidden sm:table-cell"><Skeleton className="h-5 w-24" /></TableCell>
                         <TableCell><Skeleton className="h-6 w-20 rounded-full" /></TableCell>
                     </TableRow>
@@ -356,6 +362,9 @@ export default function LeadershipDashboard() {
                     <TableCell className="hidden sm:table-cell">
                       {formatDate(member.lastInteraction)}
                     </TableCell>
+                    <TableCell className="hidden sm:table-cell">
+                        {formatDate(member.nextInteraction)}
+                    </TableCell>
                     <TableCell>
                       <Badge variant={getBadgeVariant(member.interactionStatus)}>
                         {member.interactionStatus}
@@ -365,7 +374,7 @@ export default function LeadershipDashboard() {
                 ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={4} className="text-center h-24">
+                  <TableCell colSpan={5} className="text-center h-24">
                     Nenhum colaborador gerenciado encontrado ou correspondente aos filtros.
                   </TableCell>
                 </TableRow>
