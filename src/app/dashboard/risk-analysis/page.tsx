@@ -266,16 +266,16 @@ export default function RiskAnalysisPage() {
         </Card>
 
         <div className="grid gap-6 flex-1 lg:grid-cols-3">
-          <Card className="lg:col-span-1">
+          <Card className="lg:col-span-1 flex flex-col">
             <CardHeader>
               <CardTitle>Distribuição de Risco Atual</CardTitle>
               <CardDescription>
                 Índice de risco atual por membro.
               </CardDescription>
             </CardHeader>
-            <CardContent className="h-[calc(100%-4rem)]">
+            <CardContent className="flex-1">
               {isLoading ? ( <Skeleton className="h-full w-full" /> ) : selectedEmployees.length > 0 ? (
-                  <ChartContainer config={barChartConfig}>
+                  <ChartContainer config={barChartConfig} className="h-full w-full">
                     <BarChart accessibilityLayer data={barChartData}>
                       <CartesianGrid vertical={false} />
                       <XAxis
@@ -297,16 +297,16 @@ export default function RiskAnalysisPage() {
               )}
             </CardContent>
           </Card>
-          <Card className="lg:col-span-2">
+          <Card className="lg:col-span-2 flex flex-col">
             <CardHeader>
               <CardTitle>Série Histórica do Índice de Risco</CardTitle>
               <CardDescription>
                 Evolução das pontuações de risco.
               </CardDescription>
             </CardHeader>
-            <CardContent className="h-[calc(100%-4rem)]">
+            <CardContent className="flex-1">
               {isLoading ? ( <Skeleton className="h-full w-full" /> ) : selectedEmployees.length > 0 ? (
-                  <ChartContainer config={lineChartConfig}>
+                  <ChartContainer config={lineChartConfig} className="h-full w-full">
                     <LineChart data={lineChartData} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
                         <CartesianGrid strokeDasharray="3 3" vertical={false} />
                         <XAxis dataKey="date" tickMargin={10} />
