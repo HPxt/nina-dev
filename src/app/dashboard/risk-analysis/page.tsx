@@ -16,22 +16,15 @@ import {
   ChartTooltipContent,
   type ChartConfig
 } from "@/components/ui/chart";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, LineChart, Line, ReferenceLine, Legend, ResponsiveContainer } from "recharts";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, LineChart, Line, ReferenceLine, Legend } from "recharts";
 import { useCollection, useFirestore, useMemoFirebase, useUser } from "@/firebase";
 import { collection } from "firebase/firestore";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuCheckboxItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { Check, ChevronsUpDown } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
-import { Badge } from "@/components/ui/badge";
-import { cn, formatDate } from "@/lib/utils";
+import { cn } from "@/lib/utils";
 
 const chartColors = [
   "hsl(var(--chart-1))",
@@ -42,7 +35,7 @@ const chartColors = [
 ];
 
 export default function RiskAnalysisPage() {
-  const [selectedEmployeeIds, setSelectedEmployeeIds] = useState<string[]>([]);
+  const [selectedEmployeeIds, setSelectedEmployeeIds] = useState<string[]>(['user-1', 'user-2', 'user-3']);
   const [open, setOpen] = useState(false);
 
   const firestore = useFirestore();
@@ -111,6 +104,30 @@ export default function RiskAnalysisPage() {
 
   React.useEffect(() => {
     const fetchInteractions = async () => {
+      // START MOCK DATA
+      if (process.env.NODE_ENV === 'development') {
+        const mockInteractions: { [key: string]: Interaction[] } = {
+          'user-1': [
+            { id: 'int-1', type: 'Índice de Risco', date: '2024-01-15T10:00:00Z', notes: '...', authorId: 'leader-1', riskScore: 2 },
+            { id: 'int-2', type: 'Índice de Risco', date: '2024-02-15T10:00:00Z', notes: '...', authorId: 'leader-1', riskScore: 3 },
+            { id: 'int-3', type: 'Índice de Risco', date: '2024-03-15T10:00:00Z', notes: '...', authorId: 'leader-1', riskScore: 1 },
+          ],
+          'user-2': [
+            { id: 'int-4', type: 'Índice de Risco', date: '2024-01-20T10:00:00Z', notes: '...', authorId: 'leader-1', riskScore: 6 },
+            { id: 'int-5', type: 'Índice de Risco', date: '2024-02-20T10:00:00Z', notes: '...', authorId: 'leader-1', riskScore: 5 },
+            { id: 'int-6', type: 'Índice de Risco', date: '2024-03-20T10:00:00Z', notes: '...', authorId: 'leader-1', riskScore: 7 },
+          ],
+           'user-3': [
+            { id: 'int-7', type: 'Índice de Risco', date: '2024-01-25T10:00:00Z', notes: '...', authorId: 'leader-2', riskScore: -1 },
+            { id: 'int-8', type: 'Índice de Risco', date: '2024-02-25T10:00:0Z', notes: '...', authorId: 'leader-2', riskScore: 0 },
+            { id: 'int-9', type: 'Índice de Risco', date: '2024-03-25T10:00:00Z', notes: '...', authorId: 'leader-2', riskScore: -2 },
+          ],
+        };
+        setInteractions(mockInteractions);
+        return;
+      }
+      // END MOCK DATA
+
       if (!firestore || selectedEmployeeIds.length === 0) {
         setInteractions({});
         return;
@@ -285,7 +302,10 @@ export default function RiskAnalysisPage() {
                           axisLine={false}
                       />
                       <YAxis />
-                      <ChartTooltip cursor={false} content={<ChartTooltipContent />} />
+                      <ChartTooltip
+                        cursor={false}
+                        content={<ChartTooltipContent />}
+                      />
                       <ReferenceLine y={5} stroke="gray" strokeDasharray="3 3" />
                       <Bar dataKey="risk" name="Índice de Risco" radius={4} />
                     </BarChart>
@@ -337,3 +357,5 @@ export default function RiskAnalysisPage() {
     </div>
   );
 }
+
+    
