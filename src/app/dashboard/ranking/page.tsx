@@ -138,7 +138,7 @@ export default function RankingPage() {
           const interactionsInRange = memberInteractions.filter(interaction => {
               const interactionDate = new Date(interaction.date);
               return dateRange?.from && dateRange?.to && isWithinInterval(interactionDate, { start: dateRange.from, end: dateRange.to }) &&
-                     ['1:1', 'Feedback', 'N3 Individual', 'Índice de Risco'].includes(interaction.type);
+                     ['1:1', 'N3 Individual', 'Índice de Risco'].includes(interaction.type);
           }).length;
           
           // Prorate PDI actions as well, simplified for now
@@ -268,3 +268,5 @@ export default function RankingPage() {
     </Card>
   );
 }
+
+    
