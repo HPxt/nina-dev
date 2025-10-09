@@ -185,17 +185,21 @@ export default function LeadershipDashboard() {
             const monthsInRange = differenceInMonths(range.end, range.start) + 1;
             const totalRequired = requiredCount * monthsInRange;
 
-            const employeeInteractions = interactions.get(employee.id) || [];
-            const executedCount = employeeInteractions.filter(int =>
-                int.type === 'N3 Individual' && isWithinInterval(parseISO(int.date), range)
-            ).length;
-
-            if (executedCount >= totalRequired) {
-                status = "Executada";
-            } else if (executedCount > 0) {
-                status = `Realizado ${executedCount}/${totalRequired}`;
+            if (totalRequired === 0) {
+              status = "N/A";
             } else {
-                status = "Pendente";
+              const employeeInteractions = interactions.get(employee.id) || [];
+              const executedCount = employeeInteractions.filter(int =>
+                  int.type === 'N3 Individual' && isWithinInterval(parseISO(int.date), range)
+              ).length;
+
+              if (executedCount >= totalRequired) {
+                  status = "Executada";
+              } else if (executedCount > 0) {
+                  status = `Realizado ${executedCount}/${totalRequired}`;
+              } else {
+                  status = "Pendente";
+              }
             }
 
         } else if (schedule) {
@@ -213,7 +217,7 @@ export default function LeadershipDashboard() {
             });
   
             if (requiredMonthsInPeriod.length === 0) {
-                status = "Executada"; // Nenhuma interação obrigatória no período
+                status = "N/A"; // Nenhuma interação obrigatória no período
             } else {
                 let wasExecuted = false;
                 if (interactionTypeFilter === 'PDI') {
@@ -474,3 +478,5 @@ export default function LeadershipDashboard() {
     </div>
   );
 }
+
+    
