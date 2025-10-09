@@ -238,8 +238,8 @@ export default function RiskAnalysisPage() {
                          <Legend content={() => <text x={"100%"} y={15} dominantBaseline="middle" textAnchor="end" fill="hsl(var(--destructive))" fontSize="10">Risco Potencial</text>} />
                       </ReferenceArea>
                        <ReferenceLine y={0} stroke="hsl(var(--border))" strokeWidth={1} />
-                       <ReferenceLine x={5} stroke="hsl(var(--destructive))" strokeDasharray="3 3">
-                            <Legend content={() => <text x={0} y={0} dy={-5} dx={-15} fill="hsl(var(--destructive))" fontSize="10" textAnchor="middle">Risco Alto</text>} />
+                       <ReferenceLine x={5} stroke="hsl(var(--muted-foreground))" strokeDasharray="3 3">
+                            <Legend content={() => <text x={0} y={0} dy={-5} dx={-15} fill="hsl(var(--muted-foreground))" fontSize="10" textAnchor="middle">Risco Alto</text>} />
                        </ReferenceLine>
                       <Bar dataKey="risk" name="Índice de Risco" radius={4} />
                     </BarChart>
