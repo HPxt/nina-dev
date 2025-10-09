@@ -72,6 +72,19 @@ const OneOnOneDetails = ({ notes }: { notes: OneOnOneNotes }) => (
       </AccordionItem>
     </Accordion>
   );
+  
+  const RiskAssessmentDetails = ({ notes }: { notes: string }) => (
+    <Accordion type="single" collapsible className="w-full">
+      <AccordionItem value="item-1">
+        <AccordionTrigger>Visualizar detalhes do Índice de Risco</AccordionTrigger>
+        <AccordionContent>
+            <div className="text-sm text-foreground/90 p-2 whitespace-pre-wrap">
+                {notes}
+            </div>
+        </AccordionContent>
+      </AccordionItem>
+    </Accordion>
+  );
 
   function isN3IndividualNotes(notes: any): notes is N3IndividualNotes {
     return notes && (typeof notes.captacao !== 'undefined' || typeof notes.esforcos !== 'undefined');
@@ -127,8 +140,10 @@ export function Timeline({ interactions, isLoading }: { interactions: Interactio
             </div>
             <p className="text-xs text-muted-foreground">{item.date ? formatDate(item.date) : 'Data indisponível'}</p>
             <div className="mt-2 text-sm">
-                {typeof item.notes === 'string' ? (
+                {typeof item.notes === 'string' && item.type === 'Feedback' ? (
                      <p className="whitespace-pre-wrap">{item.notes}</p>
+                ) : typeof item.notes === 'string' && item.type === 'Índice de Risco' ? (
+                    <RiskAssessmentDetails notes={item.notes} />
                 ) : item.type === '1:1' && item.notes ? (
                     <OneOnOneDetails notes={item.notes as OneOnOneNotes} />
                 ) : item.type === 'N3 Individual' && isN3IndividualNotes(item.notes) ? (
@@ -141,4 +156,3 @@ export function Timeline({ interactions, isLoading }: { interactions: Interactio
     </div>
   );
 }
-
