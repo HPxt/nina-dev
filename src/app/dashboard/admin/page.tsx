@@ -26,7 +26,7 @@ import {
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
-import { MoreHorizontal, PlusCircle, Upload, ArrowUpDown, X, Filter, User, ShieldCheck, FileDown } from "lucide-react";
+import { MoreHorizontal, PlusCircle, Upload, ArrowUpDown, X, Filter, User, ShieldCheck, FileDown, HelpCircle } from "lucide-react";
 import { 
   DropdownMenu, 
   DropdownMenuContent, 
@@ -59,6 +59,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { exportData } from "@/lib/export";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 
 const roles: Role[] = ["Colaborador", "Líder"];
@@ -159,6 +160,26 @@ export default function AdminPage() {
       }
       return total;
     };
+
+    const getInteractionBreakdown = (employee: Employee) => {
+        const breakdown = [
+            "PDI: 2",
+            "1:1: 4",
+            "Índice de Risco: 12"
+        ];
+        switch (employee.segment) {
+            case 'Alfa':
+                breakdown.push("N3 Individual: 52");
+                break;
+            case 'Beta':
+                breakdown.push("N3 Individual: 26");
+                break;
+            case 'Senior':
+                breakdown.push("N3 Individual: 12");
+                break;
+        }
+        return breakdown.join(' | ');
+    }
 
 
   const filteredAndSortedEmployees = useMemo(() => {
@@ -596,8 +617,20 @@ export default function AdminPage() {
                         </SelectContent>
                       </Select>
                     </TableCell>
-                    <TableCell className="text-center font-medium">
-                      {calculateAnnualInteractions(employee)}
+                    <TableCell className="text-center">
+                        <TooltipProvider>
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <div className="flex items-center justify-center gap-1 font-medium cursor-default">
+                                        {calculateAnnualInteractions(employee)}
+                                        <HelpCircle className="h-3 w-3 text-muted-foreground" />
+                                    </div>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                    <p className="text-xs">{getInteractionBreakdown(employee)}</p>
+                                </TooltipContent>
+                            </Tooltip>
+                        </TooltipProvider>
                     </TableCell>
                     <TableCell>
                       <Select 
@@ -910,3 +943,5 @@ export default function AdminPage() {
     
 
     
+
+  
