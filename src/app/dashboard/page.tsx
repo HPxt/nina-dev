@@ -5,7 +5,7 @@ import React, { useState, useMemo, useEffect } from "react";
 import type { Employee, Interaction, InteractionStatus, InteractionType, PDIAction } from "@/lib/types";
 import { useCollection, useFirestore, useMemoFirebase, useUser } from "@/firebase";
 import { collection, getDocs, query } from "firebase/firestore";
-import { isWithinInterval, startOfMonth, endOfMonth } from "date-fns";
+import { isWithinInterval, startOfMonth, endOfMonth, getMonth, getYear } from "date-fns";
 import { DateRange } from "react-day-picker";
 
 import {
@@ -49,6 +49,13 @@ const interactionTypes: { value: InteractionType, label: string }[] = [
     { value: "Índice de Risco", label: "Índice de Risco" },
     { value: "PDI", label: "PDI" },
 ];
+
+// Definição dos meses obrigatórios para cada tipo de interação (0-indexed: Janeiro=0)
+const interactionSchedules: { [key in InteractionType]?: number[] } = {
+    'PDI': [0, 6], // Janeiro e Julho
+    '1:1': [2, 5, 8, 11], // Março, Junho, Setembro, Dezembro
+    'Índice de Risco': [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11], // Todos os meses
+};
 
 
 export default function LeadershipDashboard() {
@@ -148,8 +155,8 @@ export default function LeadershipDashboard() {
   }, [employees, firestore, currentUserEmployee]);
   
   const trackedEmployees = useMemo((): TrackedEmployee[] => {
-    if (!employees || !currentUserEmployee) return [];
-  
+    if (!employees || !currentUserEmployee || !dateRange?.from || !dateRange?.to) return [];
+
     return employees
       .filter(e => {
          if (!e.isUnderManagement) return false;
@@ -158,47 +165,77 @@ export default function LeadershipDashboard() {
          return false;
       })
       .map(employee => {
-        let status: InteractionStatus;
+        let status: InteractionStatus = "Pendente";
         let lastInteractionDate: string | undefined;
         let nextInteractionDate: string | undefined;
-  
-        if (interactionTypeFilter === 'PDI') {
-            const employeePdiActions = pdiActionsMap.get(employee.id) || [];
-            
-            const actionsInPeriod = employeePdiActions.filter(action => {
-                const actionStartDate = new Date(action.startDate);
-                const isInRange = dateRange?.from && dateRange?.to && isWithinInterval(actionStartDate, { start: dateRange.from, end: dateRange.to });
-                return isInRange;
-            });
 
-            status = actionsInPeriod.length > 0 ? "Executada" : "Pendente";
+        const schedule = interactionSchedules[interactionTypeFilter];
+
+        if (schedule) {
+            // Lógica para interações com agendamento fixo
+            const requiredMonths: { month: number, year: number }[] = [];
+            let currentDate = new Date(dateRange.from!);
+            while (currentDate <= dateRange.to!) {
+                const month = getMonth(currentDate);
+                if (schedule.includes(month)) {
+                    const year = getYear(currentDate);
+                    if (!requiredMonths.some(m => m.month === month && m.year === year)) {
+                        requiredMonths.push({ month, year });
+                    }
+                }
+                currentDate.setMonth(currentDate.getMonth() + 1);
+            }
             
-            const allActions = employeePdiActions
-              .sort((a, b) => new Date(b.startDate).getTime() - new Date(a.startDate).getTime());
-            
-            lastInteractionDate = allActions.length > 0 ? allActions[0].startDate : undefined;
+            if (requiredMonths.length === 0) {
+                 status = "Executada"; // Nenhuma interação obrigatória no período
+            } else {
+                let allRequiredDone = true;
+                for (const req of requiredMonths) {
+                    let isDone = false;
+                    if (interactionTypeFilter === 'PDI') {
+                        const employeePdiActions = pdiActionsMap.get(employee.id) || [];
+                        isDone = employeePdiActions.some(action => {
+                            const actionDate = new Date(action.startDate);
+                            return getMonth(actionDate) === req.month && getYear(actionDate) === req.year;
+                        });
+                    } else {
+                        const employeeInteractions = interactions.get(employee.id) || [];
+                        isDone = employeeInteractions.some(int => {
+                             const interactionDate = new Date(int.date);
+                            return int.type === interactionTypeFilter && getMonth(interactionDate) === req.month && getYear(interactionDate) === req.year;
+                        });
+                    }
+                    if (!isDone) {
+                        allRequiredDone = false;
+                        break;
+                    }
+                }
+                status = allRequiredDone ? "Executada" : "Pendente";
+            }
 
         } else {
+             // Lógica para interações sem agendamento fixo (ex: Feedback)
             const employeeInteractions = interactions.get(employee.id) || [];
-            
-            const interactionsInPeriod = employeeInteractions
-              .filter(int => {
-                  const interactionDate = new Date(int.date);
-                  const isInRange = dateRange?.from && dateRange?.to && isWithinInterval(interactionDate, { start: dateRange.from, end: dateRange.to });
-                  return int.type === interactionTypeFilter && isInRange;
-              })
-              .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-            
+            const interactionsInPeriod = employeeInteractions.filter(int => 
+                int.type === interactionTypeFilter &&
+                isWithinInterval(new Date(int.date), { start: dateRange.from!, end: dateRange.to! })
+            );
             status = interactionsInPeriod.length > 0 ? "Executada" : "Pendente";
-            
-            const allTypedInteractions = employeeInteractions
+        }
+
+        // Encontrar a última interação e próxima data para exibição, independente do status
+        if (interactionTypeFilter === 'PDI') {
+            const allActions = (pdiActionsMap.get(employee.id) || [])
+                .sort((a, b) => new Date(b.startDate).getTime() - new Date(a.startDate).getTime());
+            lastInteractionDate = allActions.length > 0 ? allActions[0].startDate : undefined;
+        } else {
+            const allTypedInteractions = (interactions.get(employee.id) || [])
                 .filter(int => int.type === interactionTypeFilter)
                 .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-    
             lastInteractionDate = allTypedInteractions.length > 0 ? allTypedInteractions[0].date : undefined;
             nextInteractionDate = allTypedInteractions.length > 0 ? allTypedInteractions[0].nextInteractionDate : undefined;
         }
-        
+
         return {
           ...employee,
           lastInteraction: lastInteractionDate,
