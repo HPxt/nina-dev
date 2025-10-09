@@ -18,7 +18,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
-import { PlusCircle } from "lucide-react";
+import { CalendarIcon, PlusCircle } from "lucide-react";
 import { Timeline } from "@/components/timeline";
 import {
   Dialog,
@@ -36,7 +36,10 @@ import { addDoc, collection, doc, serverTimestamp, setDoc } from "firebase/fires
 import { useToast } from "@/hooks/use-toast";
 import { RiskAssessmentFormDialog } from "@/components/risk-assessment-form-dialog";
 import { Input } from "@/components/ui/input";
-import { isSameMonth, isSameYear, parseISO } from "date-fns";
+import { isSameMonth, isSameYear, parseISO, format } from "date-fns";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import { cn } from "@/lib/utils";
 
 type NewInteraction = Omit<Interaction, "id" | "date" | "authorId" | "notes"> & { notes: string | OneOnOneNotes | N3IndividualNotes };
 
@@ -65,6 +68,7 @@ export default function IndividualTrackingPage() {
   const [simpleNotes, setSimpleNotes] = useState("");
   const [oneOnOneNotes, setOneOnOneNotes] = useState<OneOnOneNotes>(initialOneOnOneNotes);
   const [n3Notes, setN3Notes] = useState<N3IndividualNotes>(initialN3Notes);
+  const [nextInteractionDate, setNextInteractionDate] = useState<Date>();
   const [isSaving, setIsSaving] = useState(false);
 
   const firestore = useFirestore();
@@ -148,6 +152,7 @@ export default function IndividualTrackingPage() {
     setOneOnOneNotes(initialOneOnOneNotes);
     setN3Notes(initialN3Notes);
     setInteractionType('1:1');
+    setNextInteractionDate(undefined);
   }
 
   const handleSaveInteraction = async () => {
@@ -156,6 +161,15 @@ export default function IndividualTrackingPage() {
             variant: "destructive",
             title: "Erro de Validação",
             description: "Não foi possível salvar, tente novamente.",
+        });
+        return;
+    }
+
+    if (!nextInteractionDate) {
+        toast({
+            variant: "destructive",
+            title: "Data da Próxima Interação",
+            description: "Por favor, selecione a data para a próxima interação.",
         });
         return;
     }
@@ -209,6 +223,7 @@ export default function IndividualTrackingPage() {
         notes: notesToSave,
         authorId: user.uid,
         date: new Date().toISOString(),
+        nextInteractionDate: nextInteractionDate.toISOString(),
     };
 
     try {
@@ -460,6 +475,32 @@ export default function IndividualTrackingPage() {
                         />
                     </div>
                   )}
+                   <div className="space-y-2">
+                    <Label htmlFor="next-interaction-date">Próxima Interação</Label>
+                     <Popover>
+                        <PopoverTrigger asChild>
+                            <Button
+                                id="next-interaction-date"
+                                variant={"outline"}
+                                className={cn(
+                                    "w-full justify-start text-left font-normal",
+                                    !nextInteractionDate && "text-muted-foreground"
+                                )}
+                            >
+                                <CalendarIcon className="mr-2 h-4 w-4" />
+                                {nextInteractionDate ? format(nextInteractionDate, "PPP") : <span>Escolha uma data</span>}
+                            </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0">
+                            <Calendar
+                                mode="single"
+                                selected={nextInteractionDate}
+                                onSelect={setNextInteractionDate}
+                                initialFocus
+                            />
+                        </PopoverContent>
+                    </Popover>
+                  </div>
                 </div>
                 <DialogFooter>
                   <Button type="button" variant="outline" onClick={() => handleOpenChange(false)} disabled={isSaving}>Cancelar</Button>
@@ -488,5 +529,3 @@ export default function IndividualTrackingPage() {
     </div>
   );
 }
-
-    

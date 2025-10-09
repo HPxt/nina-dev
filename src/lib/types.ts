@@ -60,6 +60,7 @@ export interface Interaction {
   notes: string | OneOnOneNotes | N3IndividualNotes;
   authorId: string;
   riskScore?: number; // Add riskScore to interaction
+  nextInteractionDate?: string; // ISO 8601 string
 }
 
 export interface PDIAction {
