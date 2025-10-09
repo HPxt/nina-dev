@@ -234,13 +234,22 @@ export default function RiskAnalysisPage() {
                         cursor={false}
                         content={<ChartTooltipContent />}
                       />
-                      <ReferenceArea x1={0} x2={10} y1={undefined} y2={undefined} fill="hsl(var(--destructive) / 0.1)" strokeOpacity={0.5} ifOverflow="visible">
+                      <ReferenceArea x1={0} x2={10} y1={undefined} y2={undefined} fill="hsl(var(--destructive) / 0.1)" strokeOpacity={0.5}>
                          <Legend content={() => <text x={"100%"} y={15} dominantBaseline="middle" textAnchor="end" fill="hsl(var(--destructive))" fontSize="10">Risco Potencial</text>} />
                       </ReferenceArea>
                        <ReferenceLine y={0} stroke="hsl(var(--border))" strokeWidth={1} />
-                       <ReferenceLine x={5} stroke="hsl(var(--muted-foreground))" strokeDasharray="3 3">
-                            <Legend content={() => <text x={0} y={0} dy={-5} dx={-15} fill="hsl(var(--muted-foreground))" fontSize="10" textAnchor="middle">Risco Alto</text>} />
-                       </ReferenceLine>
+                       <ReferenceLine 
+                          x={5} 
+                          stroke="hsl(var(--muted-foreground))" 
+                          strokeDasharray="3 3" 
+                          label={{ 
+                            value: "Risco Alto", 
+                            position: "insideTop", 
+                            fill: "hsl(var(--muted-foreground))",
+                            fontSize: 10,
+                            dy: -5,
+                          }}
+                        />
                       <Bar dataKey="risk" name="Índice de Risco" radius={4} />
                     </BarChart>
                   </ChartContainer>
