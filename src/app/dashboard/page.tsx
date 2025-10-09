@@ -42,13 +42,14 @@ interface TrackedEmployee extends Employee {
   nextInteraction?: string;
 }
 
-const interactionTypes: { value: InteractionType, label: string }[] = [
-    { value: "1:1", label: "1:1" },
-    { value: "Feedback", label: "Feedback" },
-    { value: "N3 Individual", label: "N3 Individual" },
-    { value: "Índice de Risco", label: "Índice de Risco" },
-    { value: "PDI", label: "PDI" },
+const interactionTypes: { value: InteractionType, label: string, description: string }[] = [
+    { value: "1:1", label: "1:1", description: "Trimestral" },
+    { value: "PDI", label: "PDI", description: "Semestral" },
+    { value: "Índice de Risco", label: "Índice de Risco", description: "Mensal" },
+    { value: "N3 Individual", label: "N3 Individual", description: "Segmento" },
+    { value: "Feedback", label: "Feedback", description: "Sob demanda" },
 ];
+
 
 // Definição dos meses obrigatórios para cada tipo de interação (0-indexed: Janeiro=0)
 const interactionSchedules: { [key in InteractionType]?: number[] } = {
@@ -241,7 +242,7 @@ export default function LeadershipDashboard() {
           const interactionsInPeriod = employeeInteractions.filter(int =>
             int.type === interactionTypeFilter && isWithinInterval(parseISO(int.date), range)
           );
-          status = interactionsInPeriod.length > 0 ? "Executada" : "Pendente";
+          status = interactionsInPeriod.length > 0 ? "Executada" : "N/A";
         }
   
         // Encontrar a última interação e próxima data para exibição, independente do status
@@ -365,7 +366,12 @@ export default function LeadershipDashboard() {
                 </SelectTrigger>
                 <SelectContent>
                     {interactionTypes.map(type => (
-                        <SelectItem key={type.value} value={type.value}>{type.label}</SelectItem>
+                        <SelectItem key={type.value} value={type.value}>
+                            <div className="flex flex-col">
+                                <span>{type.label}</span>
+                                <span className="text-xs text-muted-foreground">{type.description}</span>
+                            </div>
+                        </SelectItem>
                     ))}
                 </SelectContent>
             </Select>
@@ -478,5 +484,3 @@ export default function LeadershipDashboard() {
     </div>
   );
 }
-
-    
