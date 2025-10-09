@@ -229,12 +229,14 @@ export default function RiskAnalysisPage() {
                         axisLine={false}
                         tick={{ fill: "hsl(var(--foreground))" }}
                       />
-                       <XAxis dataKey="risk" type="number" />
+                       <XAxis dataKey="risk" type="number" domain={[-10, 10]} />
                       <ChartTooltip
                         cursor={false}
                         content={<ChartTooltipContent />}
                       />
-                      <ReferenceArea x1={0} x2={Math.max(...barChartData.map(d => d.risk), 5)} y1={undefined} y2={undefined} fill="hsl(var(--destructive) / 0.1)" strokeOpacity={0.5} ifOverflow="visible" />
+                      <ReferenceArea x1={0} x2={10} y1={undefined} y2={undefined} fill="hsl(var(--destructive) / 0.1)" strokeOpacity={0.5} ifOverflow="visible">
+                         <Legend content={() => <text x={"100%"} y={15} dominantBaseline="middle" textAnchor="end" fill="hsl(var(--destructive))" fontSize="10">Risco Potencial</text>} />
+                      </ReferenceArea>
                        <ReferenceLine y={0} stroke="hsl(var(--border))" strokeWidth={1} />
                        <ReferenceLine x={5} stroke="hsl(var(--destructive))" strokeDasharray="3 3">
                             <Legend content={() => <text x={0} y={0} dy={-5} dx={-15} fill="hsl(var(--destructive))" fontSize="10" textAnchor="middle">Risco Alto</text>} />
@@ -298,4 +300,3 @@ export default function RiskAnalysisPage() {
     </div>
   );
 }
-
