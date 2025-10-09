@@ -1,11 +1,12 @@
 
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
-import type { Employee, Interaction, OneOnOneStatus } from "@/lib/types";
+import React, { useState, useMemo, useEffect } from "react";
+import type { Employee, Interaction, InteractionStatus, InteractionType, PDIAction } from "@/lib/types";
 import { useCollection, useFirestore, useMemoFirebase, useUser } from "@/firebase";
 import { collection, getDocs, query } from "firebase/firestore";
-import { parseISO, isSameMonth, isSameYear, getMonth } from "date-fns";
+import { isWithinInterval, startOfMonth, endOfMonth, getMonth, getYear, parseISO, differenceInMonths } from "date-fns";
+import { DateRange } from "react-day-picker";
 
 import {
   Card,
@@ -32,157 +33,289 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { DateRangePicker } from "@/components/ui/date-range-picker";
+
 
 interface TrackedEmployee extends Employee {
-  lastOneOnOne?: string;
-  oneOnOneStatus: OneOnOneStatus;
+  lastInteraction?: string;
+  interactionStatus: InteractionStatus;
+  nextInteraction?: string;
 }
+
+const interactionTypes: { value: InteractionType, label: string, description: string }[] = [
+    { value: "1:1", label: "1:1", description: "Trimestral (Mar, Jun, Set, Dez)" },
+    { value: "PDI", label: "PDI", description: "Semestral (Jan, Jul)" },
+    { value: "Índice de Risco", label: "Índice de Risco", description: "Mensal" },
+    { value: "N3 Individual", label: "N3 Individual", description: "Segmento" },
+    { value: "Feedback", label: "Feedback", description: "Sob demanda" },
+];
+
+
+// Definição dos meses obrigatórios para cada tipo de interação (0-indexed: Janeiro=0)
+const interactionSchedules: { [key in InteractionType]?: number[] } = {
+    'PDI': [0, 6], // Janeiro e Julho
+    '1:1': [2, 5, 8, 11], // Março, Junho, Setembro, Dezembro
+    'Índice de Risco': [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11], // Todos os meses
+};
+
+const n3IndividualSchedule = {
+    'Alfa': 4, // 4 por mês
+    'Beta': 2, // 2 por mês
+    'Senior': 1, // 1 por mês
+};
+
 
 export default function LeadershipDashboard() {
   const firestore = useFirestore();
   const { user } = useUser();
 
   const employeesCollection = useMemoFirebase(
-    () => (firestore ? collection(firestore, "employees") : null),
-    [firestore]
+    () => (firestore && user ? collection(firestore, "employees") : null),
+    [firestore, user]
   );
   const { data: employees, isLoading: areEmployeesLoading } = useCollection<Employee>(employeesCollection);
 
   const [interactions, setInteractions] = useState<Map<string, Interaction[]>>(new Map());
-  const [loadingInteractions, setLoadingInteractions] = useState(true);
+  const [pdiActionsMap, setPdiActionsMap] = useState<Map<string, PDIAction[]>>(new Map());
+  const [loadingData, setLoadingData] = useState(true);
 
   const [leaderFilter, setLeaderFilter] = useState("all");
-  const [statusFilter, setStatusFilter] = useState<"all" | OneOnOneStatus>("all");
-  const [periodFilter, setPeriodFilter] = useState("all"); // Not implemented yet, but state is ready
+  const [statusFilter, setStatusFilter] = useState<"all" | InteractionStatus>("all");
+  const [interactionTypeFilter, setInteractionTypeFilter] = useState<InteractionType>("1:1");
+  const [dateRange, setDateRange] = useState<DateRange | undefined>({
+    from: startOfMonth(new Date()),
+    to: endOfMonth(new Date()),
+  });
+
 
   const currentUserEmployee = useMemo(() => {
     if (!user || !employees) return null;
-    return employees.find(e => e.email === user.email);
+
+    if (user.email === 'matheus@3ainvestimentos.com.br') {
+        const employeeData = employees.find(e => e.email === user.email) || {};
+        return {
+            ...employeeData,
+            name: user.displayName || 'Admin',
+            email: user.email,
+            isAdmin: true,
+            isDirector: true,
+            role: 'Líder',
+        } as Employee;
+    }
+
+    const employeeData = employees.find(e => e.email === user.email);
+
+    if (!employeeData) return null;
+
+    if (employeeData.isAdmin) {
+      return {
+        ...employeeData,
+        role: 'Líder',
+        isDirector: true,
+      };
+    }
+
+    return employeeData;
   }, [user, employees]);
 
   useEffect(() => {
-    const fetchInteractions = async () => {
+    if (currentUserEmployee?.role === 'Líder' && !currentUserEmployee.isDirector && !currentUserEmployee.isAdmin) {
+      setLeaderFilter(currentUserEmployee.id);
+    }
+  }, [currentUserEmployee]);
+
+
+  useEffect(() => {
+    const fetchData = async () => {
       if (!firestore || !employees || !currentUserEmployee) return;
-
-      setLoadingInteractions(true);
+  
+      setLoadingData(true);
       const managedEmployeeIds = employees
-        .filter(e => e.isUnderManagement && (currentUserEmployee.role === 'Admin' || currentUserEmployee.role === 'Diretor' || e.leaderId === currentUserEmployee.id))
+        .filter(e => e.isUnderManagement && (currentUserEmployee.isAdmin || currentUserEmployee.isDirector || e.leaderId === currentUserEmployee.id))
         .map(e => e.id);
-
+  
       const interactionsMap = new Map<string, Interaction[]>();
+      const pdiActionsMap = new Map<string, PDIAction[]>();
+  
       for (const id of managedEmployeeIds) {
         const interactionsQuery = query(collection(firestore, "employees", id, "interactions"));
-        const snapshot = await getDocs(interactionsQuery);
-        const employeeInteractions = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }) as Interaction);
+        const pdiActionsQuery = query(collection(firestore, "employees", id, "pdiActions"));
+  
+        const [interactionsSnapshot, pdiActionsSnapshot] = await Promise.all([
+          getDocs(interactionsQuery),
+          getDocs(pdiActionsQuery)
+        ]);
+  
+        const employeeInteractions = interactionsSnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }) as Interaction);
         interactionsMap.set(id, employeeInteractions);
+  
+        const employeePdiActions = pdiActionsSnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }) as PDIAction);
+        pdiActionsMap.set(id, employeePdiActions);
       }
       
       setInteractions(interactionsMap);
-      setLoadingInteractions(false);
+      setPdiActionsMap(pdiActionsMap);
+      setLoadingData(false);
     };
-
-    fetchInteractions();
+  
+    fetchData();
   }, [employees, firestore, currentUserEmployee]);
   
   const trackedEmployees = useMemo((): TrackedEmployee[] => {
-    if (!employees || !currentUserEmployee) return [];
+    if (!employees || !currentUserEmployee || !dateRange?.from || !dateRange?.to) return [];
   
-    const now = new Date();
-    const currentDay = now.getDate();
-    const previousMonth = getMonth(now) === 0 ? 11 : getMonth(now) - 1;
-    const yearOfPreviousMonth = previousMonth === 11 ? now.getFullYear() - 1 : now.getFullYear();
-
+    const range = { start: dateRange.from, end: dateRange.to };
+  
     return employees
       .filter(e => {
-         if (!e.isUnderManagement) return false;
-         if (currentUserEmployee.role === 'Admin' || currentUserEmployee.role === 'Diretor') return true;
-         if (currentUserEmployee.role === 'Líder') return e.leaderId === currentUserEmployee.id;
-         return false;
+        if (!e.isUnderManagement) return false;
+        if (currentUserEmployee.isAdmin || currentUserEmployee.isDirector) return true;
+        if (currentUserEmployee.role === 'Líder') return e.leaderId === currentUserEmployee.id;
+        return false;
       })
       .map(employee => {
-        const employeeInteractions = interactions.get(employee.id) || [];
-        const oneOnOnes = employeeInteractions
-          .filter(int => int.type === "1:1")
-          .sort((a, b) => parseISO(b.date).getTime() - parseISO(a.date).getTime());
+        let status: InteractionStatus = "Pendente";
+        let lastInteractionDate: string | undefined;
+        let nextInteractionDate: string | undefined;
+  
+        const schedule = interactionSchedules[interactionTypeFilter];
         
-        const lastOneOnOne = oneOnOnes.length > 0 ? oneOnOnes[0] : undefined;
-        
-        let status: OneOnOneStatus;
-        
-        const hadOneOnOneThisMonth = lastOneOnOne && isSameMonth(parseISO(lastOneOnOne.date), now);
-
-        if (hadOneOnOneThisMonth) {
-            status = "Executada";
-        } else {
-            const hadOneOnOneLastMonth = oneOnOnes.some(int => 
-                getMonth(parseISO(int.date)) === previousMonth && 
-                isSameYear(parseISO(int.date), yearOfPreviousMonth)
-            );
+        if (interactionTypeFilter === 'N3 Individual') {
+            const segment = employee.segment as keyof typeof n3IndividualSchedule | undefined;
+            const requiredCount = segment ? n3IndividualSchedule[segment] : 0;
             
-            if (!hadOneOnOneLastMonth && getMonth(now) !== 0) { // getMonth() === 0 é Janeiro
-                 status = "Pendente";
-            } else if (currentDay <= 10) {
-                status = "Pendente"; 
+            if (requiredCount === 0) {
+                status = "N/A";
             } else {
-                status = "Atrasado";
+                const monthsInRange = differenceInMonths(range.end, range.start) + 1;
+                const totalRequired = requiredCount * monthsInRange;
+
+                if (totalRequired === 0) {
+                    status = "N/A";
+                } else {
+                    const employeeInteractions = interactions.get(employee.id) || [];
+                    const executedCount = employeeInteractions.filter(int =>
+                        int.type === 'N3 Individual' && isWithinInterval(parseISO(int.date), range)
+                    ).length;
+
+                    if (executedCount >= totalRequired) {
+                        status = "Executada";
+                    } else {
+                        status = `Realizado ${executedCount}/${totalRequired}`;
+                    }
+                }
             }
+
+        } else if (schedule) {
+            const fromMonth = getMonth(range.start);
+            const fromYear = getYear(range.start);
+            const toMonth = getMonth(range.end);
+            const toYear = getYear(range.end);
+
+            let requiredCountInPeriod = 0;
+            for (let y = fromYear; y <= toYear; y++) {
+                const startMonth = (y === fromYear) ? fromMonth : 0;
+                const endMonth = (y === toYear) ? toMonth : 11;
+                requiredCountInPeriod += schedule.filter(month => month >= startMonth && month <= endMonth).length;
+            }
+  
+            if (requiredCountInPeriod === 0) {
+                status = "N/A";
+            } else {
+                let executedCount = 0;
+                if (interactionTypeFilter === 'PDI') {
+                    const employeePdiActions = pdiActionsMap.get(employee.id) || [];
+                    executedCount = employeePdiActions.filter(action => isWithinInterval(parseISO(action.startDate), range)).length;
+                } else {
+                    const employeeInteractions = interactions.get(employee.id) || [];
+                    executedCount = employeeInteractions.filter(int => 
+                        int.type === interactionTypeFilter && isWithinInterval(parseISO(int.date), range)
+                    ).length;
+                }
+                
+                if (executedCount >= requiredCountInPeriod) {
+                    status = "Executada";
+                } else {
+                    status = `Realizado ${executedCount}/${requiredCountInPeriod}`;
+                }
+            }
+        } else {
+          // Lógica para interações sem agendamento fixo (ex: Feedback)
+          const employeeInteractions = interactions.get(employee.id) || [];
+          const wasExecuted = employeeInteractions.some(int =>
+            int.type === interactionTypeFilter && isWithinInterval(parseISO(int.date), range)
+          );
+          status = wasExecuted ? "Executada" : "Pendente";
         }
-        
+  
+        // Encontrar a última interação e próxima data para exibição, independente do status
+        if (interactionTypeFilter === 'PDI') {
+          const allActions = (pdiActionsMap.get(employee.id) || [])
+            .sort((a, b) => parseISO(b.startDate).getTime() - parseISO(a.startDate).getTime());
+          lastInteractionDate = allActions.length > 0 ? allActions[0].startDate : undefined;
+        } else {
+          const allTypedInteractions = (interactions.get(employee.id) || [])
+            .filter(int => int.type === interactionTypeFilter)
+            .sort((a, b) => parseISO(b.date).getTime() - parseISO(a.date).getTime());
+          lastInteractionDate = allTypedInteractions.length > 0 ? allTypedInteractions[0].date : undefined;
+          nextInteractionDate = allTypedInteractions.length > 0 ? allTypedInteractions[0].nextInteractionDate : undefined;
+        }
+  
         return {
           ...employee,
-          lastOneOnOne: lastOneOnOne?.date,
-          oneOnOneStatus: status,
+          lastInteraction: lastInteractionDate,
+          interactionStatus: status,
+          nextInteraction: nextInteractionDate,
         };
       });
-  }, [employees, interactions, currentUserEmployee]);
+  }, [employees, interactions, pdiActionsMap, currentUserEmployee, interactionTypeFilter, dateRange]);
 
 
-  const filteredEmployees = useMemo(() => {
-    return trackedEmployees.filter(member => {
+  const groupedAndFilteredEmployees = useMemo(() => {
+    const filtered = trackedEmployees.filter(member => {
         const leaderMatch = leaderFilter === 'all' || member.leaderId === leaderFilter;
-        const statusMatch = statusFilter === 'all' || member.oneOnOneStatus === statusFilter;
-        // Period filter logic would go here
+        const statusMatch = statusFilter === 'all' || member.interactionStatus === statusFilter;
         return leaderMatch && statusMatch;
-    }).sort((a, b) => a.name.localeCompare(b.name));
+    });
+
+    const grouped = filtered.reduce((acc, employee) => {
+        const area = employee.area || "Sem Área";
+        if (!acc[area]) {
+            acc[area] = [];
+        }
+        acc[area].push(employee);
+        return acc;
+    }, {} as { [key: string]: TrackedEmployee[] });
+
+    // Sort employees within each group by name
+    for (const area in grouped) {
+        grouped[area].sort((a, b) => a.name.localeCompare(b.name));
+    }
+    
+    // Sort the groups (areas) alphabetically, keeping "Sem Área" last
+    return Object.entries(grouped).sort(([areaA], [areaB]) => {
+        if (areaA === "Sem Área") return 1;
+        if (areaB === "Sem Área") return -1;
+        return areaA.localeCompare(areaB);
+    });
+
   }, [trackedEmployees, leaderFilter, statusFilter]);
 
   const leadersWithTeams = useMemo(() => {
     if (!employees) return [];
     
-    const leaderIds = new Set<string>();
-    
-    // Get all unique leader IDs from the employees list
-    employees.forEach(employee => {
-      if (employee.leaderId) {
-        leaderIds.add(employee.leaderId);
-      }
-    });
-    
-    // Map leader IDs to leader names
-    return Array.from(leaderIds)
-      .map(leaderId => {
-        const leader = employees.find(e => e.id === leaderId);
-        return leader ? { id: leader.id, name: leader.name } : null;
-      })
-      .filter(leader => leader !== null) // Remove any nulls if leader not found
+    return employees
+      .filter(e => e.role === 'Líder')
       .sort((a, b) => a!.name.localeCompare(b!.name));
       
   }, [employees]);
 
 
-  const getBadgeVariant = (status: OneOnOneStatus) => {
-    switch (status) {
-      case "Executada":
-        return "default";
-      case "Atrasado":
-        return "destructive";
-      case "Pendente":
-        return "secondary"; 
-      case "Em dia":
-        return "outline"; 
-      default:
-        return "outline";
-    }
+  const getBadgeVariant = (status: InteractionStatus) => {
+    if (status === "Executada") return "default";
+    if (status === "Pendente") return "destructive";
+    if (status.startsWith("Realizado")) return "secondary";
+    return "outline";
   };
 
   const getInitials = (name: string) => {
@@ -196,10 +329,15 @@ export default function LeadershipDashboard() {
   
   const formatDate = (dateString?: string) => {
       if (!dateString) return "N/A";
-      return new Date(dateString).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+      try {
+        return new Date(dateString).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+      } catch (e) {
+        return "Data inválida";
+      }
   }
   
-  const isLoading = areEmployeesLoading || loadingInteractions;
+  const isLoading = areEmployeesLoading || loadingData;
+  const isLeaderOnly = currentUserEmployee?.role === 'Líder' && !currentUserEmployee.isDirector && !currentUserEmployee.isAdmin;
 
   return (
     <div className="space-y-6">
@@ -207,24 +345,38 @@ export default function LeadershipDashboard() {
         <CardHeader>
           <CardTitle>Filtros</CardTitle>
           <CardDescription>
-            Filtre as reuniões 1:1 por equipe, status e período.
+            Filtre as interações por equipe, tipo, status e período.
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-            <Select onValueChange={setLeaderFilter} value={leaderFilter} disabled={isLoading}>
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
+            <Select onValueChange={setLeaderFilter} value={leaderFilter} disabled={isLoading || isLeaderOnly}>
               <SelectTrigger>
                 <SelectValue placeholder="Todas as Equipes" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">Todas as Equipes</SelectItem>
+                {!isLeaderOnly && <SelectItem value="all">Todas as Equipes</SelectItem>}
                 {leadersWithTeams.map((leader) => (
-                  leader &&
                   <SelectItem key={leader.id} value={leader.id}>
                     {leader.name}
                   </SelectItem>
                 ))}
               </SelectContent>
+            </Select>
+            <Select onValueChange={value => setInteractionTypeFilter(value as any)} value={interactionTypeFilter} disabled={isLoading}>
+                <SelectTrigger>
+                    <SelectValue placeholder="Tipo de Interação" />
+                </SelectTrigger>
+                <SelectContent>
+                    {interactionTypes.map(type => (
+                        <SelectItem key={type.value} value={type.value}>
+                            <div className="flex flex-col">
+                                <span>{type.label}</span>
+                                <span className="text-xs text-muted-foreground">{type.description}</span>
+                            </div>
+                        </SelectItem>
+                    ))}
+                </SelectContent>
             </Select>
             <Select onValueChange={value => setStatusFilter(value as any)} value={statusFilter} disabled={isLoading}>
               <SelectTrigger>
@@ -233,32 +385,19 @@ export default function LeadershipDashboard() {
               <SelectContent>
                 <SelectItem value="all">Todos os Status</SelectItem>
                 <SelectItem value="Executada">Executada</SelectItem>
-                <SelectItem value="Atrasado">Atrasado</SelectItem>
                 <SelectItem value="Pendente">Pendente</SelectItem>
               </SelectContent>
             </Select>
-            <Select onValueChange={setPeriodFilter} value={periodFilter} disabled={true}>
-              <SelectTrigger>
-                <SelectValue placeholder="Todo o período" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todo o período</SelectItem>
-                {/* 
-                <SelectItem value="30">Últimos 30 dias</SelectItem>
-                <SelectItem value="60">Últimos 60 dias</SelectItem>
-                <SelectItem value="90">Últimos 90 dias</SelectItem> 
-                */}
-              </SelectContent>
-            </Select>
+            <DateRangePicker date={dateRange} onDateChange={setDateRange} />
           </div>
         </CardContent>
       </Card>
 
       <Card>
         <CardHeader>
-          <CardTitle>Frequência de 1:1s</CardTitle>
+          <CardTitle>Frequência de Interações</CardTitle>
           <CardDescription>
-            Acompanhe a frequência das reuniões individuais com sua equipe.
+            Acompanhe a frequência das interações com sua equipe.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -267,7 +406,9 @@ export default function LeadershipDashboard() {
               <TableRow>
                 <TableHead>Membro</TableHead>
                 <TableHead className="hidden md:table-cell">Líder</TableHead>
-                <TableHead className="hidden sm:table-cell">Última 1:1</TableHead>
+                <TableHead className="hidden lg:table-cell">Área</TableHead>
+                <TableHead className="hidden sm:table-cell">Última Interação</TableHead>
+                <TableHead className="hidden sm:table-cell">Próxima Interação</TableHead>
                 <TableHead>Status</TableHead>
               </TableRow>
             </TableHeader>
@@ -285,41 +426,56 @@ export default function LeadershipDashboard() {
                             </div>
                         </TableCell>
                         <TableCell className="hidden md:table-cell"><Skeleton className="h-5 w-20" /></TableCell>
+                        <TableCell className="hidden lg:table-cell"><Skeleton className="h-5 w-20" /></TableCell>
+                        <TableCell className="hidden sm:table-cell"><Skeleton className="h-5 w-24" /></TableCell>
                         <TableCell className="hidden sm:table-cell"><Skeleton className="h-5 w-24" /></TableCell>
                         <TableCell><Skeleton className="h-6 w-20 rounded-full" /></TableCell>
                     </TableRow>
                 ))
-              ) : filteredEmployees.length > 0 ? (
-                filteredEmployees.map((member) => (
-                  <TableRow key={member.id}>
-                    <TableCell>
-                      <div className="flex items-center gap-3">
-                        <Avatar className="h-9 w-9">
-                          <AvatarImage src={member.photoURL} alt={member.name} />
-                          <AvatarFallback>{getInitials(member.name)}</AvatarFallback>
-                        </Avatar>
-                        <div className="grid gap-0.5">
-                          <span className="font-medium">{member.name}</span>
-                          <span className="text-xs text-muted-foreground hidden lg:inline">
-                            {member.position}
-                          </span>
-                        </div>
-                      </div>
-                    </TableCell>
-                    <TableCell className="hidden md:table-cell">{member.leader}</TableCell>
-                    <TableCell className="hidden sm:table-cell">
-                      {formatDate(member.lastOneOnOne)}
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant={getBadgeVariant(member.oneOnOneStatus)}>
-                        {member.oneOnOneStatus}
-                      </Badge>
-                    </TableCell>
-                  </TableRow>
+              ) : groupedAndFilteredEmployees.length > 0 ? (
+                groupedAndFilteredEmployees.map(([area, members]) => (
+                  <React.Fragment key={area}>
+                    <TableRow className="bg-muted/50 hover:bg-muted/50">
+                      <TableCell colSpan={6} className="font-bold text-foreground">
+                        {area}
+                      </TableCell>
+                    </TableRow>
+                    {members.map((member) => (
+                        <TableRow key={member.id}>
+                            <TableCell>
+                            <div className="flex items-center gap-3">
+                                <Avatar className="h-9 w-9">
+                                <AvatarImage src={member.photoURL} alt={member.name} />
+                                <AvatarFallback>{getInitials(member.name)}</AvatarFallback>
+                                </Avatar>
+                                <div className="grid gap-0.5">
+                                <span className="font-medium">{member.name}</span>
+                                <span className="text-xs text-muted-foreground hidden lg:inline">
+                                    {member.position}
+                                </span>
+                                </div>
+                            </div>
+                            </TableCell>
+                            <TableCell className="hidden md:table-cell">{member.leader}</TableCell>
+                            <TableCell className="hidden lg:table-cell">{member.area || 'N/A'}</TableCell>
+                            <TableCell className="hidden sm:table-cell">
+                            {formatDate(member.lastInteraction)}
+                            </TableCell>
+                            <TableCell className="hidden sm:table-cell">
+                                {formatDate(member.nextInteraction)}
+                            </TableCell>
+                            <TableCell>
+                            <Badge variant={getBadgeVariant(member.interactionStatus)}>
+                                {member.interactionStatus}
+                            </Badge>
+                            </TableCell>
+                        </TableRow>
+                    ))}
+                  </React.Fragment>
                 ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={4} className="text-center h-24">
+                  <TableCell colSpan={6} className="text-center h-24">
                     Nenhum colaborador gerenciado encontrado ou correspondente aos filtros.
                   </TableCell>
                 </TableRow>
@@ -331,3 +487,4 @@ export default function LeadershipDashboard() {
     </div>
   );
 }
+
