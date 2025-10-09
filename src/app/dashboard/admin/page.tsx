@@ -147,12 +147,15 @@ export default function AdminPage() {
       total += 12;
       // N3 Individual: varia com segmento
       switch (employee.segment) {
-        case 'Private':
-          total += 12; // mensal
+        case 'Alfa':
+          total += 52; // semanal
           break;
-        case 'Exclusive':
-          total += 4; // trimestral
+        case 'Beta':
+          total += 26; // quinzenal
           break;
+        case 'Senior':
+            total += 12; // mensal
+            break;
         default:
           total += 2; // semestral
           break;
@@ -906,6 +909,5 @@ export default function AdminPage() {
     </>
   );
 }
-
 
     
