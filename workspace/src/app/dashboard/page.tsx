@@ -2,7 +2,7 @@
 "use client";
 
 import React, { useState, useMemo, useEffect } from "react";
-import type { Employee, Interaction, InteractionStatus, InteractionType, PDIAction } from "@/lib/types";
+import type { Employee, Interaction, InteractionStatus, PDIAction } from "@/lib/types";
 import { useCollection, useFirestore, useMemoFirebase, useUser } from "@/firebase";
 import { collection, getDocs, query } from "firebase/firestore";
 import { isWithinInterval, startOfMonth, endOfMonth, getMonth, getYear, parseISO, differenceInMonths } from "date-fns";
@@ -42,7 +42,7 @@ interface TrackedEmployee extends Employee {
   nextInteraction?: string;
 }
 
-const interactionTypes: { value: InteractionType, label: string, description: string }[] = [
+const interactionTypes: { value: "1:1" | "PDI" | "Índice de Risco" | "N3 Individual" | "Feedback", label: string, description: string }[] = [
     { value: "1:1", label: "1:1", description: "Trimestral (Mar, Jun, Set, Dez)" },
     { value: "PDI", label: "PDI", description: "Semestral (Jan, Jul)" },
     { value: "Índice de Risco", label: "Índice de Risco", description: "Mensal" },
@@ -52,7 +52,7 @@ const interactionTypes: { value: InteractionType, label: string, description: st
 
 
 // Definição dos meses obrigatórios para cada tipo de interação (0-indexed: Janeiro=0)
-const interactionSchedules: { [key in InteractionType]?: number[] } = {
+const interactionSchedules: { [key in "1:1" | "PDI" | "Índice de Risco"]?: number[] } = {
     'PDI': [0, 6], // Janeiro e Julho
     '1:1': [2, 5, 8, 11], // Março, Junho, Setembro, Dezembro
     'Índice de Risco': [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11], // Todos os meses
@@ -81,7 +81,7 @@ export default function LeadershipDashboard() {
 
   const [leaderFilter, setLeaderFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState<"all" | InteractionStatus>("all");
-  const [interactionTypeFilter, setInteractionTypeFilter] = useState<InteractionType>("1:1");
+  const [interactionTypeFilter, setInteractionTypeFilter] = useState<"1:1" | "PDI" | "Índice de Risco" | "N3 Individual" | "Feedback">("1:1");
   const [dateRange, setDateRange] = useState<DateRange | undefined>({
     from: startOfMonth(new Date()),
     to: endOfMonth(new Date()),
@@ -178,31 +178,26 @@ export default function LeadershipDashboard() {
         let lastInteractionDate: string | undefined;
         let nextInteractionDate: string | undefined;
   
-        const schedule = interactionSchedules[interactionTypeFilter];
+        const schedule = interactionSchedules[interactionTypeFilter as keyof typeof interactionSchedules];
         
         if (interactionTypeFilter === 'N3 Individual') {
             const segment = employee.segment as keyof typeof n3IndividualSchedule | undefined;
-            const requiredCount = segment ? n3IndividualSchedule[segment] : 0;
+            const requiredCountPerMonth = segment ? n3IndividualSchedule[segment] : 0;
             
-            if (requiredCount === 0) {
+            if (requiredCountPerMonth === 0) {
                 status = "N/A";
             } else {
                 const monthsInRange = differenceInMonths(range.end, range.start) + 1;
-                const totalRequired = requiredCount * monthsInRange;
+                const totalRequired = requiredCountPerMonth * monthsInRange;
+                const employeeInteractions = interactions.get(employee.id) || [];
+                const executedCount = employeeInteractions.filter(int =>
+                    int.type === 'N3 Individual' && isWithinInterval(parseISO(int.date), range)
+                ).length;
 
-                if (totalRequired === 0) {
-                    status = "N/A";
+                if (executedCount >= totalRequired) {
+                    status = "Executada";
                 } else {
-                    const employeeInteractions = interactions.get(employee.id) || [];
-                    const executedCount = employeeInteractions.filter(int =>
-                        int.type === 'N3 Individual' && isWithinInterval(parseISO(int.date), range)
-                    ).length;
-
-                    if (executedCount >= totalRequired) {
-                        status = "Executada";
-                    } else {
-                        status = `Realizado ${executedCount}/${totalRequired}`;
-                    }
+                    status = `Realizado ${executedCount}/${totalRequired}`;
                 }
             }
 
@@ -220,7 +215,7 @@ export default function LeadershipDashboard() {
             }
   
             if (requiredCountInPeriod === 0) {
-                status = "N/A";
+                 status = "N/A";
             } else {
                 let executedCount = 0;
                 if (interactionTypeFilter === 'PDI') {
@@ -240,15 +235,19 @@ export default function LeadershipDashboard() {
                 }
             }
         } else {
-          // Lógica para interações sem agendamento fixo (ex: Feedback)
+          // Logic for interactions without a fixed schedule (e.g., Feedback)
           const employeeInteractions = interactions.get(employee.id) || [];
           const wasExecuted = employeeInteractions.some(int =>
             int.type === interactionTypeFilter && isWithinInterval(parseISO(int.date), range)
           );
-          status = wasExecuted ? "Executada" : "Pendente";
+           if (wasExecuted) {
+                status = "Executada";
+           } else {
+                status = "Realizado 0/1";
+           }
         }
   
-        // Encontrar a última interação e próxima data para exibição, independente do status
+        // Find the last interaction and next date for display, regardless of status
         if (interactionTypeFilter === 'PDI') {
           const allActions = (pdiActionsMap.get(employee.id) || [])
             .sort((a, b) => parseISO(b.startDate).getTime() - parseISO(a.startDate).getTime());
@@ -314,6 +313,7 @@ export default function LeadershipDashboard() {
   const getBadgeVariant = (status: InteractionStatus) => {
     if (status === "Executada") return "default";
     if (status === "Pendente") return "destructive";
+    if (status.startsWith("Realizado 0/")) return "destructive";
     if (status.startsWith("Realizado")) return "secondary";
     return "outline";
   };
@@ -365,12 +365,17 @@ export default function LeadershipDashboard() {
             </Select>
             <Select onValueChange={value => setInteractionTypeFilter(value as any)} value={interactionTypeFilter} disabled={isLoading}>
                 <SelectTrigger>
-                    <SelectValue placeholder="Tipo de Interação" />
+                    <SelectValue>
+                      <div className="flex items-center gap-2">
+                        <span>{interactionTypes.find(type => type.value === interactionTypeFilter)?.label}</span>
+                        <span className="text-xs text-muted-foreground">{interactionTypes.find(type => type.value === interactionTypeFilter)?.description}</span>
+                      </div>
+                    </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
                     {interactionTypes.map(type => (
                         <SelectItem key={type.value} value={type.value}>
-                            <div className="flex flex-col">
+                            <div className="flex items-center gap-2">
                                 <span>{type.label}</span>
                                 <span className="text-xs text-muted-foreground">{type.description}</span>
                             </div>
@@ -488,3 +493,4 @@ export default function LeadershipDashboard() {
   );
 }
 
+    
