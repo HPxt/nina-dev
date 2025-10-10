@@ -23,7 +23,7 @@ const titles: { [key: string]: { title: string; description?: string } } = {
   },
   "/dashboard/ranking": {
     title: "Ranking de Líderes",
-    description: "Acompanhe o indicador de aderência das lideranças.",
+    description: "O Índice de Aderência mede a proporção de interações obrigatórias (1:1, PDI, N3, Risco) realizadas por um líder em relação ao total previsto para sua equipe no período selecionado.",
   },
   "/dashboard/admin": {
     title: "Configurações",
