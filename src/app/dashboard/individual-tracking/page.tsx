@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
 import type { Employee, Interaction, OneOnOneNotes, N3IndividualNotes } from "@/lib/types";
 import {
   Card,
@@ -74,6 +74,10 @@ export default function IndividualTrackingPage() {
   const firestore = useFirestore();
   const { user } = useUser();
   const { toast } = useToast();
+  
+  const getStorageKey = useCallback((employeeId: string | null) => 
+    employeeId ? `interaction-form-data-${employeeId}` : null, 
+  []);
 
   const employeesCollection = useMemoFirebase(
     () => (firestore && user ? collection(firestore, "employees") : null),
@@ -142,19 +146,66 @@ export default function IndividualTrackingPage() {
     return employees?.find((employee) => employee.id === selectedEmployeeId);
   }, [employees, selectedEmployeeId]);
 
+  const clearStorage = useCallback(() => {
+    const key = getStorageKey(selectedEmployeeId);
+    if (key) {
+      localStorage.removeItem(key);
+    }
+  }, [selectedEmployeeId, getStorageKey]);
 
-  const handleMemberChange = (id: string) => {
-    setSelectedEmployeeId(id);
-  };
-  
-  const resetForms = () => {
+  const resetForms = useCallback(() => {
     setSimpleNotes("");
     setOneOnOneNotes(initialOneOnOneNotes);
     setN3Notes(initialN3Notes);
     setInteractionType('1:1');
     setNextInteractionDate(undefined);
-  }
+    clearStorage();
+  }, [clearStorage]);
 
+
+  useEffect(() => {
+    const key = getStorageKey(selectedEmployeeId);
+    if (!key) return;
+  
+    const savedData = localStorage.getItem(key);
+    if (savedData) {
+      const data = JSON.parse(savedData);
+      setInteractionType(data.interactionType || '1:1');
+      setOneOnOneNotes(data.oneOnOneNotes || initialOneOnOneNotes);
+      setN3Notes(data.n3Notes || initialN3Notes);
+      setSimpleNotes(data.simpleNotes || "");
+      if (data.nextInteractionDate) {
+        setNextInteractionDate(new Date(data.nextInteractionDate));
+      }
+    } else {
+        // If no saved data, reset to initial state to avoid carrying over from another user
+        setSimpleNotes("");
+        setOneOnOneNotes(initialOneOnOneNotes);
+        setN3Notes(initialN3Notes);
+        setInteractionType('1:1');
+        setNextInteractionDate(undefined);
+    }
+  }, [selectedEmployeeId, getStorageKey]);
+  
+  useEffect(() => {
+    const key = getStorageKey(selectedEmployeeId);
+    if (!key || !openInteractionDialog) return;
+  
+    const dataToSave = {
+      interactionType,
+      oneOnOneNotes,
+      n3Notes,
+      simpleNotes,
+      nextInteractionDate,
+    };
+    localStorage.setItem(key, JSON.stringify(dataToSave));
+  }, [interactionType, oneOnOneNotes, n3Notes, simpleNotes, nextInteractionDate, selectedEmployeeId, getStorageKey, openInteractionDialog]);
+
+
+  const handleMemberChange = (id: string) => {
+    setSelectedEmployeeId(id);
+  };
+  
   const handleSaveInteraction = async () => {
     if (!interactionsCollection || !user || !interactions ) {
         toast({
