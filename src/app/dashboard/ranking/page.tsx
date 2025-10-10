@@ -61,7 +61,7 @@ const calculateAnnualInteractions = (employee: Employee): number => {
 
 export default function RankingPage() {
   const firestore = useFirestore();
-  const [axisFilter, setAxisFilter] = useState("all");
+  const [axisFilter, setAxisFilter] = useState("Comercial");
   const [dateRange, setDateRange] = useState<DateRange | undefined>({
     from: startOfMonth(new Date()),
     to: endOfMonth(new Date()),
@@ -208,14 +208,14 @@ export default function RankingPage() {
           </div>
           <div className="flex items-center gap-2">
             <DateRangePicker date={dateRange} onDateChange={setDateRange} />
-             <Select onValueChange={setAxisFilter} value={axisFilter} disabled={isLoading || uniqueAxes.length === 0}>
+             <Select onValueChange={setAxisFilter} value={axisFilter} disabled>
               <SelectTrigger className="w-[180px]">
                 <SelectValue placeholder="Filtrar por Eixo" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">Todos os Eixos</SelectItem>
-                {uniqueAxes.map((axis) => (
-                  <SelectItem key={axis} value={axis}>
+                <SelectItem value="Comercial">Comercial</SelectItem>
+                {uniqueAxes.filter(axis => axis !== 'Comercial').map((axis) => (
+                  <SelectItem key={axis} value={axis} disabled>
                     {axis}
                   </SelectItem>
                 ))}
@@ -274,5 +274,3 @@ export default function RankingPage() {
     </Card>
   );
 }
-
-    
