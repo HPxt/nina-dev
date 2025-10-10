@@ -34,6 +34,8 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { DateRangePicker } from "@/components/ui/date-range-picker";
+import { Button } from "@/components/ui/button";
+import { ArrowUpDown } from "lucide-react";
 
 
 interface TrackedEmployee extends Employee {
@@ -41,6 +43,12 @@ interface TrackedEmployee extends Employee {
   interactionStatus: InteractionStatus;
   nextInteraction?: string;
 }
+
+type SortConfig = {
+  key: keyof TrackedEmployee;
+  direction: "ascending" | "descending";
+} | null;
+
 
 const interactionTypes: { value: "1:1" | "PDI" | "Índice de Risco" | "N3 Individual" | "Feedback", label: string, description: string }[] = [
     { value: "1:1", label: "1:1", description: "Trimestral (Mar, Jun, Set, Dez)" },
@@ -82,6 +90,7 @@ export default function LeadershipDashboard() {
   const [leaderFilter, setLeaderFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState<"all" | InteractionStatus>("all");
   const [interactionTypeFilter, setInteractionTypeFilter] = useState<"1:1" | "PDI" | "Índice de Risco" | "N3 Individual" | "Feedback">("1:1");
+  const [sortConfig, setSortConfig] = useState<SortConfig>({ key: 'name', direction: 'ascending' });
   const [dateRange, setDateRange] = useState<DateRange | undefined>({
     from: startOfMonth(new Date()),
     to: endOfMonth(new Date()),
@@ -271,11 +280,34 @@ export default function LeadershipDashboard() {
 
 
   const groupedAndFilteredEmployees = useMemo(() => {
-    const filtered = trackedEmployees.filter(member => {
+    let filtered = trackedEmployees.filter(member => {
         const leaderMatch = leaderFilter === 'all' || member.leaderId === leaderFilter;
         const statusMatch = statusFilter === 'all' || member.interactionStatus === statusFilter;
         return leaderMatch && statusMatch;
     });
+
+    if (sortConfig !== null) {
+        filtered.sort((a, b) => {
+            const aValue = a[sortConfig.key];
+            const bValue = b[sortConfig.key];
+            
+            if (sortConfig.key === 'lastInteraction' || sortConfig.key === 'nextInteraction') {
+                const dateA = aValue ? parseISO(aValue as string).getTime() : 0;
+                const dateB = bValue ? parseISO(bValue as string).getTime() : 0;
+                if (dateA < dateB) return sortConfig.direction === 'ascending' ? -1 : 1;
+                if (dateA > dateB) return sortConfig.direction === 'ascending' ? 1 : -1;
+                return 0;
+            }
+
+            if (aValue === undefined || bValue === undefined || aValue === null || bValue === null) return 0;
+            
+            if (typeof aValue === 'string' && typeof bValue === 'string') {
+                 if (aValue < bValue) return sortConfig.direction === 'ascending' ? -1 : 1;
+                 if (aValue > bValue) return sortConfig.direction === 'ascending' ? 1 : -1;
+            }
+            return 0;
+        });
+    }
 
     const grouped = filtered.reduce((acc, employee) => {
         const area = employee.area || "Sem Área";
@@ -286,9 +318,11 @@ export default function LeadershipDashboard() {
         return acc;
     }, {} as { [key: string]: TrackedEmployee[] });
 
-    // Sort employees within each group by name
-    for (const area in grouped) {
-        grouped[area].sort((a, b) => a.name.localeCompare(b.name));
+    // Do not sort employees within group if a sort is active
+    if (!sortConfig) {
+      for (const area in grouped) {
+          grouped[area].sort((a, b) => a.name.localeCompare(b.name));
+      }
     }
     
     // Sort the groups (areas) alphabetically, keeping "Sem Área" last
@@ -298,7 +332,16 @@ export default function LeadershipDashboard() {
         return areaA.localeCompare(areaB);
     });
 
-  }, [trackedEmployees, leaderFilter, statusFilter]);
+  }, [trackedEmployees, leaderFilter, statusFilter, sortConfig]);
+
+  const requestSort = (key: keyof TrackedEmployee) => {
+    let direction: 'ascending' | 'descending' = 'ascending';
+    if (sortConfig && sortConfig.key === key && sortConfig.direction === 'ascending') {
+      direction = 'descending';
+    }
+    setSortConfig({ key, direction });
+  };
+
 
   const leadersWithTeams = useMemo(() => {
     if (!employees) return [];
@@ -408,11 +451,26 @@ export default function LeadershipDashboard() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Membro</TableHead>
+                 <TableHead>
+                    <Button variant="ghost" onClick={() => requestSort('name')} className="px-1">
+                        Membro
+                        <ArrowUpDown className="ml-2 h-4 w-4" />
+                    </Button>
+                </TableHead>
                 <TableHead className="hidden md:table-cell">Líder</TableHead>
                 <TableHead className="hidden lg:table-cell">Área</TableHead>
-                <TableHead className="hidden sm:table-cell">Última Interação</TableHead>
-                <TableHead className="hidden sm:table-cell">Próxima Interação</TableHead>
+                <TableHead className="hidden sm:table-cell">
+                     <Button variant="ghost" onClick={() => requestSort('lastInteraction')} className="px-1">
+                        Última Interação
+                        <ArrowUpDown className="ml-2 h-4 w-4" />
+                    </Button>
+                </TableHead>
+                <TableHead className="hidden sm:table-cell">
+                    <Button variant="ghost" onClick={() => requestSort('nextInteraction')} className="px-1">
+                        Próxima Interação
+                        <ArrowUpDown className="ml-2 h-4 w-4" />
+                    </Button>
+                </TableHead>
                 <TableHead>Status</TableHead>
               </TableRow>
             </TableHeader>
@@ -439,11 +497,13 @@ export default function LeadershipDashboard() {
               ) : groupedAndFilteredEmployees.length > 0 ? (
                 groupedAndFilteredEmployees.map(([area, members]) => (
                   <React.Fragment key={area}>
-                    <TableRow className="bg-muted/50 hover:bg-muted/50">
-                      <TableCell colSpan={6} className="font-bold text-foreground">
-                        {area}
-                      </TableCell>
-                    </TableRow>
+                    {!sortConfig && 
+                      <TableRow className="bg-muted/50 hover:bg-muted/50">
+                        <TableCell colSpan={6} className="font-bold text-foreground">
+                          {area}
+                        </TableCell>
+                      </TableRow>
+                    }
                     {members.map((member) => (
                         <TableRow key={member.id}>
                             <TableCell>
