@@ -23,7 +23,7 @@ const titles: { [key: string]: { title: string; description?: string } } = {
   },
   "/dashboard/ranking": {
     title: "Ranking de Líderes",
-    description: "O Índice de Aderência mede a proporção de interações obrigatórias (1:1, PDI, N3, Risco) realizadas por um líder em relação ao total previsto para sua equipe no período selecionado.",
+    description: "O Índice de Aderência é o principal indicador de performance da liderança. Ele mede, em percentual, a proporção de interações obrigatórias (1:1, PDI, N3 Individual, Índice de Risco) que um líder realizou com sua equipe em relação ao total previsto para o período selecionado. Por exemplo, se um líder deveria ter 10 interações no mês e realizou 8, seu índice será de 80%.",
   },
   "/dashboard/admin": {
     title: "Configurações",
