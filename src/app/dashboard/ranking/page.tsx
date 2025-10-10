@@ -201,7 +201,7 @@ export default function RankingPage() {
       <CardHeader>
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
           <div>
-            <CardTitle>Ranking de Aderência de Líderes</CardTitle>
+            <CardTitle>Índice de Aderência</CardTitle>
             <CardDescription>
               Percentual de interações anuais realizadas por cada líder com sua equipe.
             </CardDescription>
@@ -274,3 +274,5 @@ export default function RankingPage() {
     </Card>
   );
 }
+
+    
