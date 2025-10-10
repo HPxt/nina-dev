@@ -516,165 +516,167 @@ export default function AdminPage() {
             </div>
           </CardHeader>
           <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>
-                    <div className="flex items-center gap-1">
-                      <Button variant="ghost" onClick={() => requestSort('name')} className="px-1">
-                        Nome
-                        <ArrowUpDown className="ml-2 h-4 w-4" />
-                      </Button>
-                       <Popover>
-                        <PopoverTrigger asChild>
-                           <Button variant="ghost" size="icon" className="h-6 w-6">
-                              <Filter className={`h-4 w-4 ${filters.name ? 'text-primary' : ''}`} />
-                            </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="p-2">
-                            <Input
-                                placeholder="Filtrar por nome..."
-                                value={filters.name}
-                                onChange={(e) => handleTextFilterChange('name', e.target.value)}
-                            />
-                        </PopoverContent>
-                      </Popover>
-                    </div>
-                  </TableHead>
-                  <TableHead>
-                    <FilterComponent title="Segmento" filterKey="segment" options={uniqueValues.segments} />
-                  </TableHead>
-                  <TableHead>
-                    <FilterComponent title="Cargo" filterKey="position" options={uniqueValues.positions} />
-                  </TableHead>
-                  <TableHead>
-                    <FilterComponent title="Líder" filterKey="leader" options={uniqueValues.leaders} />
-                  </TableHead>
-                  <TableHead>Interações / Ano</TableHead>
-                  <TableHead>Função</TableHead>
-                  <TableHead>Gerenciamento</TableHead>
-                  <TableHead>Diretor</TableHead>
-                  <TableHead>Admin</TableHead>
-                  <TableHead className="text-right">Ações</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {isLoading && Array.from({ length: 5 }).map((_, i) => (
-                    <TableRow key={i}>
-                        <TableCell><Skeleton className="h-5 w-24" /></TableCell>
-                        <TableCell><Skeleton className="h-5 w-20" /></TableCell>
-                        <TableCell><Skeleton className="h-5 w-20" /></TableCell>
-                        <TableCell><Skeleton className="h-5 w-20" /></TableCell>
-                        <TableCell><Skeleton className="h-5 w-20" /></TableCell>
-                        <TableCell><Skeleton className="h-9 w-[180px]" /></TableCell>
-                        <TableCell><Skeleton className="h-6 w-12" /></TableCell>
-                        <TableCell><Skeleton className="h-6 w-12" /></TableCell>
-                        <TableCell><Skeleton className="h-6 w-12" /></TableCell>
-                        <TableCell className="text-right"><Skeleton className="h-8 w-8 rounded-full" /></TableCell>
-                    </TableRow>
-                ))}
-                {!isLoading && filteredAndSortedEmployees.map((employee) => (
-                  <TableRow key={employee.id}>
-                    <TableCell className="font-medium">{employee.name}</TableCell>
-                    <TableCell>{employee.segment}</TableCell>
-                    <TableCell>{employee.position}</TableCell>
-                    <TableCell>
-                       <Select 
-                        value={employee.leaderId || "no-leader"}
-                        onValueChange={(newLeaderId) => handleLeaderChange(employee.id, newLeaderId)}
-                        disabled={!leaders || leaders.length === 0}
-                      >
-                        <SelectTrigger className="w-[180px]">
-                          <SelectValue placeholder="Sem Líder" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="no-leader">Sem Líder</SelectItem>
-                          {leaders
-                            .filter(leader => leader.id !== employee.id) // Cannot be their own leader
-                            .map((leader) => (
-                            <SelectItem key={leader.id} value={leader.id}>
-                               {leader.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </TableCell>
-                    <TableCell className="text-center">
-                        <TooltipProvider>
-                            <Tooltip>
-                                <TooltipTrigger asChild>
-                                    <div className="flex items-center justify-center gap-1 font-medium cursor-default">
-                                        {calculateAnnualInteractions(employee)}
-                                        <HelpCircle className="h-3 w-3 text-muted-foreground" />
-                                    </div>
-                                </TooltipTrigger>
-                                <TooltipContent>
-                                    <p className="text-xs">{getInteractionBreakdown(employee)}</p>
-                                </TooltipContent>
-                            </Tooltip>
-                        </TooltipProvider>
-                    </TableCell>
-                    <TableCell>
-                      <Select 
-                        value={employee.role}
-                        onValueChange={(newRole) => handleRoleChange(employee.id, newRole as Role)}
-                      >
-                        <SelectTrigger className="w-[180px]">
-                          <SelectValue placeholder="Selecione a função" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {roles.map((role) => (
-                            <SelectItem key={role} value={role}>
-                              {role}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </TableCell>
-                    <TableCell>
-                        <div className="flex items-center space-x-2">
-                            <Switch 
-                                id={`management-${employee.id}`}
-                                checked={!!employee.isUnderManagement}
-                                onCheckedChange={(checked) => handleManagementToggle(employee.id, checked)}
-                            />
-                        </div>
-                    </TableCell>
-                    <TableCell>
-                        <div className="flex items-center space-x-2">
-                            <Switch 
-                                id={`director-${employee.id}`}
-                                checked={!!employee.isDirector}
-                                onCheckedChange={(checked) => handlePermissionToggle(employee.id, 'isDirector', checked)}
-                            />
-                        </div>
-                    </TableCell>
-                    <TableCell>
-                        <div className="flex items-center space-x-2">
-                            <Switch 
-                                id={`admin-${employee.id}`}
-                                checked={!!employee.isAdmin}
-                                onCheckedChange={(checked) => handlePermissionToggle(employee.id, 'isAdmin', checked)}
-                            />
-                        </div>
-                    </TableCell>
-                    <TableCell className="text-right">
-                        <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" size="icon">
-                                    <MoreHorizontal className="h-4 w-4" />
-                                </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent>
-                                <DropdownMenuItem onClick={() => handleEditEmployee(employee)}>Editar</DropdownMenuItem>
-                                <DropdownMenuItem className="text-destructive" onClick={() => handleDeleteClick(employee)}>Remover</DropdownMenuItem>
-                            </DropdownMenuContent>
-                        </DropdownMenu>
-                    </TableCell>
+            <div className="w-full overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>
+                      <div className="flex items-center gap-1">
+                        <Button variant="ghost" onClick={() => requestSort('name')} className="px-1">
+                          Nome
+                          <ArrowUpDown className="ml-2 h-4 w-4" />
+                        </Button>
+                         <Popover>
+                          <PopoverTrigger asChild>
+                             <Button variant="ghost" size="icon" className="h-6 w-6">
+                                <Filter className={`h-4 w-4 ${filters.name ? 'text-primary' : ''}`} />
+                              </Button>
+                          </PopoverTrigger>
+                          <PopoverContent className="p-2">
+                              <Input
+                                  placeholder="Filtrar por nome..."
+                                  value={filters.name}
+                                  onChange={(e) => handleTextFilterChange('name', e.target.value)}
+                              />
+                          </PopoverContent>
+                        </Popover>
+                      </div>
+                    </TableHead>
+                    <TableHead>
+                      <FilterComponent title="Segmento" filterKey="segment" options={uniqueValues.segments} />
+                    </TableHead>
+                    <TableHead>
+                      <FilterComponent title="Cargo" filterKey="position" options={uniqueValues.positions} />
+                    </TableHead>
+                    <TableHead>
+                      <FilterComponent title="Líder" filterKey="leader" options={uniqueValues.leaders} />
+                    </TableHead>
+                    <TableHead>Interações / Ano</TableHead>
+                    <TableHead>Função</TableHead>
+                    <TableHead>Gerenciamento</TableHead>
+                    <TableHead>Diretor</TableHead>
+                    <TableHead>Admin</TableHead>
+                    <TableHead className="text-right">Ações</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {isLoading && Array.from({ length: 5 }).map((_, i) => (
+                      <TableRow key={i}>
+                          <TableCell><Skeleton className="h-5 w-24" /></TableCell>
+                          <TableCell><Skeleton className="h-5 w-20" /></TableCell>
+                          <TableCell><Skeleton className="h-5 w-20" /></TableCell>
+                          <TableCell><Skeleton className="h-5 w-20" /></TableCell>
+                          <TableCell><Skeleton className="h-5 w-20" /></TableCell>
+                          <TableCell><Skeleton className="h-9 w-[180px]" /></TableCell>
+                          <TableCell><Skeleton className="h-6 w-12" /></TableCell>
+                          <TableCell><Skeleton className="h-6 w-12" /></TableCell>
+                          <TableCell><Skeleton className="h-6 w-12" /></TableCell>
+                          <TableCell className="text-right"><Skeleton className="h-8 w-8 rounded-full" /></TableCell>
+                      </TableRow>
+                  ))}
+                  {!isLoading && filteredAndSortedEmployees.map((employee) => (
+                    <TableRow key={employee.id}>
+                      <TableCell className="font-medium">{employee.name}</TableCell>
+                      <TableCell>{employee.segment}</TableCell>
+                      <TableCell>{employee.position}</TableCell>
+                      <TableCell>
+                         <Select 
+                          value={employee.leaderId || "no-leader"}
+                          onValueChange={(newLeaderId) => handleLeaderChange(employee.id, newLeaderId)}
+                          disabled={!leaders || leaders.length === 0}
+                        >
+                          <SelectTrigger className="w-[180px]">
+                            <SelectValue placeholder="Sem Líder" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="no-leader">Sem Líder</SelectItem>
+                            {leaders
+                              .filter(leader => leader.id !== employee.id) // Cannot be their own leader
+                              .map((leader) => (
+                              <SelectItem key={leader.id} value={leader.id}>
+                                 {leader.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </TableCell>
+                      <TableCell className="text-center">
+                          <TooltipProvider>
+                              <Tooltip>
+                                  <TooltipTrigger asChild>
+                                      <div className="flex items-center justify-center gap-1 font-medium cursor-default">
+                                          {calculateAnnualInteractions(employee)}
+                                          <HelpCircle className="h-3 w-3 text-muted-foreground" />
+                                      </div>
+                                  </TooltipTrigger>
+                                  <TooltipContent>
+                                      <p className="text-xs">{getInteractionBreakdown(employee)}</p>
+                                  </TooltipContent>
+                              </Tooltip>
+                          </TooltipProvider>
+                      </TableCell>
+                      <TableCell>
+                        <Select 
+                          value={employee.role}
+                          onValueChange={(newRole) => handleRoleChange(employee.id, newRole as Role)}
+                        >
+                          <SelectTrigger className="w-[180px]">
+                            <SelectValue placeholder="Selecione a função" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {roles.map((role) => (
+                              <SelectItem key={role} value={role}>
+                                {role}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </TableCell>
+                      <TableCell>
+                          <div className="flex items-center space-x-2">
+                              <Switch 
+                                  id={`management-${employee.id}`}
+                                  checked={!!employee.isUnderManagement}
+                                  onCheckedChange={(checked) => handleManagementToggle(employee.id, checked)}
+                              />
+                          </div>
+                      </TableCell>
+                      <TableCell>
+                          <div className="flex items-center space-x-2">
+                              <Switch 
+                                  id={`director-${employee.id}`}
+                                  checked={!!employee.isDirector}
+                                  onCheckedChange={(checked) => handlePermissionToggle(employee.id, 'isDirector', checked)}
+                              />
+                          </div>
+                      </TableCell>
+                      <TableCell>
+                          <div className="flex items-center space-x-2">
+                              <Switch 
+                                  id={`admin-${employee.id}`}
+                                  checked={!!employee.isAdmin}
+                                  onCheckedChange={(checked) => handlePermissionToggle(employee.id, 'isAdmin', checked)}
+                              />
+                          </div>
+                      </TableCell>
+                      <TableCell className="text-right">
+                          <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                  <Button variant="ghost" size="icon">
+                                      <MoreHorizontal className="h-4 w-4" />
+                                  </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent>
+                                  <DropdownMenuItem onClick={() => handleEditEmployee(employee)}>Editar</DropdownMenuItem>
+                                  <DropdownMenuItem className="text-destructive" onClick={() => handleDeleteClick(employee)}>Remover</DropdownMenuItem>
+                              </DropdownMenuContent>
+                          </DropdownMenu>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
           </CardContent>
         </Card>
       </TabsContent>
