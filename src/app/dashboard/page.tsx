@@ -90,6 +90,7 @@ export default function LeadershipDashboard() {
   const [leaderFilter, setLeaderFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState<"all" | InteractionStatus>("all");
   const [interactionTypeFilter, setInteractionTypeFilter] = useState<"1:1" | "PDI" | "Índice de Risco" | "N3 Individual" | "Feedback">("1:1");
+  const [axisFilter, setAxisFilter] = useState("Comercial");
   const [sortConfig, setSortConfig] = useState<SortConfig>({ key: 'name', direction: 'ascending' });
   const [dateRange, setDateRange] = useState<DateRange | undefined>({
     from: startOfMonth(new Date()),
@@ -283,7 +284,8 @@ export default function LeadershipDashboard() {
     let filtered = trackedEmployees.filter(member => {
         const leaderMatch = leaderFilter === 'all' || member.leaderId === leaderFilter;
         const statusMatch = statusFilter === 'all' || member.interactionStatus === statusFilter;
-        return leaderMatch && statusMatch;
+        const axisMatch = axisFilter === "all" || member.axis === axisFilter;
+        return leaderMatch && statusMatch && axisMatch;
     });
 
     if (sortConfig !== null) {
@@ -332,7 +334,7 @@ export default function LeadershipDashboard() {
         return areaA.localeCompare(areaB);
     });
 
-  }, [trackedEmployees, leaderFilter, statusFilter, sortConfig]);
+  }, [trackedEmployees, leaderFilter, statusFilter, axisFilter, sortConfig]);
 
   const requestSort = (key: keyof TrackedEmployee) => {
     let direction: 'ascending' | 'descending' = 'ascending';
@@ -343,13 +345,16 @@ export default function LeadershipDashboard() {
   };
 
 
-  const leadersWithTeams = useMemo(() => {
-    if (!employees) return [];
+  const { leadersWithTeams, uniqueAxes } = useMemo(() => {
+    if (!employees) return { leadersWithTeams: [], uniqueAxes: [] };
     
-    return employees
+    const leaders = employees
       .filter(e => e.role === 'Líder')
       .sort((a, b) => a!.name.localeCompare(b!.name));
+    
+    const axes = [...new Set(employees.map(e => e.axis).filter(Boolean))].sort();
       
+    return { leadersWithTeams: leaders, uniqueAxes: axes };
   }, [employees]);
 
 
@@ -391,7 +396,7 @@ export default function LeadershipDashboard() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
             <Select onValueChange={setLeaderFilter} value={leaderFilter} disabled={isLoading || isLeaderOnly}>
               <SelectTrigger>
                 <SelectValue placeholder="Todas as Equipes" />
@@ -402,6 +407,19 @@ export default function LeadershipDashboard() {
                   <SelectItem key={leader.id} value={leader.id}>
                     {leader.name}
                   </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select onValueChange={setAxisFilter} value={axisFilter} disabled>
+              <SelectTrigger>
+                <SelectValue placeholder="Todos os Eixos" />
+              </SelectTrigger>
+              <SelectContent>
+                 <SelectItem value="Comercial">Comercial</SelectItem>
+                 {uniqueAxes.filter(axis => axis !== 'Comercial').map(axis => (
+                    <SelectItem key={axis} value={axis} disabled>
+                        {axis}
+                    </SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -551,3 +569,6 @@ export default function LeadershipDashboard() {
     </div>
   );
 }
+
+
+    
