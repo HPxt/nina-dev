@@ -19,7 +19,7 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, LineChart, Line, ReferenceL
 import { useCollection, useFirestore, useMemoFirebase, useUser } from "@/firebase";
 import { collection } from "firebase/firestore";
 import { Button } from "@/components/ui/button";
-import { Users } from "lucide-react";
+import { Users, AlertTriangle } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { RiskAnalysisSelectionDialog } from "@/components/risk-analysis-selection-dialog";
 
@@ -179,6 +179,14 @@ export default function RiskAnalysisPage() {
     return config;
   }, [selectedEmployees]);
   
+  const handleSelectAtRisk = () => {
+    if (!managedEmployees) return;
+    const atRiskIds = managedEmployees
+      .filter(emp => (emp.riskScore ?? 0) >= 5)
+      .map(emp => emp.id);
+    setSelectedEmployeeIds(atRiskIds);
+  };
+  
   const isLoading = areEmployeesLoading || loadingInteractions;
 
   return (
@@ -189,17 +197,28 @@ export default function RiskAnalysisPage() {
                 <CardDescription>Escolha um ou mais colaboradores para analisar os dados de risco.</CardDescription>
             </CardHeader>
             <CardContent>
-                <Button 
-                  variant="outline" 
-                  onClick={() => setIsSelectionDialogOpen(true)}
-                  className="w-full md:w-[400px]"
-                >
-                  <Users className="mr-2 h-4 w-4" />
-                  {selectedEmployeeIds.length > 0 
-                    ? `${selectedEmployeeIds.length} colaborador(es) selecionado(s)`
-                    : "Selecionar Colaboradores"
-                  }
-                </Button>
+                <div className="flex flex-wrap gap-2">
+                    <Button 
+                        variant="outline" 
+                        onClick={() => setIsSelectionDialogOpen(true)}
+                        className="w-full sm:w-auto"
+                    >
+                        <Users className="mr-2 h-4 w-4" />
+                        {selectedEmployeeIds.length > 0 
+                            ? `${selectedEmployeeIds.length} colaborador(es) selecionado(s)`
+                            : "Selecionar Colaboradores"
+                        }
+                    </Button>
+                     <Button
+                        variant="destructive"
+                        onClick={handleSelectAtRisk}
+                        className="w-full sm:w-auto"
+                        disabled={isLoading}
+                    >
+                        <AlertTriangle className="mr-2 h-4 w-4" />
+                        Selecionar Colaboradores em Risco (&gt;=5)
+                    </Button>
+                </div>
             </CardContent>
         </Card>
 
@@ -309,3 +328,5 @@ export default function RiskAnalysisPage() {
     </div>
   );
 }
+
+    
