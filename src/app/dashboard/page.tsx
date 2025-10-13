@@ -1,7 +1,7 @@
 
 "use client";
 
-import React, { useState, useMemo, useEffect } from "react";
+import React, { useState, useMemo, useEffect, useCallback } from "react";
 import type { Employee, Interaction, InteractionStatus, PDIAction } from "@/lib/types";
 import { useCollection, useFirestore, useMemoFirebase, useUser } from "@/firebase";
 import { collection, getDocs, query } from "firebase/firestore";
@@ -85,9 +85,10 @@ export default function LeadershipDashboard() {
 
   const [interactions, setInteractions] = useState<Map<string, Interaction[]>>(new Map());
   const [pdiActionsMap, setPdiActionsMap] = useState<Map<string, PDIAction[]>>(new Map());
-  const [loadingData, setLoadingData] = useState(true);
+  const [loadingData, setLoadingData] = useState(false);
+  const [hasSearched, setHasSearched] = useState(false);
 
-  const [leaderFilter, setLeaderFilter] = useState("all");
+  const [leaderFilter, setLeaderFilter] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | InteractionStatus>("all");
   const [interactionTypeFilter, setInteractionTypeFilter] = useState<"1:1" | "PDI" | "Índice de Risco" | "N3 Individual" | "Feedback">("1:1");
   const [axisFilter, setAxisFilter] = useState("Comercial");
@@ -131,57 +132,75 @@ export default function LeadershipDashboard() {
   useEffect(() => {
     if (currentUserEmployee?.role === 'Líder' && !currentUserEmployee.isDirector && !currentUserEmployee.isAdmin) {
       setLeaderFilter(currentUserEmployee.id);
+      fetchDataForLeader(currentUserEmployee.id);
     }
   }, [currentUserEmployee]);
 
 
-  useEffect(() => {
-    const fetchData = async () => {
-      if (!firestore || !employees || !currentUserEmployee) return;
-  
-      setLoadingData(true);
-      const managedEmployeeIds = employees
-        .filter(e => e.isUnderManagement && (currentUserEmployee.isAdmin || currentUserEmployee.isDirector || e.leaderId === currentUserEmployee.id))
-        .map(e => e.id);
-  
-      const interactionsMap = new Map<string, Interaction[]>();
-      const pdiActionsMap = new Map<string, PDIAction[]>();
-  
-      for (const id of managedEmployeeIds) {
-        const interactionsQuery = query(collection(firestore, "employees", id, "interactions"));
-        const pdiActionsQuery = query(collection(firestore, "employees", id, "pdiActions"));
-  
-        const [interactionsSnapshot, pdiActionsSnapshot] = await Promise.all([
-          getDocs(interactionsQuery),
-          getDocs(pdiActionsQuery)
-        ]);
-  
-        const employeeInteractions = interactionsSnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }) as Interaction);
-        interactionsMap.set(id, employeeInteractions);
-  
-        const employeePdiActions = pdiActionsSnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }) as PDIAction);
-        pdiActionsMap.set(id, employeePdiActions);
-      }
-      
-      setInteractions(interactionsMap);
-      setPdiActionsMap(pdiActionsMap);
-      setLoadingData(false);
-    };
-  
-    fetchData();
+  const fetchDataForLeader = useCallback(async (leaderId: string) => {
+    if (!firestore || !employees || !currentUserEmployee) return;
+
+    setLoadingData(true);
+    setHasSearched(true);
+    
+    const targetEmployees = employees.filter(e => {
+        if (!e.isUnderManagement) return false;
+        if (leaderId === 'all') {
+            return currentUserEmployee.isAdmin || currentUserEmployee.isDirector;
+        }
+        return e.leaderId === leaderId;
+    });
+
+    const targetIds = targetEmployees.map(e => e.id);
+
+    const interactionsMap = new Map<string, Interaction[]>();
+    const pdiActionsMap = new Map<string, PDIAction[]>();
+
+    for (const id of targetIds) {
+      const interactionsQuery = query(collection(firestore, "employees", id, "interactions"));
+      const pdiActionsQuery = query(collection(firestore, "employees", id, "pdiActions"));
+
+      const [interactionsSnapshot, pdiActionsSnapshot] = await Promise.all([
+        getDocs(interactionsQuery),
+        getDocs(pdiActionsQuery)
+      ]);
+
+      const employeeInteractions = interactionsSnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }) as Interaction);
+      interactionsMap.set(id, employeeInteractions);
+
+      const employeePdiActions = pdiActionsSnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }) as PDIAction);
+      pdiActionsMap.set(id, employeePdiActions);
+    }
+    
+    setInteractions(interactionsMap);
+    setPdiActionsMap(pdiActionsMap);
+    setLoadingData(false);
   }, [employees, firestore, currentUserEmployee]);
+
+  const handleLeaderFilterChange = (leaderId: string) => {
+    setLeaderFilter(leaderId);
+    if (leaderId) {
+        fetchDataForLeader(leaderId);
+    } else {
+        // Clear data if no leader is selected
+        setInteractions(new Map());
+        setPdiActionsMap(new Map());
+        setHasSearched(false);
+    }
+  };
   
   const trackedEmployees = useMemo((): TrackedEmployee[] => {
-    if (!employees || !currentUserEmployee || !dateRange?.from || !dateRange?.to) return [];
+    if (!employees || !currentUserEmployee || !dateRange?.from || !dateRange?.to || !hasSearched) return [];
   
     const range = { start: dateRange.from, end: dateRange.to };
   
     return employees
       .filter(e => {
         if (!e.isUnderManagement) return false;
-        if (currentUserEmployee.isAdmin || currentUserEmployee.isDirector) return true;
-        if (currentUserEmployee.role === 'Líder') return e.leaderId === currentUserEmployee.id;
-        return false;
+        if (leaderFilter === 'all') {
+          return currentUserEmployee.isAdmin || currentUserEmployee.isDirector;
+        }
+        return e.leaderId === leaderFilter;
       })
       .map(employee => {
         let status: InteractionStatus = "Pendente";
@@ -277,15 +296,14 @@ export default function LeadershipDashboard() {
           nextInteraction: nextInteractionDate,
         };
       });
-  }, [employees, interactions, pdiActionsMap, currentUserEmployee, interactionTypeFilter, dateRange]);
+  }, [employees, interactions, pdiActionsMap, currentUserEmployee, interactionTypeFilter, dateRange, hasSearched, leaderFilter]);
 
 
   const groupedAndFilteredEmployees = useMemo(() => {
     let filtered = trackedEmployees.filter(member => {
-        const leaderMatch = leaderFilter === 'all' || member.leaderId === leaderFilter;
         const statusMatch = statusFilter === 'all' || member.interactionStatus === statusFilter;
         const axisMatch = axisFilter === "all" || member.axis === axisFilter;
-        return leaderMatch && statusMatch && axisMatch;
+        return statusMatch && axisMatch;
     });
 
     if (sortConfig !== null) {
@@ -334,7 +352,7 @@ export default function LeadershipDashboard() {
         return areaA.localeCompare(areaB);
     });
 
-  }, [trackedEmployees, leaderFilter, statusFilter, axisFilter, sortConfig]);
+  }, [trackedEmployees, statusFilter, axisFilter, sortConfig]);
 
   const requestSort = (key: keyof TrackedEmployee) => {
     let direction: 'ascending' | 'descending' = 'ascending';
@@ -410,9 +428,9 @@ export default function LeadershipDashboard() {
                 ))}
               </SelectContent>
             </Select>
-            <Select onValueChange={setLeaderFilter} value={leaderFilter} disabled={isLoading || isLeaderOnly}>
+            <Select onValueChange={handleLeaderFilterChange} value={leaderFilter} disabled={isLoading || isLeaderOnly}>
               <SelectTrigger>
-                <SelectValue placeholder="Todas as Equipes" />
+                <SelectValue placeholder="Selecione uma equipe" />
               </SelectTrigger>
               <SelectContent>
                 {!isLeaderOnly && <SelectItem value="all">Todas as Equipes</SelectItem>}
@@ -512,7 +530,7 @@ export default function LeadershipDashboard() {
                         <TableCell><Skeleton className="h-6 w-20 rounded-full" /></TableCell>
                     </TableRow>
                 ))
-              ) : groupedAndFilteredEmployees.length > 0 ? (
+              ) : hasSearched && groupedAndFilteredEmployees.length > 0 ? (
                 groupedAndFilteredEmployees.map(([area, members]) => (
                   <React.Fragment key={area}>
                     {!sortConfig && 
@@ -558,7 +576,7 @@ export default function LeadershipDashboard() {
               ) : (
                 <TableRow>
                   <TableCell colSpan={6} className="text-center h-24">
-                    Nenhum colaborador gerenciado encontrado ou correspondente aos filtros.
+                     {hasSearched ? "Nenhum colaborador encontrado para os filtros selecionados." : "Por favor, selecione uma equipe para visualizar os dados."}
                   </TableCell>
                 </TableRow>
               )}
@@ -569,3 +587,5 @@ export default function LeadershipDashboard() {
     </div>
   );
 }
+
+    
