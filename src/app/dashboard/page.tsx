@@ -588,5 +588,3 @@ export default function LeadershipDashboard() {
     </div>
   );
 }
-
-    
