@@ -5,11 +5,11 @@ import { usePathname } from "next/navigation";
 import { PageHeader } from "./page-header";
 
 const titles: { [key: string]: { title: string; description?: string } } = {
-  "/dashboard/lideranca": {
+  "/dashboard": {
     title: "Dashboard de Liderança",
     description: "Acompanhe as métricas e o engajamento da sua equipe.",
   },
-  "/dashboard": { // Fallback for the old path
+  "/dashboard/lideranca": { // Fallback for the old path
     title: "Dashboard de Liderança",
     description: "Acompanhe as métricas e o engajamento da sua equipe.",
   },
@@ -36,7 +36,10 @@ const titles: { [key: string]: { title: string; description?: string } } = {
 };
 
 function getPageDetails(pathname: string): { title: string; description?: string } {
-  return titles[pathname] || { title: "Nina 1.0" };
+    if (pathname === '/dashboard' || pathname === '/dashboard/lideranca') {
+        return titles['/dashboard'];
+    }
+    return titles[pathname] || { title: "Nina 1.0" };
 }
 
 export function PageHeaderController() {
@@ -45,3 +48,5 @@ export function PageHeaderController() {
 
   return <PageHeader title={title} description={description} />;
 }
+
+    
