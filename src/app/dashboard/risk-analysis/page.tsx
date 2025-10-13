@@ -216,7 +216,7 @@ export default function RiskAnalysisPage() {
                         disabled={isLoading}
                     >
                         <AlertTriangle className="mr-2 h-4 w-4" />
-                        Selecionar Colaboradores em Risco (&gt;=5)
+                        Exibir Alto Risco (&gt;=5)
                     </Button>
                 </div>
             </CardContent>
@@ -328,5 +328,3 @@ export default function RiskAnalysisPage() {
     </div>
   );
 }
-
-    
