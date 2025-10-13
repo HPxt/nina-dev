@@ -1,5 +1,6 @@
 
 
+// This is a type definition file.
 export type Role = "Colaborador" | "Líder";
 
 export type InteractionStatus = string;
