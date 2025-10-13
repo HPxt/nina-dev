@@ -5,7 +5,11 @@ import { usePathname } from "next/navigation";
 import { PageHeader } from "./page-header";
 
 const titles: { [key: string]: { title: string; description?: string } } = {
-  "/dashboard": {
+  "/dashboard/lideranca": {
+    title: "Dashboard de Liderança",
+    description: "Acompanhe as métricas e o engajamento da sua equipe.",
+  },
+  "/dashboard": { // Fallback for the old path
     title: "Dashboard de Liderança",
     description: "Acompanhe as métricas e o engajamento da sua equipe.",
   },

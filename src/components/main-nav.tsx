@@ -18,7 +18,7 @@ import {
 } from "@/components/ui/sidebar";
 
 const navItems = [
-  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard, requiresAuth: true },
+  { href: "/dashboard/lideranca", label: "Dashboard", icon: LayoutDashboard, requiresAuth: true },
   { href: "/dashboard/individual-tracking", label: "Acompanhamento", icon: ClipboardList, requiresAuth: (user: Employee) => user.role === "Líder" || user.isDirector || user.isAdmin },
   { href: "/dashboard/pdi", label: "Plano de Desenvolvimento", icon: ClipboardCheck, requiresAuth: (user: Employee) => user.role === "Líder" || user.isDirector || user.isAdmin },
   { href: "/dashboard/risk-analysis", label: "Análise de Risco", icon: ShieldAlert, requiresAuth: (user: Employee) => user.role === "Líder" || user.isDirector || user.isAdmin },
@@ -46,9 +46,9 @@ export function MainNav({ user }: { user: Employee }) {
         }
         
         const isActive =
-          item.href === "/dashboard"
-            ? pathname === item.href
-            : pathname.startsWith(item.href);
+          item.href === "/dashboard/lideranca" && (pathname === "/dashboard" || pathname === "/dashboard/lideranca")
+            ? true
+            : pathname.startsWith(item.href) && item.href !== "/dashboard/lideranca";
 
         return (
           <SidebarMenuItem key={item.href}>
