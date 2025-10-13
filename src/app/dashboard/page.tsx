@@ -397,19 +397,6 @@ export default function LeadershipDashboard() {
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
-            <Select onValueChange={setLeaderFilter} value={leaderFilter} disabled={isLoading || isLeaderOnly}>
-              <SelectTrigger>
-                <SelectValue placeholder="Todas as Equipes" />
-              </SelectTrigger>
-              <SelectContent>
-                {!isLeaderOnly && <SelectItem value="all">Todas as Equipes</SelectItem>}
-                {leadersWithTeams.map((leader) => (
-                  <SelectItem key={leader.id} value={leader.id}>
-                    {leader.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
             <Select onValueChange={setAxisFilter} value={axisFilter} disabled>
               <SelectTrigger>
                 <SelectValue placeholder="Todos os Eixos" />
@@ -420,6 +407,19 @@ export default function LeadershipDashboard() {
                     <SelectItem key={axis} value={axis} disabled>
                         {axis}
                     </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select onValueChange={setLeaderFilter} value={leaderFilter} disabled={isLoading || isLeaderOnly}>
+              <SelectTrigger>
+                <SelectValue placeholder="Todas as Equipes" />
+              </SelectTrigger>
+              <SelectContent>
+                {!isLeaderOnly && <SelectItem value="all">Todas as Equipes</SelectItem>}
+                {leadersWithTeams.map((leader) => (
+                  <SelectItem key={leader.id} value={leader.id}>
+                    {leader.name}
+                  </SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -569,6 +569,3 @@ export default function LeadershipDashboard() {
     </div>
   );
 }
-
-
-    
