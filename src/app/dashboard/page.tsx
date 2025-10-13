@@ -37,6 +37,7 @@ import { DateRangePicker } from "@/components/ui/date-range-picker";
 import { Button } from "@/components/ui/button";
 import { ArrowUpDown } from "lucide-react";
 
+export const dynamic = 'force-dynamic';
 
 interface TrackedEmployee extends Employee {
   lastInteraction?: string;
