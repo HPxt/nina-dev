@@ -1,7 +1,7 @@
 
 "use client";
 
-import type { Employee, Role } from "@/lib/types";
+import type { Employee, Role, Interaction, PDIAction } from "@/lib/types";
 import {
   Card,
   CardContent,
@@ -45,9 +45,9 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { CsvUploadDialog } from "@/components/csv-upload-dialog";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
 import { useCollection, useFirestore, useMemoFirebase, useUser } from "@/firebase";
-import { collection, doc, deleteDoc, updateDoc } from "firebase/firestore";
+import { collection, doc, deleteDoc, updateDoc, getDocs, query } from "firebase/firestore";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -78,6 +78,9 @@ export default function AdminPage() {
   const [selectedForBackup, setSelectedForBackup] = useState<string[]>([]);
   const [isExporting, setIsExporting] = useState(false);
 
+  const [interactionsMap, setInteractionsMap] = useState<Map<string, Interaction[]>>(new Map());
+  const [pdiActionsMap, setPdiActionsMap] = useState<Map<string, PDIAction[]>>(new Map());
+  const [loadingReports, setLoadingReports] = useState(true);
 
   const firestore = useFirestore();
   const { user, isUserLoading } = useUser();
@@ -113,9 +116,38 @@ export default function AdminPage() {
        console.error("Error updating role:", error);
     }
   };
+
+  useEffect(() => {
+    const fetchSubCollections = async () => {
+        if (!firestore || !employees || employees.length === 0) {
+          setLoadingReports(false);
+          return;
+        }
+        
+        setLoadingReports(true);
+        const interactions = new Map<string, Interaction[]>();
+        const pdiActions = new Map<string, PDIAction[]>();
+
+        for(const emp of employees) {
+            const [interactionsSnapshot, pdiActionsSnapshot] = await Promise.all([
+                getDocs(query(collection(firestore, 'employees', emp.id, 'interactions'))),
+                getDocs(query(collection(firestore, 'employees', emp.id, 'pdiActions')))
+            ]);
+
+            interactions.set(emp.id, interactionsSnapshot.docs.map(d => ({id: d.id, ...d.data()}) as Interaction));
+            pdiActions.set(emp.id, pdiActionsSnapshot.docs.map(d => ({id: d.id, ...d.data()}) as PDIAction));
+        }
+
+        setInteractionsMap(interactions);
+        setPdiActionsMap(pdiActions);
+        setLoadingReports(false);
+    };
+
+    fetchSubCollections();
+  }, [employees, firestore]);
   
-    const { leaders, directors, admins, uniqueValues } = useMemo(() => {
-        if (!employees) return { leaders: [], directors: [], admins: [], uniqueValues: { positions: [], axes: [], areas: [], segments: [], leaders: [], cities: [], roles: [] } };
+    const { leaders, directors, admins, uniqueValues, employeesWithoutDiagnosis, employeesWithoutInteractions } = useMemo(() => {
+        if (!employees) return { leaders: [], directors: [], admins: [], uniqueValues: { positions: [], axes: [], areas: [], segments: [], leaders: [], cities: [], roles: [] }, employeesWithoutDiagnosis: [], employeesWithoutInteractions: [] };
         const positions = [...new Set(employees.map(e => e.position).filter(Boolean))].sort();
         const axes = [...new Set(employees.map(e => e.axis).filter(Boolean))].sort();
         const areas = [...new Set(employees.map(e => e.area).filter(Boolean))].sort();
@@ -128,13 +160,23 @@ export default function AdminPage() {
         const directors = employees.filter(e => e.isDirector).sort((a,b) => a.name.localeCompare(b.name));
         const admins = employees.filter(e => e.isAdmin).sort((a,b) => a.name.localeCompare(b.name));
 
+        const employeesWithoutDiagnosis = employees.filter(emp => emp.isUnderManagement && !emp.diagnosis);
+        const employeesWithoutInteractions = employees.filter(emp => {
+            if (!emp.isUnderManagement) return false;
+            const empInteractions = interactionsMap.get(emp.id) ?? [];
+            const empPdiActions = pdiActionsMap.get(emp.id) ?? [];
+            return empInteractions.length === 0 && empPdiActions.length === 0;
+        });
+
         return { 
           leaders,
           directors,
           admins,
-          uniqueValues: { positions, axes, areas, segments, leaders: leaderNames, cities, roles: roleValues }
+          uniqueValues: { positions, axes, areas, segments, leaders: leaderNames, cities, roles: roleValues },
+          employeesWithoutDiagnosis,
+          employeesWithoutInteractions,
         };
-    }, [employees]);
+    }, [employees, interactionsMap, pdiActionsMap]);
 
 
     const calculateAnnualInteractions = (employee: Employee) => {
@@ -447,7 +489,7 @@ export default function AdminPage() {
   };
 
 
-  const isLoading = isUserLoading || areEmployeesLoading;
+  const isLoading = isUserLoading || areEmployeesLoading || loadingReports;
 
   const FilterComponent = ({ title, filterKey, options, children }: { title: string, filterKey: keyof typeof filters, options: string[], children?: React.ReactNode }) => (
     <div className="flex items-center gap-1">
@@ -478,12 +520,58 @@ export default function AdminPage() {
     </div>
   );
 
+  const ReportTable = ({ title, description, data, isLoading }: { title: string, description: string, data: Employee[], isLoading: boolean }) => (
+    <Card>
+        <CardHeader>
+            <CardTitle>{title}</CardTitle>
+            <CardDescription>{description}</CardDescription>
+        </CardHeader>
+        <CardContent>
+            <div className="border rounded-md max-h-96 overflow-y-auto">
+                <Table>
+                    <TableHeader>
+                        <TableRow>
+                            <TableHead>Nome</TableHead>
+                            <TableHead>Email</TableHead>
+                            <TableHead>Líder</TableHead>
+                        </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                        {isLoading ? (
+                            Array.from({ length: 3 }).map((_, i) => (
+                                <TableRow key={i}>
+                                    <TableCell><Skeleton className="h-5 w-24" /></TableCell>
+                                    <TableCell><Skeleton className="h-5 w-32" /></TableCell>
+                                    <TableCell><Skeleton className="h-5 w-24" /></TableCell>
+                                </TableRow>
+                            ))
+                        ) : data.length > 0 ? data.map(emp => (
+                            <TableRow key={emp.id}>
+                                <TableCell className="font-medium">{emp.name}</TableCell>
+                                <TableCell>{emp.email}</TableCell>
+                                <TableCell>{emp.leader || 'N/A'}</TableCell>
+                            </TableRow>
+                        )) : (
+                            <TableRow>
+                                <TableCell colSpan={3} className="text-center h-24">
+                                    {isLoading ? 'Carregando...' : 'Nenhum colaborador encontrado.'}
+                                </TableCell>
+                            </TableRow>
+                        )}
+                    </TableBody>
+                </Table>
+            </div>
+        </CardContent>
+    </Card>
+  );
+
   return (
     <>
     <Tabs defaultValue="employees">
-      <TabsList className="grid w-full grid-cols-4">
+      <TabsList className="grid w-full grid-cols-5">
         <TabsTrigger value="employees">Funcionários</TabsTrigger>
         <TabsTrigger value="teams">Equipes</TabsTrigger>
+        <TabsTrigger value="reports">Relatórios</TabsTrigger>
         <TabsTrigger value="settings">Geral</TabsTrigger>
         <TabsTrigger value="backup">Backup</TabsTrigger>
       </TabsList>
@@ -772,6 +860,22 @@ export default function AdminPage() {
             </Card>
         </div>
       </TabsContent>
+      <TabsContent value="reports">
+        <div className="space-y-6">
+            <ReportTable
+                title="Colaboradores Sem Diagnóstico Profissional"
+                description="Colaboradores sob gestão que ainda não têm um diagnóstico registrado."
+                data={employeesWithoutDiagnosis}
+                isLoading={isLoading}
+            />
+            <ReportTable
+                title="Colaboradores Sem Interações Obrigatórias"
+                description="Colaboradores sob gestão que não possuem nenhuma interação (1:1, PDI, Risco, N3) registrada."
+                data={employeesWithoutInteractions}
+                isLoading={isLoading}
+            />
+        </div>
+      </TabsContent>
       <TabsContent value="settings">
         <Card>
           <CardHeader>
@@ -925,4 +1029,6 @@ export default function AdminPage() {
 }
 
     
+    
+
     
