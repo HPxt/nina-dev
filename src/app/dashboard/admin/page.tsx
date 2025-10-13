@@ -78,8 +78,6 @@ export default function AdminPage() {
   const [selectedForBackup, setSelectedForBackup] = useState<string[]>([]);
   const [isExporting, setIsExporting] = useState(false);
 
-  const [interactionsMap, setInteractionsMap] = useState<Map<string, Interaction[]>>(new Map());
-  const [pdiActionsMap, setPdiActionsMap] = useState<Map<string, PDIAction[]>>(new Map());
   const [loadingReports, setLoadingReports] = useState(true);
 
   const firestore = useFirestore();
@@ -118,36 +116,13 @@ export default function AdminPage() {
   };
 
   useEffect(() => {
-    const fetchSubCollections = async () => {
-        if (!firestore || !employees || employees.length === 0) {
-          setLoadingReports(false);
-          return;
-        }
-        
-        setLoadingReports(true);
-        const interactions = new Map<string, Interaction[]>();
-        const pdiActions = new Map<string, PDIAction[]>();
-
-        for(const emp of employees) {
-            const [interactionsSnapshot, pdiActionsSnapshot] = await Promise.all([
-                getDocs(query(collection(firestore, 'employees', emp.id, 'interactions'))),
-                getDocs(query(collection(firestore, 'employees', emp.id, 'pdiActions')))
-            ]);
-
-            interactions.set(emp.id, interactionsSnapshot.docs.map(d => ({id: d.id, ...d.data()}) as Interaction));
-            pdiActions.set(emp.id, pdiActionsSnapshot.docs.map(d => ({id: d.id, ...d.data()}) as PDIAction));
-        }
-
-        setInteractionsMap(interactions);
-        setPdiActionsMap(pdiActions);
-        setLoadingReports(false);
-    };
-
-    fetchSubCollections();
-  }, [employees, firestore]);
+    if (!employees) return;
+    setLoadingReports(false);
+  }, [employees]);
   
-    const { leaders, directors, admins, uniqueValues, employeesWithoutDiagnosis, employeesWithoutInteractions } = useMemo(() => {
-        if (!employees) return { leaders: [], directors: [], admins: [], uniqueValues: { positions: [], axes: [], areas: [], segments: [], leaders: [], cities: [], roles: [] }, employeesWithoutDiagnosis: [], employeesWithoutInteractions: [] };
+    const { leaders, directors, admins, uniqueValues, employeesWithoutDiagnosis } = useMemo(() => {
+        if (!employees) return { leaders: [], directors: [], admins: [], uniqueValues: { positions: [], axes: [], areas: [], segments: [], leaders: [], cities: [], roles: [] }, employeesWithoutDiagnosis: [] };
+        
         const positions = [...new Set(employees.map(e => e.position).filter(Boolean))].sort();
         const axes = [...new Set(employees.map(e => e.axis).filter(Boolean))].sort();
         const areas = [...new Set(employees.map(e => e.area).filter(Boolean))].sort();
@@ -161,12 +136,6 @@ export default function AdminPage() {
         const admins = employees.filter(e => e.isAdmin).sort((a,b) => a.name.localeCompare(b.name));
 
         const employeesWithoutDiagnosis = employees.filter(emp => emp.isUnderManagement && !emp.diagnosis);
-        const employeesWithoutInteractions = employees.filter(emp => {
-            if (!emp.isUnderManagement) return false;
-            const empInteractions = interactionsMap.get(emp.id) ?? [];
-            const empPdiActions = pdiActionsMap.get(emp.id) ?? [];
-            return empInteractions.length === 0 && empPdiActions.length === 0;
-        });
 
         return { 
           leaders,
@@ -174,9 +143,8 @@ export default function AdminPage() {
           admins,
           uniqueValues: { positions, axes, areas, segments, leaders: leaderNames, cities, roles: roleValues },
           employeesWithoutDiagnosis,
-          employeesWithoutInteractions,
         };
-    }, [employees, interactionsMap, pdiActionsMap]);
+    }, [employees]);
 
 
     const calculateAnnualInteractions = (employee: Employee) => {
@@ -868,12 +836,6 @@ export default function AdminPage() {
                 data={employeesWithoutDiagnosis}
                 isLoading={isLoading}
             />
-            <ReportTable
-                title="Colaboradores Sem Interações Obrigatórias"
-                description="Colaboradores sob gestão que não possuem nenhuma interação (1:1, PDI, Risco, N3) registrada."
-                data={employeesWithoutInteractions}
-                isLoading={isLoading}
-            />
         </div>
       </TabsContent>
       <TabsContent value="settings">
@@ -1027,8 +989,5 @@ export default function AdminPage() {
     </>
   );
 }
-
-    
-    
 
     
