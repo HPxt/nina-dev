@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useMemo, useEffect, useCallback } from "react";
@@ -416,7 +417,7 @@ export default function LeadershipDashboardV2() {
         <CardContent>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
             <Select onValueChange={setAxisFilter} value={axisFilter} disabled>
-              <SelectTrigger>
+              <SelectTrigger className="text-xs">
                 <SelectValue placeholder="Todos os Eixos" />
               </SelectTrigger>
               <SelectContent>
@@ -429,7 +430,7 @@ export default function LeadershipDashboardV2() {
               </SelectContent>
             </Select>
             <Select onValueChange={handleLeaderFilterChange} value={leaderFilter} disabled={isLoading || isLeaderOnly}>
-              <SelectTrigger>
+              <SelectTrigger className="text-xs">
                 <SelectValue placeholder="Selecione uma equipe" />
               </SelectTrigger>
               <SelectContent>
@@ -442,11 +443,11 @@ export default function LeadershipDashboardV2() {
               </SelectContent>
             </Select>
             <Select onValueChange={value => setInteractionTypeFilter(value as any)} value={interactionTypeFilter} disabled={isLoading}>
-                <SelectTrigger>
+                <SelectTrigger className="text-xs">
                     <SelectValue>
                       <div className="flex items-center gap-2">
                         <span>{interactionTypes.find(type => type.value === interactionTypeFilter)?.label}</span>
-                        <span className="text-xs text-muted-foreground">{interactionTypes.find(type => type.value === interactionTypeFilter)?.description}</span>
+                        <span className="text-xs text-muted-foreground truncate">{interactionTypes.find(type => type.value === interactionTypeFilter)?.description}</span>
                       </div>
                     </SelectValue>
                 </SelectTrigger>
@@ -462,7 +463,7 @@ export default function LeadershipDashboardV2() {
                 </SelectContent>
             </Select>
             <Select onValueChange={value => setStatusFilter(value as any)} value={statusFilter} disabled={isLoading}>
-              <SelectTrigger>
+              <SelectTrigger className="text-xs">
                 <SelectValue placeholder="Todos os Status" />
               </SelectTrigger>
               <SelectContent>
@@ -471,7 +472,7 @@ export default function LeadershipDashboardV2() {
                 <SelectItem value="Pendente">Pendente</SelectItem>
               </SelectContent>
             </Select>
-            <DateRangePicker date={dateRange} onDateChange={setDateRange} />
+            <DateRangePicker date={dateRange} onDateChange={setDateRange} className="text-xs" />
           </div>
         </CardContent>
       </Card>
