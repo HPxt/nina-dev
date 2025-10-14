@@ -146,6 +146,10 @@ export default function LeadershipDashboardV2() {
     
     const targetEmployees = employees.filter(e => {
         if (!e.isUnderManagement) return false;
+        
+        const axisMatches = axisFilter === 'all' || e.axis === axisFilter;
+        if (!axisMatches) return false;
+
         if (leaderId === 'all') {
             return currentUserEmployee.isAdmin || currentUserEmployee.isDirector;
         }
@@ -176,7 +180,7 @@ export default function LeadershipDashboardV2() {
     setInteractions(interactionsMap);
     setPdiActionsMap(pdiActionsMap);
     setLoadingData(false);
-  }, [employees, firestore, currentUserEmployee]);
+  }, [employees, firestore, currentUserEmployee, axisFilter]);
 
   const handleLeaderFilterChange = (leaderId: string) => {
     setLeaderFilter(leaderId);
@@ -189,6 +193,14 @@ export default function LeadershipDashboardV2() {
         setHasSearched(false);
     }
   };
+
+  const handleAxisFilterChange = (newAxis: string) => {
+    setAxisFilter(newAxis);
+    setLeaderFilter(""); // Reset leader filter when axis changes
+    setInteractions(new Map());
+    setPdiActionsMap(new Map());
+    setHasSearched(false);
+  }
   
   const trackedEmployees = useMemo((): TrackedEmployee[] => {
     if (!employees || !currentUserEmployee || !dateRange?.from || !dateRange?.to || !hasSearched) return [];
@@ -198,6 +210,10 @@ export default function LeadershipDashboardV2() {
     return employees
       .filter(e => {
         if (!e.isUnderManagement) return false;
+
+        const axisMatches = axisFilter === 'all' || e.axis === axisFilter;
+        if (!axisMatches) return false;
+        
         if (leaderFilter === 'all') {
           return currentUserEmployee.isAdmin || currentUserEmployee.isDirector;
         }
@@ -297,12 +313,12 @@ export default function LeadershipDashboardV2() {
           nextInteraction: nextInteractionDate,
         };
       });
-  }, [employees, interactions, pdiActionsMap, currentUserEmployee, interactionTypeFilter, dateRange, hasSearched, leaderFilter]);
+  }, [employees, interactions, pdiActionsMap, currentUserEmployee, interactionTypeFilter, dateRange, hasSearched, leaderFilter, axisFilter]);
 
 
   const groupedAndFilteredEmployees = useMemo(() => {
     let filtered = trackedEmployees.filter(member => {
-        const statusMatch = statusFilter === 'all' || member.interactionStatus === statusFilter;
+        const statusMatch = statusFilter === 'all' || member.interactionStatus === statusFilter || (statusFilter === "Pendente" && member.interactionStatus.startsWith("Realizado 0/"));
         const axisMatch = axisFilter === "all" || member.axis === axisFilter;
         return statusMatch && axisMatch;
     });
@@ -368,20 +384,20 @@ export default function LeadershipDashboardV2() {
     if (!employees) return { leadersWithTeams: [], uniqueAxes: [] };
     
     const leaders = employees
-      .filter(e => e.role === 'Líder')
+      .filter(e => e.role === 'Líder' && (axisFilter === 'all' || e.axis === axisFilter))
       .sort((a, b) => a!.name.localeCompare(b!.name));
     
     const axes = [...new Set(employees.map(e => e.axis).filter(Boolean))].sort();
       
     return { leadersWithTeams: leaders, uniqueAxes: axes };
-  }, [employees]);
+  }, [employees, axisFilter]);
 
 
   const getBadgeVariant = (status: InteractionStatus) => {
-    if (status === "Executada") return "default";
-    if (status === "Pendente") return "destructive";
-    if (status.startsWith("Realizado")) return "secondary";
-    return "outline";
+    if (status === "Executada") return "default"; // Verde
+    if (status === "Pendente" || status.startsWith("Realizado 0/")) return "destructive"; // Vermelho
+    if (status.startsWith("Realizado")) return "secondary"; // Cinza
+    return "outline"; // N/A
   };
 
   const getInitials = (name: string) => {
@@ -416,7 +432,7 @@ export default function LeadershipDashboardV2() {
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
-            <Select onValueChange={setAxisFilter} value={axisFilter} disabled>
+            <Select onValueChange={handleAxisFilterChange} value={axisFilter} disabled>
               <SelectTrigger className="text-xs">
                 <SelectValue placeholder="Todos os Eixos" />
               </SelectTrigger>
