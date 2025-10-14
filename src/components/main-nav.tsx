@@ -18,7 +18,7 @@ import {
 } from "@/components/ui/sidebar";
 
 const navItems = [
-  { href: "/dashboard/v2", label: "Dashboard V2", icon: LayoutDashboard, requiresAuth: true },
+  { href: "/dashboard/v2", label: "Dashboard", icon: LayoutDashboard, requiresAuth: true },
   { href: "/dashboard/individual-tracking", label: "Acompanhamento", icon: ClipboardList, requiresAuth: (user: Employee) => user.role === "Líder" || user.isDirector || user.isAdmin },
   { href: "/dashboard/pdi", label: "Plano de Desenvolvimento", icon: ClipboardCheck, requiresAuth: (user: Employee) => user.role === "Líder" || user.isDirector || user.isAdmin },
   { href: "/dashboard/risk-analysis", label: "Análise de Risco", icon: ShieldAlert, requiresAuth: (user: Employee) => user.role === "Líder" || user.isDirector || user.isAdmin },
@@ -46,7 +46,7 @@ export function MainNav({ user }: { user: Employee }) {
         }
         
         const isActive =
-          item.href === "/dashboard" && (pathname === "/dashboard" || pathname === "/dashboard/lideranca")
+          item.href === "/dashboard" && (pathname === "/dashboard" || pathname === "/dashboard/lideranca" || pathname === "/dashboard/v2")
             ? true
             : pathname.startsWith(item.href) && item.href !== "/dashboard";
 

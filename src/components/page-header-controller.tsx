@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import { PageHeader } from "./page-header";
 
 const titles: { [key: string]: { title: string; description?: string } } = {
-  "/dashboard": {
+  "/dashboard/v2": {
     title: "Dashboard de Liderança",
     description: "Acompanhe as métricas e o engajamento da sua equipe.",
   },
@@ -37,7 +37,7 @@ const titles: { [key: string]: { title: string; description?: string } } = {
 
 function getPageDetails(pathname: string): { title: string; description?: string } {
     if (pathname === '/dashboard' || pathname === '/dashboard/lideranca') {
-        return titles['/dashboard'];
+        return titles['/dashboard/v2'];
     }
     return titles[pathname] || { title: "Nina 1.0" };
 }
