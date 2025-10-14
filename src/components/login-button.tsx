@@ -44,7 +44,7 @@ export function LoginButton() {
 
       // Acesso especial para o administrador mestre
       if (user.email === 'matheus@3ainvestimentos.com.br') {
-        router.push("/dashboard");
+        router.push("/dashboard/v2");
         setIsVerifying(false);
         return;
       }
@@ -66,7 +66,7 @@ export function LoginButton() {
         const hasAccess = employeeData.role === 'Líder' || employeeData.isDirector === true || employeeData.isAdmin === true;
 
         if (hasAccess) {
-          router.push("/dashboard");
+          router.push("/dashboard/v2");
         } else {
           throw new Error("Seu perfil de 'Colaborador' não tem permissão de acesso.");
         }
