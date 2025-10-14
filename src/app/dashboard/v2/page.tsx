@@ -52,10 +52,10 @@ type SortConfig = {
 
 
 const interactionTypes: { value: "1:1" | "PDI" | "Índice de Risco" | "N3 Individual" | "Feedback", label: string, description: string }[] = [
+    { value: "N3 Individual", label: "N3 Individual", description: "Segmento" },
+    { value: "Índice de Risco", label: "Índice de Risco", description: "Mensal" },
     { value: "1:1", label: "1:1", description: "Trimestral (Mar, Jun, Set, Dez)" },
     { value: "PDI", label: "PDI", description: "Semestral (Jan, Jul)" },
-    { value: "Índice de Risco", label: "Índice de Risco", description: "Mensal" },
-    { value: "N3 Individual", label: "N3 Individual", description: "Segmento" },
     { value: "Feedback", label: "Feedback", description: "Sob demanda" },
 ];
 
@@ -91,7 +91,7 @@ export default function LeadershipDashboardV2() {
 
   const [leaderFilter, setLeaderFilter] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | InteractionStatus>("all");
-  const [interactionTypeFilter, setInteractionTypeFilter] = useState<"1:1" | "PDI" | "Índice de Risco" | "N3 Individual" | "Feedback">("1:1");
+  const [interactionTypeFilter, setInteractionTypeFilter] = useState<"1:1" | "PDI" | "Índice de Risco" | "N3 Individual" | "Feedback">("N3 Individual");
   const [axisFilter, setAxisFilter] = useState("Comercial");
   const [sortConfig, setSortConfig] = useState<SortConfig>({ key: 'name', direction: 'ascending' });
   const [dateRange, setDateRange] = useState<DateRange | undefined>({
@@ -319,8 +319,7 @@ export default function LeadershipDashboardV2() {
   const groupedAndFilteredEmployees = useMemo(() => {
     let filtered = trackedEmployees.filter(member => {
         const statusMatch = statusFilter === 'all' || member.interactionStatus === statusFilter || (statusFilter === "Pendente" && member.interactionStatus.startsWith("Realizado 0/"));
-        const axisMatch = axisFilter === "all" || member.axis === axisFilter;
-        return statusMatch && axisMatch;
+        return statusMatch;
     });
 
     if (sortConfig !== null) {
@@ -369,7 +368,7 @@ export default function LeadershipDashboardV2() {
         return areaA.localeCompare(areaB);
     });
 
-  }, [trackedEmployees, statusFilter, axisFilter, sortConfig]);
+  }, [trackedEmployees, statusFilter, sortConfig]);
 
   const requestSort = (key: keyof TrackedEmployee) => {
     let direction: 'ascending' | 'descending' = 'ascending';
@@ -387,15 +386,15 @@ export default function LeadershipDashboardV2() {
       .filter(e => e.role === 'Líder' && (axisFilter === 'all' || e.axis === axisFilter))
       .sort((a, b) => a!.name.localeCompare(b!.name));
     
-    const axes = [...new Set(employees.map(e => e.axis).filter(Boolean))].sort();
+    const axes = [...new Set(employees.filter(e => e.role === 'Líder').map(e => e.axis).filter(Boolean))].sort();
       
     return { leadersWithTeams: leaders, uniqueAxes: axes };
   }, [employees, axisFilter]);
 
 
   const getBadgeVariant = (status: InteractionStatus) => {
+    if (status.startsWith("Realizado 0/") || status === "Pendente") return "destructive"; // Vermelho
     if (status === "Executada") return "default"; // Verde
-    if (status === "Pendente" || status.startsWith("Realizado 0/")) return "destructive"; // Vermelho
     if (status.startsWith("Realizado")) return "secondary"; // Cinza
     return "outline"; // N/A
   };
