@@ -30,6 +30,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -43,6 +44,8 @@ interface TrackedEmployee extends Employee {
   lastInteraction?: string;
   interactionStatus: InteractionStatus;
   nextInteraction?: string;
+  allInteractionsStatus?: { [key: string]: InteractionStatus };
+  adherence?: number;
 }
 
 type SortConfig = {
@@ -50,8 +53,10 @@ type SortConfig = {
   direction: "ascending" | "descending";
 } | null;
 
+type InteractionFilterType = "all" | "1:1" | "PDI" | "Índice de Risco" | "N3 Individual" | "Feedback";
 
-const interactionTypes: { value: "1:1" | "PDI" | "Índice de Risco" | "N3 Individual" | "Feedback", label: string, description: string }[] = [
+const interactionTypes: { value: InteractionFilterType, label: string, description: string }[] = [
+    { value: "all", label: "Todas as Interações", description: "Visão geral" },
     { value: "N3 Individual", label: "N3 Individual", description: "Segmento" },
     { value: "Índice de Risco", label: "Índice de Risco", description: "Mensal" },
     { value: "1:1", label: "1:1", description: "Trimestral (Mar, Jun, Set, Dez)" },
@@ -91,7 +96,7 @@ export default function LeadershipDashboardV2() {
 
   const [leaderFilter, setLeaderFilter] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | InteractionStatus>("all");
-  const [interactionTypeFilter, setInteractionTypeFilter] = useState<"1:1" | "PDI" | "Índice de Risco" | "N3 Individual" | "Feedback">("N3 Individual");
+  const [interactionTypeFilter, setInteractionTypeFilter] = useState<InteractionFilterType>("all");
   const [axisFilter, setAxisFilter] = useState("Comercial");
   const [sortConfig, setSortConfig] = useState<SortConfig>({ key: 'name', direction: 'ascending' });
   const [dateRange, setDateRange] = useState<DateRange | undefined>({
@@ -202,6 +207,64 @@ export default function LeadershipDashboardV2() {
     setHasSearched(false);
   }
   
+const getInteractionStatus = useCallback((
+    employee: Employee,
+    type: InteractionFilterType,
+    range: { start: Date, end: Date },
+    employeeInteractions: Interaction[],
+    employeePdiActions: PDIAction[]
+): InteractionStatus => {
+    const schedule = interactionSchedules[type as keyof typeof interactionSchedules];
+
+    if (type === 'N3 Individual') {
+        const segment = employee.segment as keyof typeof n3IndividualSchedule | undefined;
+        const requiredCountPerMonth = segment ? n3IndividualSchedule[segment] : 0;
+        if (requiredCountPerMonth === 0) return "N/A";
+        
+        const monthsInRange = differenceInMonths(range.end, range.start) + 1;
+        const totalRequired = requiredCountPerMonth * monthsInRange;
+        const executedCount = employeeInteractions.filter(int =>
+            int.type === 'N3 Individual' && isWithinInterval(parseISO(int.date), range)
+        ).length;
+
+        return executedCount >= totalRequired ? "Executada" : `Realizado ${executedCount}/${totalRequired}`;
+    }
+
+    if (schedule) {
+        const fromMonth = getMonth(range.start);
+        const fromYear = getYear(range.start);
+        const toMonth = getMonth(range.end);
+        const toYear = getYear(range.end);
+
+        let requiredCountInPeriod = 0;
+        for (let y = fromYear; y <= toYear; y++) {
+            const startMonth = (y === fromYear) ? fromMonth : 0;
+            const endMonth = (y === toYear) ? toMonth : 11;
+            requiredCountInPeriod += schedule.filter(month => month >= startMonth && month <= endMonth).length;
+        }
+
+        if (requiredCountInPeriod === 0) return "N/A";
+
+        let executedCount = 0;
+        if (type === 'PDI') {
+            executedCount = employeePdiActions.filter(action => isWithinInterval(parseISO(action.startDate), range)).length;
+        } else {
+            executedCount = employeeInteractions.filter(int => 
+                int.type === type && isWithinInterval(parseISO(int.date), range)
+            ).length;
+        }
+        
+        return executedCount >= requiredCountInPeriod ? "Executada" : `Realizado ${executedCount}/${requiredCountInPeriod}`;
+    }
+
+    // Fallback for types without a fixed schedule (e.g., Feedback)
+    const wasExecuted = employeeInteractions.some(int =>
+        int.type === type && isWithinInterval(parseISO(int.date), range)
+    );
+    return wasExecuted ? "Executada" : "Pendente";
+}, []);
+
+  
   const trackedEmployees = useMemo((): TrackedEmployee[] => {
     if (!employees || !currentUserEmployee || !dateRange?.from || !dateRange?.to || !hasSearched) return [];
   
@@ -210,116 +273,81 @@ export default function LeadershipDashboardV2() {
     return employees
       .filter(e => {
         if (!e.isUnderManagement) return false;
-
         const axisMatches = axisFilter === 'all' || e.axis === axisFilter;
         if (!axisMatches) return false;
-        
-        if (leaderFilter === 'all') {
-          return currentUserEmployee.isAdmin || currentUserEmployee.isDirector;
-        }
+        if (leaderFilter === 'all') return currentUserEmployee.isAdmin || currentUserEmployee.isDirector;
         return e.leaderId === leaderFilter;
       })
       .map(employee => {
-        let status: InteractionStatus = "Pendente";
-        let lastInteractionDate: string | undefined;
-        let nextInteractionDate: string | undefined;
-  
-        const schedule = interactionSchedules[interactionTypeFilter as keyof typeof interactionSchedules];
-        
-        if (interactionTypeFilter === 'N3 Individual') {
-            const segment = employee.segment as keyof typeof n3IndividualSchedule | undefined;
-            const requiredCountPerMonth = segment ? n3IndividualSchedule[segment] : 0;
+            const employeeInteractions = interactions.get(employee.id) || [];
+            const employeePdiActions = pdiActionsMap.get(employee.id) || [];
             
-            if (requiredCountPerMonth === 0) {
-                status = "N/A";
-            } else {
-                const monthsInRange = differenceInMonths(range.end, range.start) + 1;
-                const totalRequired = requiredCountPerMonth * monthsInRange;
-                const employeeInteractions = interactions.get(employee.id) || [];
-                const executedCount = employeeInteractions.filter(int =>
-                    int.type === 'N3 Individual' && isWithinInterval(parseISO(int.date), range)
-                ).length;
+            const allInteractionsStatus: { [key: string]: InteractionStatus } = {};
+            let totalRequired = 0;
+            let totalExecuted = 0;
 
-                if (executedCount >= totalRequired) {
-                    status = "Executada";
-                } else {
-                    status = `Realizado ${executedCount}/${totalRequired}`;
-                }
-            }
+            const allInteractionTypes: InteractionFilterType[] = ["N3 Individual", "Índice de Risco", "1:1", "PDI"];
 
-        } else if (schedule) {
-            const fromMonth = getMonth(range.start);
-            const fromYear = getYear(range.start);
-            const toMonth = getMonth(range.end);
-            const toYear = getYear(range.end);
+            allInteractionTypes.forEach(type => {
+                const status = getInteractionStatus(employee, type, range, employeeInteractions, employeePdiActions);
+                allInteractionsStatus[type] = status;
 
-            let requiredCountInPeriod = 0;
-            for (let y = fromYear; y <= toYear; y++) {
-                const startMonth = (y === fromYear) ? fromMonth : 0;
-                const endMonth = (y === toYear) ? toMonth : 11;
-                requiredCountInPeriod += schedule.filter(month => month >= startMonth && month <= endMonth).length;
-            }
-  
-            if (requiredCountInPeriod === 0) {
-                 status = "N/A";
-            } else {
-                let executedCount = 0;
-                if (interactionTypeFilter === 'PDI') {
-                    const employeePdiActions = pdiActionsMap.get(employee.id) || [];
-                    executedCount = employeePdiActions.filter(action => isWithinInterval(parseISO(action.startDate), range)).length;
-                } else {
-                    const employeeInteractions = interactions.get(employee.id) || [];
-                    executedCount = employeeInteractions.filter(int => 
-                        int.type === interactionTypeFilter && isWithinInterval(parseISO(int.date), range)
-                    ).length;
+                if (status !== "N/A" && status !== "Pendente") {
+                    const match = status.match(/Realizado (\d+)\/(\d+)/);
+                    if (match) {
+                        totalExecuted += parseInt(match[1], 10);
+                        totalRequired += parseInt(match[2], 10);
+                    } else if (status === "Executada") {
+                        // This part is tricky. 'Executada' implies x/x. We need to know 'x'.
+                        // Let's recalculate the required count for 'Executada' statuses.
+                        const tempStatusForCounting = getInteractionStatus(employee, type, range, [], []);
+                        if(tempStatusForCounting.includes('/')) {
+                           const required = parseInt(tempStatusForCounting.split('/')[1], 10) || 1;
+                           totalExecuted += required;
+                           totalRequired += required;
+                        } else {
+                           totalExecuted += 1;
+                           totalRequired += 1;
+                        }
+                    }
                 }
-                
-                if (executedCount >= requiredCountInPeriod) {
-                    status = "Executada";
-                } else {
-                    status = `Realizado ${executedCount}/${requiredCountInPeriod}`;
-                }
+            });
+
+            const adherence = totalRequired > 0 ? (totalExecuted / totalRequired) * 100 : 100;
+            const interactionStatus = getInteractionStatus(employee, interactionTypeFilter, range, employeeInteractions, employeePdiActions);
+
+            let lastInteractionDate: string | undefined;
+            let nextInteractionDate: string | undefined;
+
+            if(interactionTypeFilter !== 'all' && interactionTypeFilter !== 'PDI') {
+                const allTypedInteractions = employeeInteractions
+                    .filter(int => int.type === interactionTypeFilter)
+                    .sort((a, b) => parseISO(b.date).getTime() - parseISO(a.date).getTime());
+                lastInteractionDate = allTypedInteractions.length > 0 ? allTypedInteractions[0].date : undefined;
+                nextInteractionDate = allTypedInteractions.length > 0 ? allTypedInteractions[0].nextInteractionDate : undefined;
+            } else if (interactionTypeFilter === 'PDI') {
+                const allActions = employeePdiActions
+                    .sort((a, b) => parseISO(b.startDate).getTime() - parseISO(a.startDate).getTime());
+                lastInteractionDate = allActions.length > 0 ? allActions[0].startDate : undefined;
             }
-        } else {
-          // Logic for interactions without a fixed schedule (e.g., Feedback)
-          const employeeInteractions = interactions.get(employee.id) || [];
-          const wasExecuted = employeeInteractions.some(int =>
-            int.type === interactionTypeFilter && isWithinInterval(parseISO(int.date), range)
-          );
-           if (wasExecuted) {
-                status = "Executada";
-           } else {
-                status = "Pendente";
-           }
-        }
-  
-        // Find the last interaction and next date for display, regardless of status
-        if (interactionTypeFilter === 'PDI') {
-          const allActions = (pdiActionsMap.get(employee.id) || [])
-            .sort((a, b) => parseISO(b.startDate).getTime() - parseISO(a.startDate).getTime());
-          lastInteractionDate = allActions.length > 0 ? allActions[0].startDate : undefined;
-        } else {
-          const allTypedInteractions = (interactions.get(employee.id) || [])
-            .filter(int => int.type === interactionTypeFilter)
-            .sort((a, b) => parseISO(b.date).getTime() - parseISO(a.date).getTime());
-          lastInteractionDate = allTypedInteractions.length > 0 ? allTypedInteractions[0].date : undefined;
-          nextInteractionDate = allTypedInteractions.length > 0 ? allTypedInteractions[0].nextInteractionDate : undefined;
-        }
   
         return {
           ...employee,
           lastInteraction: lastInteractionDate,
-          interactionStatus: status,
+          interactionStatus,
           nextInteraction: nextInteractionDate,
+          allInteractionsStatus,
+          adherence,
         };
       });
-  }, [employees, interactions, pdiActionsMap, currentUserEmployee, interactionTypeFilter, dateRange, hasSearched, leaderFilter, axisFilter]);
+  }, [employees, interactions, pdiActionsMap, currentUserEmployee, interactionTypeFilter, dateRange, hasSearched, leaderFilter, axisFilter, getInteractionStatus]);
 
 
   const groupedAndFilteredEmployees = useMemo(() => {
     let filtered = trackedEmployees.filter(member => {
-        const statusMatch = statusFilter === 'all' || member.interactionStatus === statusFilter || (statusFilter === "Pendente" && member.interactionStatus.startsWith("Realizado 0/"));
-        return statusMatch;
+        if (statusFilter === 'all') return true;
+        if (statusFilter === 'Pendente') return member.interactionStatus.startsWith("Realizado 0/") || member.interactionStatus === 'Pendente';
+        return member.interactionStatus === statusFilter;
     });
 
     if (sortConfig !== null) {
@@ -341,6 +369,10 @@ export default function LeadershipDashboardV2() {
                  if (aValue < bValue) return sortConfig.direction === 'ascending' ? -1 : 1;
                  if (aValue > bValue) return sortConfig.direction === 'ascending' ? 1 : -1;
             }
+             if (typeof aValue === 'number' && typeof bValue === 'number') {
+                if (aValue < bValue) return sortConfig.direction === 'ascending' ? -1 : 1;
+                if (aValue > bValue) return sortConfig.direction === 'ascending' ? 1 : -1;
+           }
             return 0;
         });
     }
@@ -355,7 +387,7 @@ export default function LeadershipDashboardV2() {
     }, {} as { [key: string]: TrackedEmployee[] });
 
     // Do not sort employees within group if a sort is active
-    if (!sortConfig) {
+    if (!sortConfig || sortConfig.key !== 'name') {
       for (const area in grouped) {
           grouped[area].sort((a, b) => a.name.localeCompare(b.name));
       }
@@ -383,7 +415,7 @@ export default function LeadershipDashboardV2() {
     if (!employees) return { leadersWithTeams: [], uniqueAxes: [] };
     
     const leaders = employees
-      .filter(e => e.role === 'Líder' && (axisFilter === 'all' || e.axis === axisFilter))
+      .filter(e => e.role === 'Líder' && (axisFilter === 'all' || e.axis === axisFilter || axisFilter === 'Comercial' && e.axis === 'Comercial'))
       .sort((a, b) => a!.name.localeCompare(b!.name));
     
     const axes = [...new Set(employees.filter(e => e.role === 'Líder').map(e => e.axis).filter(Boolean))].sort();
@@ -500,6 +532,69 @@ export default function LeadershipDashboardV2() {
           </CardDescription>
         </CardHeader>
         <CardContent>
+          {interactionTypeFilter === 'all' ? (
+             <Accordion type="multiple" className="w-full">
+                {isLoading ? (
+                     Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-12 w-full mb-2" />)
+                ) : hasSearched && groupedAndFilteredEmployees.length > 0 ? (
+                    groupedAndFilteredEmployees.map(([area, members]) => (
+                        <React.Fragment key={area}>
+                          <TableRow className="bg-muted/50 hover:bg-muted/50">
+                            <TableCell colSpan={6} className="font-bold text-foreground py-2 px-4">
+                              {area}
+                            </TableCell>
+                          </TableRow>
+                          {members.map(member => (
+                              <AccordionItem value={member.id} key={member.id}>
+                                <AccordionTrigger className="hover:no-underline">
+                                     <div className="flex items-center gap-3 w-full">
+                                        <Avatar className="h-9 w-9">
+                                            <AvatarImage src={member.photoURL} alt={member.name} />
+                                            <AvatarFallback>{getInitials(member.name)}</AvatarFallback>
+                                        </Avatar>
+                                        <div className="grid gap-0.5 text-left flex-1">
+                                            <span className="font-medium">{member.name}</span>
+                                            <span className="text-xs text-muted-foreground hidden lg:inline">
+                                                {member.position}
+                                            </span>
+                                        </div>
+                                        <div className="flex items-center gap-2 pr-4">
+                                            <span className="text-sm font-medium text-muted-foreground">Aderência:</span>
+                                            <span className="text-sm font-bold">{member.adherence?.toFixed(0) ?? 0}%</span>
+                                        </div>
+                                    </div>
+                                </AccordionTrigger>
+                                <AccordionContent>
+                                    <Table className="bg-background">
+                                        <TableHeader>
+                                            <TableRow>
+                                                <TableHead>Tipo de Interação</TableHead>
+                                                <TableHead className="text-right">Status</TableHead>
+                                            </TableRow>
+                                        </TableHeader>
+                                        <TableBody>
+                                        {member.allInteractionsStatus && Object.entries(member.allInteractionsStatus).map(([type, status]) => (
+                                            <TableRow key={type}>
+                                                <TableCell className="font-medium">{type}</TableCell>
+                                                <TableCell className="text-right">
+                                                    <Badge variant={getBadgeVariant(status)}>{status}</Badge>
+                                                </TableCell>
+                                            </TableRow>
+                                        ))}
+                                        </TableBody>
+                                    </Table>
+                                </AccordionContent>
+                              </AccordionItem>
+                          ))}
+                        </React.Fragment>
+                    ))
+                ) : (
+                     <div className="text-center h-24 flex items-center justify-center text-muted-foreground">
+                        {hasSearched ? "Nenhum colaborador encontrado para os filtros selecionados." : "Por favor, selecione uma equipe para visualizar os dados."}
+                     </div>
+                )}
+             </Accordion>
+          ) : (
           <Table>
             <TableHeader>
               <TableRow>
@@ -549,7 +644,7 @@ export default function LeadershipDashboardV2() {
               ) : hasSearched && groupedAndFilteredEmployees.length > 0 ? (
                 groupedAndFilteredEmployees.map(([area, members]) => (
                   <React.Fragment key={area}>
-                    {!sortConfig && 
+                    {(!sortConfig || sortConfig.key !== 'name') && 
                       <TableRow className="bg-muted/50 hover:bg-muted/50">
                         <TableCell colSpan={6} className="font-bold text-foreground">
                           {area}
@@ -598,8 +693,11 @@ export default function LeadershipDashboardV2() {
               )}
             </TableBody>
           </Table>
+          )}
         </CardContent>
       </Card>
     </div>
   );
 }
+
+    
