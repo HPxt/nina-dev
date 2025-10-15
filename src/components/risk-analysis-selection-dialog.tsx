@@ -23,6 +23,8 @@ import { Button } from "./ui/button";
 import { Checkbox } from "./ui/checkbox";
 import { Input } from "./ui/input";
 import { Skeleton } from "./ui/skeleton";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
+import { X } from "lucide-react";
 
 interface RiskAnalysisSelectionDialogProps {
   open: boolean;
@@ -42,20 +44,31 @@ export function RiskAnalysisSelectionDialog({
   isLoading,
 }: RiskAnalysisSelectionDialogProps) {
   const [localSelectedIds, setLocalSelectedIds] = useState(selectedIds);
-  const [filter, setFilter] = useState("");
+  const [nameFilter, setNameFilter] = useState("");
+  const [leaderFilter, setLeaderFilter] = useState("all");
+  const [cityFilter, setCityFilter] = useState("all");
 
   useEffect(() => {
     setLocalSelectedIds(selectedIds);
   }, [selectedIds, open]);
+  
+  const { uniqueLeaders, uniqueCities } = useMemo(() => {
+    if (!allEmployees) return { uniqueLeaders: [], uniqueCities: [] };
+    const leaders = [...new Set(allEmployees.map(e => e.leader).filter(Boolean))].sort();
+    const cities = [...new Set(allEmployees.map(e => e.city).filter(Boolean))].sort();
+    return { uniqueLeaders: leaders, uniqueCities: cities };
+  }, [allEmployees]);
+
 
   const filteredEmployees = useMemo(() => {
     if (!allEmployees) return [];
-    return allEmployees.filter(employee =>
-      employee.name.toLowerCase().includes(filter.toLowerCase()) ||
-      employee.area?.toLowerCase().includes(filter.toLowerCase()) ||
-      employee.position?.toLowerCase().includes(filter.toLowerCase())
-    ).sort((a,b) => a.name.localeCompare(b.name));
-  }, [allEmployees, filter]);
+    return allEmployees.filter(employee => {
+        const nameMatch = !nameFilter || employee.name.toLowerCase().includes(nameFilter.toLowerCase());
+        const leaderMatch = leaderFilter === 'all' || employee.leader === leaderFilter;
+        const cityMatch = cityFilter === 'all' || employee.city === cityFilter;
+        return nameMatch && leaderMatch && cityMatch;
+    }).sort((a,b) => a.name.localeCompare(b.name));
+  }, [allEmployees, nameFilter, leaderFilter, cityFilter]);
 
   const handleSelect = (id: string) => {
     setLocalSelectedIds(prev =>
@@ -75,6 +88,15 @@ export function RiskAnalysisSelectionDialog({
     onSelectionChange(localSelectedIds);
     onOpenChange(false);
   };
+  
+  const clearFilters = () => {
+    setNameFilter("");
+    setLeaderFilter("all");
+    setCityFilter("all");
+  };
+  
+  const isFilterActive = nameFilter || leaderFilter !== 'all' || cityFilter !== 'all';
+
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -86,11 +108,38 @@ export function RiskAnalysisSelectionDialog({
           </DialogDescription>
         </DialogHeader>
         <div className="flex-none">
-            <Input 
-                placeholder="Filtrar por nome, área ou cargo..."
-                value={filter}
-                onChange={e => setFilter(e.target.value)}
-            />
+            <div className="grid grid-cols-1 sm:grid-cols-4 gap-2">
+                <Input 
+                    placeholder="Filtrar por nome..."
+                    value={nameFilter}
+                    onChange={e => setNameFilter(e.target.value)}
+                    className="sm:col-span-2"
+                />
+                <Select value={leaderFilter} onValueChange={setLeaderFilter}>
+                    <SelectTrigger>
+                        <SelectValue placeholder="Filtrar por líder" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="all">Todos os Líderes</SelectItem>
+                        {uniqueLeaders.map(leader => <SelectItem key={leader} value={leader}>{leader}</SelectItem>)}
+                    </SelectContent>
+                </Select>
+                 <Select value={cityFilter} onValueChange={setCityFilter}>
+                    <SelectTrigger>
+                        <SelectValue placeholder="Filtrar por cidade" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="all">Todas as Cidades</SelectItem>
+                        {uniqueCities.map(city => <SelectItem key={city} value={city}>{city}</SelectItem>)}
+                    </SelectContent>
+                </Select>
+            </div>
+            {isFilterActive && (
+              <Button variant="ghost" size="sm" onClick={clearFilters} className="mt-2 text-primary">
+                <X className="mr-2 h-4 w-4" />
+                Limpar filtros
+              </Button>
+            )}
         </div>
         <div className="flex-1 overflow-y-auto border rounded-md">
             <Table>
@@ -98,7 +147,7 @@ export function RiskAnalysisSelectionDialog({
                 <TableRow>
                   <TableHead className="w-[50px]">
                     <Checkbox
-                      checked={filteredEmployees.length > 0 && localSelectedIds.length === filteredEmployees.length}
+                      checked={filteredEmployees.length > 0 && localSelectedIds.length === filteredEmployees.length && localSelectedIds.length > 0}
                       onCheckedChange={handleSelectAll}
                     />
                   </TableHead>
@@ -137,7 +186,7 @@ export function RiskAnalysisSelectionDialog({
             </Table>
             {!isLoading && filteredEmployees.length === 0 && (
                 <div className="text-center p-8 text-muted-foreground">
-                    Nenhum colaborador encontrado.
+                    Nenhum colaborador encontrado para os filtros selecionados.
                 </div>
             )}
         </div>
