@@ -85,7 +85,7 @@ export default function AdminPage() {
   const { toast } = useToast();
 
   const initialFilters = {
-    name: "",
+    name: new Set<string>(),
     position: new Set<string>(),
     axis: new Set<string>(),
     area: new Set<string>(),
@@ -121,8 +121,9 @@ export default function AdminPage() {
   }, [employees]);
   
     const { leaders, directors, admins, uniqueValues, employeesWithoutDiagnosis } = useMemo(() => {
-        if (!employees) return { leaders: [], directors: [], admins: [], uniqueValues: { positions: [], axes: [], areas: [], segments: [], leaders: [], cities: [], roles: [] }, employeesWithoutDiagnosis: [] };
+        if (!employees) return { leaders: [], directors: [], admins: [], uniqueValues: { names: [], positions: [], axes: [], areas: [], segments: [], leaders: [], cities: [], roles: [] }, employeesWithoutDiagnosis: [] };
         
+        const names = [...new Set(employees.map(e => e.name).filter(Boolean))].sort();
         const positions = [...new Set(employees.map(e => e.position).filter(Boolean))].sort();
         const axes = [...new Set(employees.map(e => e.axis).filter(Boolean))].sort();
         const areas = [...new Set(employees.map(e => e.area).filter(Boolean))].sort();
@@ -141,7 +142,7 @@ export default function AdminPage() {
           leaders,
           directors,
           admins,
-          uniqueValues: { positions, axes, areas, segments, leaders: leaderNames, cities, roles: roleValues },
+          uniqueValues: { names, positions, axes, areas, segments, leaders: leaderNames, cities, roles: roleValues },
           employeesWithoutDiagnosis,
         };
     }, [employees]);
@@ -196,7 +197,7 @@ export default function AdminPage() {
     
     let filtered = employees.filter(employee => {
         return (
-            (!filters.name || employee.name?.toLowerCase().includes(filters.name.toLowerCase())) &&
+            (filters.name.size === 0 || (employee.name && filters.name.has(employee.name))) &&
             (filters.position.size === 0 || (employee.position && filters.position.has(employee.position))) &&
             (filters.axis.size === 0 || (employee.axis && filters.axis.has(employee.axis))) &&
             (filters.area.size === 0 || (employee.area && filters.area.has(employee.area))) &&
@@ -298,13 +299,8 @@ export default function AdminPage() {
     });
   };
 
-  const handleTextFilterChange = (filterName: 'name', value: string) => {
-    setFilters(prev => ({ ...prev, [filterName]: value }));
-  };
-
   const isFilterActive = useMemo(() => {
     return Object.values(filters).some(value => {
-      if (typeof value === 'string') return value !== '';
       if (value instanceof Set) return value.size > 0;
       return false;
     });
@@ -465,7 +461,7 @@ export default function AdminPage() {
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button variant="ghost" size="icon" className="h-6 w-6">
-            <Filter className={`h-4 w-4 ${filters[filterKey] instanceof Set && (filters[filterKey] as Set<string>).size > 0 ? 'text-primary' : ''}`} />
+            <Filter className={`h-4 w-4 ${(filters[filterKey] as Set<string>).size > 0 ? 'text-primary' : ''}`} />
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="start" className="max-h-96 overflow-y-auto">
@@ -474,7 +470,7 @@ export default function AdminPage() {
               {options.map((option, index) => (
                 <DropdownMenuCheckboxItem
                   key={`${option}-${index}`}
-                  checked={filters[filterKey] instanceof Set && (filters[filterKey] as Set<string>).has(option)}
+                  checked={(filters[filterKey] as Set<string>).has(option)}
                   onSelect={(e) => e.preventDefault()}
                   onCheckedChange={() => handleMultiSelectFilterChange(filterKey, option)}
                 >
@@ -487,6 +483,14 @@ export default function AdminPage() {
       </DropdownMenu>
     </div>
   );
+  
+  const SortableHeader = ({ title, sortKey }: { title: string, sortKey: keyof Employee }) => (
+    <Button variant="ghost" onClick={() => requestSort(sortKey)} className="px-1">
+      {title}
+      <ArrowUpDown className="ml-2 h-4 w-4" />
+    </Button>
+  );
+  
 
   const ReportTable = ({ title, description, data, isLoading }: { title: string, description: string, data: Employee[], isLoading: boolean }) => (
     <Card>
@@ -578,34 +582,27 @@ export default function AdminPage() {
                   <TableRow>
                     <TableHead>
                       <div className="flex items-center gap-1">
-                        <Button variant="ghost" onClick={() => requestSort('name')} className="px-1">
-                          Nome
-                          <ArrowUpDown className="ml-2 h-4 w-4" />
-                        </Button>
-                         <Popover>
-                          <PopoverTrigger asChild>
-                             <Button variant="ghost" size="icon" className="h-6 w-6">
-                                <Filter className={`h-4 w-4 ${filters.name ? 'text-primary' : ''}`} />
-                              </Button>
-                          </PopoverTrigger>
-                          <PopoverContent className="p-2">
-                              <Input
-                                  placeholder="Filtrar por nome..."
-                                  value={filters.name}
-                                  onChange={(e) => handleTextFilterChange('name', e.target.value)}
-                              />
-                          </PopoverContent>
-                        </Popover>
+                        <SortableHeader title="Nome" sortKey="name" />
+                        <FilterComponent title="" filterKey="name" options={uniqueValues.names} />
                       </div>
                     </TableHead>
                     <TableHead>
-                      <FilterComponent title="Segmento" filterKey="segment" options={uniqueValues.segments} />
+                       <div className="flex items-center gap-1">
+                          <SortableHeader title="Segmento" sortKey="segment" />
+                          <FilterComponent title="" filterKey="segment" options={uniqueValues.segments} />
+                       </div>
                     </TableHead>
                     <TableHead>
-                      <FilterComponent title="Cargo" filterKey="position" options={uniqueValues.positions} />
+                      <div className="flex items-center gap-1">
+                          <SortableHeader title="Cargo" sortKey="position" />
+                          <FilterComponent title="" filterKey="position" options={uniqueValues.positions} />
+                      </div>
                     </TableHead>
                     <TableHead>
-                      <FilterComponent title="Líder" filterKey="leader" options={uniqueValues.leaders} />
+                      <div className="flex items-center gap-1">
+                          <SortableHeader title="Líder" sortKey="leader" />
+                          <FilterComponent title="" filterKey="leader" options={uniqueValues.leaders} />
+                      </div>
                     </TableHead>
                     <TableHead>Interações / Ano</TableHead>
                     <TableHead>Função</TableHead>
@@ -989,5 +986,7 @@ export default function AdminPage() {
     </>
   );
 }
+
+    
 
     
