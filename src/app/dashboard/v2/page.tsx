@@ -419,6 +419,10 @@ const getInteractionStatus = useCallback((
 
   }, [trackedEmployees, statusFilter, sortConfig]);
 
+  const defaultExpandedItems = useMemo(() => {
+    return trackedEmployees.map(e => e.id);
+  }, [trackedEmployees]);
+
   const requestSort = (key: keyof TrackedEmployee) => {
     let direction: 'ascending' | 'descending' = 'ascending';
     if (sortConfig && sortConfig.key === key && sortConfig.direction === 'ascending') {
@@ -566,7 +570,7 @@ const getInteractionStatus = useCallback((
                         ))}
                     </div>
                 ) : hasSearched && groupedAndFilteredEmployees.length > 0 ? (
-                    <Accordion type="multiple" className="w-full">
+                    <Accordion type="multiple" className="w-full" defaultValue={defaultExpandedItems}>
                         {groupedAndFilteredEmployees.map(([area, members]) => (
                             <div role="rowgroup" key={area}>
                                 <div role="row" className="flex bg-muted/50">
@@ -591,7 +595,7 @@ const getInteractionStatus = useCallback((
                                             </div>
                                         </AccordionTrigger>
                                         <AccordionContent>
-                                            <div className="p-4 pt-0">
+                                            <div className="pb-4 px-4">
                                                 <div role="table" className="w-full bg-background rounded-md border">
                                                     <div role="rowgroup">
                                                       <div role="row" className="flex border-b">
