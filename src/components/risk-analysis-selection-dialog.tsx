@@ -21,10 +21,9 @@ import {
 } from "@/components/ui/table";
 import { Button } from "./ui/button";
 import { Checkbox } from "./ui/checkbox";
-import { Input } from "./ui/input";
 import { Skeleton } from "./ui/skeleton";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
-import { X } from "lucide-react";
+import { X, Filter } from "lucide-react";
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuCheckboxItem } from "@/components/ui/dropdown-menu";
 
 interface RiskAnalysisSelectionDialogProps {
   open: boolean;
@@ -43,32 +42,40 @@ export function RiskAnalysisSelectionDialog({
   onSelectionChange,
   isLoading,
 }: RiskAnalysisSelectionDialogProps) {
-  const [localSelectedIds, setLocalSelectedIds] = useState(selectedIds);
-  const [nameFilter, setNameFilter] = useState("");
-  const [leaderFilter, setLeaderFilter] = useState("all");
-  const [cityFilter, setCityFilter] = useState("all");
+    const initialFilters = {
+        name: new Set<string>(),
+        area: new Set<string>(),
+        position: new Set<string>(),
+        leader: new Set<string>(),
+    };
+    const [filters, setFilters] = useState(initialFilters);
+    const [localSelectedIds, setLocalSelectedIds] = useState(selectedIds);
 
   useEffect(() => {
     setLocalSelectedIds(selectedIds);
   }, [selectedIds, open]);
   
-  const { uniqueLeaders, uniqueCities } = useMemo(() => {
-    if (!allEmployees) return { uniqueLeaders: [], uniqueCities: [] };
+  const { uniqueNames, uniqueAreas, uniquePositions, uniqueLeaders } = useMemo(() => {
+    if (!allEmployees) return { uniqueNames: [], uniqueAreas: [], uniquePositions: [], uniqueLeaders: [] };
+    const names = [...new Set(allEmployees.map(e => e.name).filter(Boolean))].sort();
+    const areas = [...new Set(allEmployees.map(e => e.area).filter(Boolean))].sort();
+    const positions = [...new Set(allEmployees.map(e => e.position).filter(Boolean))].sort();
     const leaders = [...new Set(allEmployees.map(e => e.leader).filter(Boolean))].sort();
-    const cities = [...new Set(allEmployees.map(e => e.city).filter(Boolean))].sort();
-    return { uniqueLeaders: leaders, uniqueCities: cities };
+    return { uniqueNames: names, uniqueAreas: areas, uniquePositions: positions, uniqueLeaders: leaders };
   }, [allEmployees]);
 
 
   const filteredEmployees = useMemo(() => {
     if (!allEmployees) return [];
     return allEmployees.filter(employee => {
-        const nameMatch = !nameFilter || employee.name.toLowerCase().includes(nameFilter.toLowerCase());
-        const leaderMatch = leaderFilter === 'all' || employee.leader === leaderFilter;
-        const cityMatch = cityFilter === 'all' || employee.city === cityFilter;
-        return nameMatch && leaderMatch && cityMatch;
+        return (
+            (filters.name.size === 0 || (employee.name && filters.name.has(employee.name))) &&
+            (filters.area.size === 0 || (employee.area && filters.area.has(employee.area))) &&
+            (filters.position.size === 0 || (employee.position && filters.position.has(employee.position))) &&
+            (filters.leader.size === 0 || (employee.leader && filters.leader.has(employee.leader)))
+        );
     }).sort((a,b) => a.name.localeCompare(b.name));
-  }, [allEmployees, nameFilter, leaderFilter, cityFilter]);
+  }, [allEmployees, filters]);
 
   const handleSelect = (id: string) => {
     setLocalSelectedIds(prev =>
@@ -89,13 +96,46 @@ export function RiskAnalysisSelectionDialog({
     onOpenChange(false);
   };
   
-  const clearFilters = () => {
-    setNameFilter("");
-    setLeaderFilter("all");
-    setCityFilter("all");
-  };
-  
-  const isFilterActive = nameFilter || leaderFilter !== 'all' || cityFilter !== 'all';
+    const handleMultiSelectFilterChange = (filterName: keyof typeof filters, value: string) => {
+        setFilters(prev => {
+        const newSet = new Set(prev[filterName] as Set<string>);
+        if (newSet.has(value)) {
+            newSet.delete(value);
+        } else {
+            newSet.add(value);
+        }
+        return { ...prev, [filterName]: newSet };
+        });
+    };
+
+    const isFilterActive = Object.values(filters).some(s => s.size > 0);
+
+    const clearFilters = () => setFilters(initialFilters);
+
+    const FilterComponent = ({ title, filterKey, options }: { title: string, filterKey: keyof typeof filters, options: string[]}) => (
+        <div className="flex items-center gap-1">
+          <span>{title}</span>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon" className="h-6 w-6">
+                <Filter className={`h-4 w-4 ${(filters[filterKey] as Set<string>).size > 0 ? 'text-primary' : ''}`} />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="max-h-96 overflow-y-auto">
+                {options.map((option) => (
+                    <DropdownMenuCheckboxItem
+                    key={option}
+                    checked={(filters[filterKey] as Set<string>).has(option)}
+                    onSelect={(e) => e.preventDefault()}
+                    onCheckedChange={() => handleMultiSelectFilterChange(filterKey, option)}
+                    >
+                    {option}
+                    </DropdownMenuCheckboxItem>
+                ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      );
 
 
   return (
@@ -103,44 +143,19 @@ export function RiskAnalysisSelectionDialog({
       <DialogContent className="max-w-4xl h-[80vh] flex flex-col">
         <DialogHeader>
           <DialogTitle>Selecionar Colaboradores para Análise</DialogTitle>
-          <DialogDescription>
-            Use os filtros para encontrar e selecionar os colaboradores que deseja comparar.
-          </DialogDescription>
-        </DialogHeader>
-        <div className="flex-none">
-            <div className="grid grid-cols-1 sm:grid-cols-4 gap-2">
-                <Input 
-                    placeholder="Filtrar por nome..."
-                    value={nameFilter}
-                    onChange={e => setNameFilter(e.target.value)}
-                    className="sm:col-span-2"
-                />
-                <Select value={leaderFilter} onValueChange={setLeaderFilter}>
-                    <SelectTrigger>
-                        <SelectValue placeholder="Filtrar por líder" />
-                    </SelectTrigger>
-                    <SelectContent>
-                        <SelectItem value="all">Todos os Líderes</SelectItem>
-                        {uniqueLeaders.map(leader => <SelectItem key={leader} value={leader}>{leader}</SelectItem>)}
-                    </SelectContent>
-                </Select>
-                 <Select value={cityFilter} onValueChange={setCityFilter}>
-                    <SelectTrigger>
-                        <SelectValue placeholder="Filtrar por cidade" />
-                    </SelectTrigger>
-                    <SelectContent>
-                        <SelectItem value="all">Todas as Cidades</SelectItem>
-                        {uniqueCities.map(city => <SelectItem key={city} value={city}>{city}</SelectItem>)}
-                    </SelectContent>
-                </Select>
-            </div>
-            {isFilterActive && (
-              <Button variant="ghost" size="sm" onClick={clearFilters} className="mt-2 text-primary">
-                <X className="mr-2 h-4 w-4" />
-                Limpar filtros
-              </Button>
+           <div className="flex justify-between items-center">
+             <DialogDescription>
+                Use os filtros no cabeçalho da tabela para encontrar e selecionar os colaboradores.
+             </DialogDescription>
+             {isFilterActive && (
+                <Button variant="ghost" size="sm" onClick={clearFilters} className="text-primary">
+                    <X className="mr-2 h-4 w-4" />
+                    Limpar filtros
+                </Button>
             )}
-        </div>
+           </div>
+        </DialogHeader>
+        
         <div className="flex-1 overflow-y-auto border rounded-md">
             <Table>
               <TableHeader className="sticky top-0 bg-secondary">
@@ -151,10 +166,10 @@ export function RiskAnalysisSelectionDialog({
                       onCheckedChange={handleSelectAll}
                     />
                   </TableHead>
-                  <TableHead>Nome</TableHead>
-                  <TableHead>Área</TableHead>
-                  <TableHead>Cargo</TableHead>
-                  <TableHead>Líder</TableHead>
+                  <TableHead><FilterComponent title="Nome" filterKey="name" options={uniqueNames} /></TableHead>
+                  <TableHead><FilterComponent title="Área" filterKey="area" options={uniqueAreas} /></TableHead>
+                  <TableHead><FilterComponent title="Cargo" filterKey="position" options={uniquePositions} /></TableHead>
+                  <TableHead><FilterComponent title="Líder" filterKey="leader" options={uniqueLeaders} /></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
