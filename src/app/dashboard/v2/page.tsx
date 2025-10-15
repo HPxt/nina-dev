@@ -565,7 +565,7 @@ const getInteractionStatus = useCallback((
                     <div role="rowgroup">
                         {Array.from({ length: 5 }).map((_, i) => (
                             <div key={i} role="row" className="flex items-center p-4 border-b">
-                                <Skeleton className="h-12 w-full" />
+                                <Skeleton className="h-9 w-full" />
                             </div>
                         ))}
                     </div>
