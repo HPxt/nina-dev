@@ -227,7 +227,9 @@ const getInteractionStatus = useCallback((
             int.type === 'N3 Individual' && isWithinInterval(parseISO(int.date), range)
         ).length;
 
-        return executedCount >= totalRequired ? "Executada" : `Realizado ${executedCount}/${totalRequired}`;
+        if (executedCount >= totalRequired) return "Executada";
+        if (executedCount > 0) return `Realizado ${executedCount}/${totalRequired}`;
+        return "Realizado 0/" + totalRequired;
     }
 
     if (schedule) {
@@ -254,7 +256,9 @@ const getInteractionStatus = useCallback((
             ).length;
         }
         
-        return executedCount >= requiredCountInPeriod ? "Executada" : `Realizado ${executedCount}/${requiredCountInPeriod}`;
+        if (executedCount >= requiredCountInPeriod) return "Executada";
+        if (executedCount > 0) return `Realizado ${executedCount}/${requiredCountInPeriod}`;
+        return "Realizado 0/" + requiredCountInPeriod;
     }
 
     // Fallback for types without a fixed schedule (e.g., Feedback)
@@ -549,62 +553,62 @@ const getInteractionStatus = useCallback((
                         ))}
                     </TableBody>
                 ) : hasSearched && groupedAndFilteredEmployees.length > 0 ? (
-                    <Accordion type="multiple" className="w-full" asChild>
-                        <>
-                            {groupedAndFilteredEmployees.map(([area, members]) => (
-                                <TableBody key={area} className="border-b-0">
-                                    <TableRow className="bg-muted/50 hover:bg-muted/50">
-                                        <TableCell colSpan={3} className="font-bold text-foreground py-2 px-4">{area}</TableCell>
-                                    </TableRow>
-                                    {members.map(member => (
-                                        <AccordionItem value={member.id} key={member.id} asChild>
-                                            <tr className="border-b">
-                                                <TableCell colSpan={3} className="p-0">
-                                                    <AccordionTrigger className="flex justify-between w-full p-4 hover:no-underline">
-                                                        <div className="flex items-center gap-3 text-left">
-                                                            <Avatar className="h-9 w-9">
-                                                                <AvatarImage src={member.photoURL} alt={member.name} />
-                                                                <AvatarFallback>{getInitials(member.name)}</AvatarFallback>
-                                                            </Avatar>
-                                                            <div className="grid gap-0.5">
-                                                                <span className="font-medium">{member.name}</span>
-                                                                <span className="text-xs text-muted-foreground hidden lg:inline">{member.position}</span>
-                                                            </div>
+                    <Accordion type="multiple" className="w-full">
+                        <TableBody>
+                        {groupedAndFilteredEmployees.map(([area, members]) => (
+                            <React.Fragment key={area}>
+                                <TableRow className="bg-muted/50 hover:bg-muted/50">
+                                    <TableCell colSpan={3} className="font-bold text-foreground py-2 px-4">{area}</TableCell>
+                                </TableRow>
+                                {members.map(member => (
+                                    <AccordionItem value={member.id} key={member.id} asChild>
+                                        <TableRow>
+                                            <TableCell colSpan={3} className="p-0">
+                                                <AccordionTrigger className="flex justify-between w-full p-4 hover:no-underline">
+                                                    <div className="flex items-center gap-3 text-left">
+                                                        <Avatar className="h-9 w-9">
+                                                            <AvatarImage src={member.photoURL} alt={member.name} />
+                                                            <AvatarFallback>{getInitials(member.name)}</AvatarFallback>
+                                                        </Avatar>
+                                                        <div className="grid gap-0.5">
+                                                            <span className="font-medium">{member.name}</span>
+                                                            <span className="text-xs text-muted-foreground hidden lg:inline">{member.position}</span>
                                                         </div>
-                                                        <div className="flex items-center gap-2 pr-4">
-                                                            <span className="text-sm font-medium text-muted-foreground">Aderência:</span>
-                                                            <span className="text-sm font-bold">{member.adherence?.toFixed(0) ?? 0}%</span>
-                                                        </div>
-                                                    </AccordionTrigger>
-                                                    <AccordionContent>
-                                                        <div className="p-4 pt-0">
-                                                            <Table className="bg-background">
-                                                                <TableHeader>
-                                                                    <TableRow>
-                                                                        <TableHead>Tipo de Interação</TableHead>
-                                                                        <TableHead className="text-right">Status</TableHead>
+                                                    </div>
+                                                    <div className="flex items-center gap-2 pr-4">
+                                                        <span className="text-sm font-medium text-muted-foreground">Aderência:</span>
+                                                        <span className="text-sm font-bold">{member.adherence?.toFixed(0) ?? 0}%</span>
+                                                    </div>
+                                                </AccordionTrigger>
+                                                <AccordionContent>
+                                                    <div className="p-4 pt-0">
+                                                        <Table className="bg-background">
+                                                            <TableHeader>
+                                                                <TableRow>
+                                                                    <TableHead>Tipo de Interação</TableHead>
+                                                                    <TableHead className="text-right">Status</TableHead>
+                                                                </TableRow>
+                                                            </TableHeader>
+                                                            <TableBody>
+                                                                {member.allInteractionsStatus && Object.entries(member.allInteractionsStatus).map(([type, status]) => (
+                                                                    <TableRow key={type}>
+                                                                        <TableCell className="font-medium">{type}</TableCell>
+                                                                        <TableCell className="text-right">
+                                                                            <Badge variant={getBadgeVariant(status)}>{status}</Badge>
+                                                                        </TableCell>
                                                                     </TableRow>
-                                                                </TableHeader>
-                                                                <TableBody>
-                                                                    {member.allInteractionsStatus && Object.entries(member.allInteractionsStatus).map(([type, status]) => (
-                                                                        <TableRow key={type}>
-                                                                            <TableCell className="font-medium">{type}</TableCell>
-                                                                            <TableCell className="text-right">
-                                                                                <Badge variant={getBadgeVariant(status)}>{status}</Badge>
-                                                                            </TableCell>
-                                                                        </TableRow>
-                                                                    ))}
-                                                                </TableBody>
-                                                            </Table>
-                                                        </div>
-                                                    </AccordionContent>
-                                                </TableCell>
-                                            </tr>
-                                        </AccordionItem>
-                                    ))}
-                                </TableBody>
-                            ))}
-                        </>
+                                                                ))}
+                                                            </TableBody>
+                                                        </Table>
+                                                    </div>
+                                                </AccordionContent>
+                                            </TableCell>
+                                        </TableRow>
+                                    </AccordionItem>
+                                ))}
+                            </React.Fragment>
+                        ))}
+                        </TableBody>
                     </Accordion>
                 ) : (
                     <TableBody>
@@ -721,3 +725,5 @@ const getInteractionStatus = useCallback((
     </div>
   );
 }
+
+    
