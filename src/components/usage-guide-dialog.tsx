@@ -42,10 +42,6 @@ const guideSections = [
     {
         title: "Ranking de Aderência",
         content: "Uma forma de medir e incentivar a performance da liderança. Esta página exibe um ranking de líderes baseado no 'Índice de Aderência', que é o percentual de interações obrigatórias realizadas em relação ao total previsto para o período. É o principal indicador de engajamento da liderança com o processo de gestão. Use os filtros para analisar por período."
-    },
-    {
-        title: "Configurações (Admin)",
-        content: "A área de gerenciamento central da plataforma, acessível apenas por administradores. Permite gerenciar a base de funcionários (adicionar, editar, remover, alterar permissões), fazer upload de dados em massa via CSV para manter a base sempre atualizada, visualizar a estrutura completa das equipes e exportar backups de dados para relatórios externos."
     }
 ];
 
@@ -65,6 +61,14 @@ const faqSections = [
      {
         question: "O que significa o status 'Realizado X/Y'?",
         answer: "Este status indica o progresso de uma interação obrigatória que ocorre várias vezes. Por exemplo, 'Realizado 1/4' para um 1:1 significa que uma das quatro interações anuais esperadas já foi registrada. Quando todas as interações do período forem concluídas, o status mudará para 'Executada'."
+    },
+    {
+        question: "Por que devo preencher o Índice de Risco todo mês? Como vejo os dados?",
+        answer: "O preenchimento mensal é crucial para criar uma série histórica. Isso permite que você, na página 'Análise de Risco', visualize a evolução da percepção de risco de um colaborador ao longo do tempo em um gráfico de linhas. Essa análise histórica é muito mais valiosa do que um dado pontual, pois revela tendências, o impacto de ações de desenvolvimento e possíveis pontos de atenção."
+    },
+    {
+        question: "Realizei um 1:1 fora do mês obrigatório. Por que o status no dashboard não mudou?",
+        answer: "O dashboard e o Índice de Aderência funcionam com base em um cronograma fixo para garantir uma medição padronizada para toda a liderança (ex: 1:1 é esperado em Março, Junho, etc.). Interações realizadas fora desses meses são importantes e ficam registradas no histórico do colaborador na página 'Acompanhamento Individual', mas não contam para a meta de aderência daquele período específico."
     }
 ];
 
@@ -115,7 +119,7 @@ export function UsageGuideDialog() {
             <TabsContent value="faq" className="flex-1 overflow-hidden">
                 <ScrollArea className="h-full pr-6 -mr-6">
                     <Accordion type="single" collapsible className="w-full">
-                        {faqSections.map((faq, index) => (
+                        {faqSections.sort((a,b) => a.question.localeCompare(b.question)).map((faq, index) => (
                             <AccordionItem value={`faq-${index}`} key={index}>
                                 <AccordionTrigger>{faq.question}</AccordionTrigger>
                                 <AccordionContent className="prose prose-sm max-w-none text-foreground dark:prose-invert">
