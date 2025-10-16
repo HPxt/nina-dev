@@ -36,10 +36,10 @@ const nextConfig: NextConfig = {
       },
     ],
   },
-  webpack: (config, { isServer }) => {
+  webpack: (config) => {
     config.module.rules.push({
       test: /\.md$/,
-      use: 'raw-loader',
+      type: 'asset/source',
     });
     return config;
   },
