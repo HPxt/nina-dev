@@ -26,13 +26,15 @@ A porta de entrada para a plataforma.
 
 A visão geral para o acompanhamento das interações da equipe.
 
--   **Página:** `/dashboard`
+-   **Página:** `/dashboard/v2`
 -   **Funcionalidade:**
     -   **Tabela de Frequência:** Exibe uma lista de todos os colaboradores gerenciados, agrupados por área.
     -   **Status de Interação:** Para cada colaborador, a tabela mostra o status de interações obrigatórias (`1:1`, `PDI`, `Índice de Risco`, `N3 Individual`) dentro de um período selecionado. Os status incluem:
         -   `N/A`: A interação não é aplicável para o colaborador ou período.
         -   `Realizado X/Y`: Mostra o progresso (ex: "Realizado 1/4").
         -   `Executada`: Todas as interações obrigatórias foram concluídas.
+        -   `Pendente` ou `Realizado 0/X`: Nenhuma interação foi realizada.
+    -   **Visualização Detalhada:** Um accordion permite expandir cada colaborador para visualizar o status detalhado de cada tipo de interação e a aderência geral.
     -   **Filtros Avançados:**
         -   **Equipe:** Diretores e Admins podem filtrar a visualização por líder.
         -   **Tipo de Interação:** Foco em um tipo de interação específico, com a periodicidade de cada uma claramente indicada (ex: "1:1 - Trimestral").

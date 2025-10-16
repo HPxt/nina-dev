@@ -14,13 +14,14 @@ import {
   SidebarMenuButton,
 } from "@/components/ui/sidebar";
 import { PageHeaderController } from "@/components/page-header-controller";
-import { Settings } from "lucide-react";
+import { Settings, BookOpen } from "lucide-react";
 import Link from "next/link";
 import { LogoutButton } from "@/components/logout-button";
 import { useUser, useCollection, useFirestore, useMemoFirebase } from "@/firebase";
 import { useMemo } from 'react';
 import type { Employee } from "@/lib/types";
 import { collection } from "firebase/firestore";
+import { UsageGuideDialog } from "@/components/usage-guide-dialog";
 
 export default function DashboardLayout({
   children,
@@ -88,6 +89,9 @@ export default function DashboardLayout({
                       </Link>
                   </SidebarMenuItem>
                 )}
+                <SidebarMenuItem>
+                  <UsageGuideDialog />
+                </SidebarMenuItem>
                 <SidebarMenuItem>
                     <LogoutButton />
                 </SidebarMenuItem>

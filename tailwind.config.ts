@@ -16,6 +16,37 @@ export default {
         headline: ['Roboto', 'sans-serif'],
         code: ['monospace'],
       },
+      typography: (theme) => ({
+        DEFAULT: {
+          css: {
+            h1: {
+              fontWeight: '700',
+              marginTop: theme('spacing.6'),
+              marginBottom: theme('spacing.4'),
+            },
+            h2: {
+              fontWeight: '600',
+              marginTop: theme('spacing.5'),
+              marginBottom: theme('spacing.3'),
+            },
+            h3: {
+              fontWeight: '600',
+              marginTop: theme('spacing.4'),
+              marginBottom: theme('spacing.2'),
+            },
+            'p, li': {
+                lineHeight: '1.6',
+            },
+            code: {
+                backgroundColor: theme('colors.muted'),
+                padding: '0.2em 0.4em',
+                margin: '0',
+                fontSize: '85%',
+                borderRadius: theme('borderRadius.sm'),
+            }
+          },
+        },
+      }),
       colors: {
         background: 'hsl(var(--background))',
         foreground: 'hsl(var(--foreground))',
@@ -97,5 +128,8 @@ export default {
       },
     },
   },
-  plugins: [require('tailwindcss-animate')],
+  plugins: [
+    require('tailwindcss-animate'),
+    require('@tailwindcss/typography'),
+  ],
 } satisfies Config;
