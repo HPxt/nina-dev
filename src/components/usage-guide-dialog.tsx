@@ -13,7 +13,7 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { SidebarMenuButton } from "@/components/ui/sidebar";
 import { BookOpen } from "lucide-react";
-import readmeContent from '!!raw-loader!../../../README.md';
+import readmeContent from '!!raw-loader!../../README.md';
 
 function Markdown({ content }: { content: string }) {
   const lines = content.split('\n');
