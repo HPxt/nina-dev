@@ -25,34 +25,34 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 const guideSections = [
     {
         title: "Dashboard de Liderança",
-        content: "Esta é a tela principal, oferecendo uma visão completa do status das interações com sua equipe. A tabela de frequência mostra o progresso das interações obrigatórias (1:1, PDI, Índice de Risco, N3 Individual) para cada colaborador dentro do período selecionado. Use o menu expansível (clicando no nome do colaborador) para ver um resumo detalhado e a aderência geral."
+        content: "Esta é a tela principal, seu centro de comando. Oferece uma visão completa e em tempo real do status das interações com sua equipe. A tabela de frequência mostra o progresso das interações obrigatórias (1:1, PDI, Índice de Risco, N3 Individual) para cada colaborador. Use o menu expansível (clicando no nome do colaborador) para ver um resumo detalhado e a aderência geral de cada um."
     },
     {
         title: "Acompanhamento Individual",
-        content: "Centralize o registro e a consulta do histórico de um colaborador. Escolha um membro da equipe para visualizar uma linha do tempo com todas as interações. Para registrar um novo evento, use o botão 'Nova Interação'. Formulários específicos estão disponíveis para 1:1, N3 Individual e Avaliação de Risco."
+        content: "O coração do registro histórico. Aqui você pode selecionar um colaborador para visualizar uma linha do tempo cronológica com todas as interações já realizadas. Para registrar um novo evento, basta usar o botão 'Nova Interação'. Formulários específicos e guiados estão disponíveis para 1:1, N3 Individual e Avaliação de Risco, garantindo que as informações corretas sejam coletadas em cada tipo de conversa."
     },
     {
         title: "Plano de Desenvolvimento Individual (PDI)",
-        content: "Gerencie o crescimento de cada membro da equipe. Nesta página, você pode adicionar ou editar um 'Diagnóstico Profissional', que resume os pontos fortes e fracos do colaborador. Abaixo, a tabela de ações permite adicionar, editar e acompanhar tarefas específicas de desenvolvimento, cada uma com descrição, prazos e status."
+        content: "Gerencie ativamente o crescimento de cada membro da equipe. Nesta página, você pode adicionar ou editar um 'Diagnóstico Profissional', que é uma avaliação geral do momento do colaborador (pontos fortes, fracos, etc.). Abaixo, a tabela de ações permite criar, editar e acompanhar tarefas específicas de desenvolvimento (como cursos, leituras ou projetos), cada uma com descrição, prazos e status."
     },
     {
         title: "Análise de Risco",
-        content: "Compare e analise o índice de risco dos colaboradores. A ferramenta permite selecionar múltiplos membros da equipe para uma análise comparativa. O gráfico de barras mostra a distribuição de risco atual, enquanto o gráfico de linhas exibe a evolução histórica, ajudando a identificar tendências."
+        content: "Uma ferramenta visual para comparar e analisar o índice de risco dos colaboradores. A página permite selecionar múltiplos membros da equipe para uma análise lado a lado. O gráfico de barras mostra a distribuição de risco atual, ideal para identificar quem precisa de mais atenção, enquanto o gráfico de linhas exibe a evolução histórica, ajudando a identificar tendências e o impacto de suas ações ao longo do tempo."
     },
     {
         title: "Ranking de Aderência",
-        content: "Monitore a performance da liderança de forma gamificada. Esta página exibe um ranking de líderes baseado no 'Índice de Aderência', que é o percentual de interações obrigatórias realizadas em relação ao total previsto para suas equipes no período. É o principal indicador de performance da liderança."
+        content: "Uma forma de medir e incentivar a performance da liderança. Esta página exibe um ranking de líderes baseado no 'Índice de Aderência', que é o percentual de interações obrigatórias realizadas em relação ao total previsto para o período. É o principal indicador de engajamento da liderança com o processo de gestão. Use os filtros para analisar por período."
     },
     {
         title: "Configurações (Admin)",
-        content: "Área de gerenciamento central, acessível apenas por administradores. Permite gerenciar todos os funcionários (adicionar, editar, remover), fazer upload de dados em massa via CSV, visualizar a estrutura completa das equipes e exportar backups de dados."
+        content: "A área de gerenciamento central da plataforma, acessível apenas por administradores. Permite gerenciar a base de funcionários (adicionar, editar, remover, alterar permissões), fazer upload de dados em massa via CSV para manter a base sempre atualizada, visualizar a estrutura completa das equipes e exportar backups de dados para relatórios externos."
     }
 ];
 
 const faqSections = [
     {
         question: "Quais interações são obrigatórias e quando devo realizá-las?",
-        answer: "As interações obrigatórias e suas frequências são:\n\n- **N3 Individual:** Frequência varia com o segmento do colaborador (Alfa: 4/mês, Beta: 2/mês, Senior: 1/mês).\n- **Índice de Risco:** Mensal.\n- **1:1 (One-on-One):** Trimestral, com registros esperados nos meses de Março, Junho, Setembro e Dezembro.\n- **PDI (Diagnóstico):** Semestral, com registros esperados nos meses de Janeiro e Julho."
+        answer: "As interações obrigatórias e suas frequências são:\n\n- **N3 Individual:** A frequência varia com o segmento do colaborador (Alfa: 4/mês, Beta: 2/mês, Senior: 1/mês).\n- **Índice de Risco:** Deve ser registrado mensalmente para acompanhar a evolução do colaborador.\n- **1:1 (One-on-One):** É uma interação trimestral. Os registros são esperados nos meses de Março, Junho, Setembro e Dezembro.\n- **PDI (Diagnóstico):** A avaliação do diagnóstico é semestral. Os registros são esperados nos meses de Janeiro e Julho."
     },
     {
         question: "Como o 'Índice de Aderência' é calculado no Ranking?",
@@ -60,11 +60,11 @@ const faqSections = [
     },
     {
         question: "Por que não consigo ver todos os colaboradores nos filtros?",
-        answer: "Seu nível de acesso determina quem você pode visualizar. Líderes veem apenas os membros de sua equipe direta. Diretores e Administradores têm permissão para visualizar todos os colaboradores da empresa e usar o filtro de equipes para focar em um líder específico."
+        answer: "Seu nível de acesso determina quem você pode visualizar. Líderes veem apenas os membros de sua equipe direta. Diretores e Administradores têm permissão para visualizar todos os colaboradores da empresa e podem usar o filtro de equipes para focar em um líder específico."
     },
      {
         question: "O que significa o status 'Realizado X/Y'?",
-        answer: "Este status indica o progresso de uma interação obrigatória. Por exemplo, 'Realizado 1/4' para um 1:1 significa que uma das quatro interações anuais esperadas já foi registrada. Quando todas as interações do período forem concluídas, o status mudará para 'Executada'."
+        answer: "Este status indica o progresso de uma interação obrigatória que ocorre várias vezes. Por exemplo, 'Realizado 1/4' para um 1:1 significa que uma das quatro interações anuais esperadas já foi registrada. Quando todas as interações do período forem concluídas, o status mudará para 'Executada'."
     }
 ];
 
