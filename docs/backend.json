@@ -259,6 +259,9 @@
       "google.com"
     ],
     "customClaims": {
+      "isAdmin": {
+        "type": "boolean"
+      },
       "role": {
         "type": "string",
         "enum": [
@@ -277,7 +280,7 @@
           "schema": {
             "$ref": "#/backend/entities/Employee"
           },
-          "description": "Stores employee data.  Accessed by admins and potentially leaders for their direct reports. Includes denormalized data from Roles and Teams if needed to ensure authorization independence at the employee level.",
+          "description": "Stores employee data. Accessed by admins and potentially leaders for their direct reports. Includes denormalized data from Roles and Teams if needed to ensure authorization independence at the employee level.",
           "params": [
             {
               "name": "employeeId",
@@ -382,3 +385,5 @@
     "reasoning": "This Firestore structure is designed to support the Nina 1.0 application's requirements for managing employees, roles, teams, interactions, PDI actions, and meetings. It prioritizes authorization independence and simplifies security rules. The structure uses path-based ownership for user-related data and a membership map approach for collaborative data where applicable. Denormalization is employed to avoid `get()` calls in security rules, enabling atomic operations and easier debugging.  Structural segregation ensures that each collection has a homogeneous security posture, avoiding the mixing of data with different access requirements within the same collection. \n\n**Authorization Independence and QAPs:**\n\n*   **Roles and Teams:** Stored as top-level collections.  Access control is primarily managed through roles, which could be further enhanced with custom claims if needed, although the DBAC approach is maintained here.\n*   **Employees:** Stored in a top-level collection. This allows for easy listing and management of all employees.\n*   **Employee-Owned Data (Interactions, PDI Actions, Meetings):**  These are stored as subcollections under each employee document (`/employees/{employeeId}/interactions`, `/employees/{employeeId}/pdiActions`, `/employees/{employeeId}/meetings`). This path-based ownership simplifies security rules, ensuring that only the employee or authorized personnel (e.g., leaders, admins) can access this data.\n\nThis structure allows for secure `list` operations because each collection has a clear and consistent security posture. For example, listing employees can be restricted based on the user's role, while listing interactions is restricted to the owner of the employee document or authorized personnel."
   }
 }
+
+    
