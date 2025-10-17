@@ -26,7 +26,7 @@ import {
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
-import { MoreHorizontal, PlusCircle, Upload, ArrowUpDown, X, Filter, User, ShieldCheck, FileDown, HelpCircle } from "lucide-react";
+import { MoreHorizontal, PlusCircle, Upload, ArrowUpDown, X, Filter, User, ShieldCheck, FileDown, HelpCircle, Copy } from "lucide-react";
 import { 
   DropdownMenu, 
   DropdownMenuContent, 
@@ -317,6 +317,22 @@ export default function AdminPage() {
     setSelectedEmployee(employee);
     setIsEmployeeFormOpen(true);
   };
+
+  const handleCopyEmployee = (employee: Employee) => {
+    // Create a copy, reset unique fields, and leave the rest
+    const employeeCopy: Partial<Employee> = { 
+        ...employee,
+        id: '', // id is firestore-generated so it's fine to clear
+        id3a: '', // Must be unique, so clear it
+        email: '', // Must be unique, so clear it
+        name: `${employee.name} (Cópia)`,
+        photoURL: '', // Clear photo
+     };
+    // The `undefined` employee tells the form it's a new entry
+    setSelectedEmployee(employeeCopy as Employee); 
+    setIsEmployeeFormOpen(true);
+};
+
 
   const handleDeleteClick = (employee: Employee) => {
     setEmployeeToDelete(employee);
@@ -720,8 +736,18 @@ export default function AdminPage() {
                                   </Button>
                               </DropdownMenuTrigger>
                               <DropdownMenuContent>
-                                  <DropdownMenuItem onClick={() => handleEditEmployee(employee)}>Editar</DropdownMenuItem>
-                                  <DropdownMenuItem className="text-destructive" onClick={() => handleDeleteClick(employee)}>Remover</DropdownMenuItem>
+                                  <DropdownMenuItem onClick={() => handleEditEmployee(employee)}>
+                                    <Pen className="mr-2 h-4 w-4" />
+                                    Editar
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem onClick={() => handleCopyEmployee(employee)}>
+                                      <Copy className="mr-2 h-4 w-4" />
+                                      Copiar
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem className="text-destructive" onClick={() => handleDeleteClick(employee)}>
+                                    <Trash className="mr-2 h-4 w-4" />
+                                    Remover
+                                  </DropdownMenuItem>
                               </DropdownMenuContent>
                           </DropdownMenu>
                       </TableCell>
@@ -986,6 +1012,8 @@ export default function AdminPage() {
     </>
   );
 }
+
+    
 
     
 

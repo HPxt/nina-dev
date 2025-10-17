@@ -69,7 +69,9 @@ export function EmployeeFormDialog({
 }: EmployeeFormDialogProps) {
   const firestore = useFirestore();
   const { toast } = useToast();
-  const isEditMode = !!employee;
+  // An employee is being edited if it has a valid `id` from firestore.
+  // A copied employee will have an empty `id`.
+  const isEditMode = !!employee?.id;
 
   const form = useForm<EmployeeFormData>({
     resolver: zodResolver(formSchema),
@@ -89,36 +91,38 @@ export function EmployeeFormDialog({
   });
 
   useEffect(() => {
-    if (employee) {
-      form.reset({
-        id3a: employee.id3a || "",
-        name: employee.name || "",
-        email: employee.email || "",
-        position: employee.position || "",
-        axis: employee.axis || "",
-        area: employee.area || "",
-        segment: employee.segment || "",
-        leaderId: employee.leaderId || "no-leader",
-        city: employee.city || "",
-        role: employee.role || "Colaborador",
-        photoURL: employee.photoURL || "",
-      });
-    } else {
-      form.reset({
-        id3a: "",
-        name: "",
-        email: "",
-        position: "",
-        axis: "",
-        area: "",
-        segment: "",
-        leaderId: "no-leader",
-        city: "",
-        role: "Colaborador",
-        photoURL: "",
-      });
+    if (open) { // Only reset form when dialog opens
+      if (employee) {
+        form.reset({
+          id3a: employee.id3a || "",
+          name: employee.name || "",
+          email: employee.email || "",
+          position: employee.position || "",
+          axis: employee.axis || "",
+          area: employee.area || "",
+          segment: employee.segment || "",
+          leaderId: employee.leaderId || "no-leader",
+          city: employee.city || "",
+          role: employee.role || "Colaborador",
+          photoURL: employee.photoURL || "",
+        });
+      } else {
+        form.reset({
+          id3a: "",
+          name: "",
+          email: "",
+          position: "",
+          axis: "",
+          area: "",
+          segment: "",
+          leaderId: "no-leader",
+          city: "",
+          role: "Colaborador",
+          photoURL: "",
+        });
+      }
     }
-  }, [employee, form]);
+  }, [employee, open, form]);
 
   const onSubmit = async (data: EmployeeFormData) => {
     if (!firestore) return;
@@ -137,6 +141,7 @@ export function EmployeeFormDialog({
     };
     
     try {
+      // Use merge only when editing, not when creating/copying
       await setDocumentNonBlocking(docRef, dataToSave, { merge: isEditMode });
       toast({
         title: isEditMode ? "Funcionário Atualizado" : "Funcionário Adicionado",
@@ -154,18 +159,16 @@ export function EmployeeFormDialog({
     }
   };
 
+  const dialogTitle = isEditMode ? "Editar Funcionário" : "Adicionar Funcionário";
+  const dialogDescription = `Preencha os campos abaixo para ${isEditMode ? "atualizar os dados do" : "adicionar um novo"} funcionário.`;
+
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>
-            {isEditMode ? "Editar Funcionário" : "Adicionar Funcionário"}
-          </DialogTitle>
-          <DialogDescription>
-            Preencha os campos abaixo para{" "}
-            {isEditMode ? "atualizar os dados do" : "adicionar um novo"}{" "}
-            funcionário.
-          </DialogDescription>
+          <DialogTitle>{dialogTitle}</DialogTitle>
+          <DialogDescription>{dialogDescription}</DialogDescription>
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="grid gap-4 py-4">
@@ -176,7 +179,7 @@ export function EmployeeFormDialog({
                 <FormItem>
                   <FormLabel>ID Externo (id3a)</FormLabel>
                   <FormControl>
-                    <Input placeholder="ID do sistema antigo" {...field} disabled={isEditMode} />
+                    <Input placeholder="ID único do funcionário" {...field} disabled={isEditMode} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -202,7 +205,7 @@ export function EmployeeFormDialog({
                 <FormItem>
                   <FormLabel>Email</FormLabel>
                   <FormControl>
-                    <Input placeholder="email@empresa.com" {...field} />
+                    <Input placeholder="email@empresa.com.br" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -355,5 +358,7 @@ export function EmployeeFormDialog({
     </Dialog>
   );
 }
+
+    
 
     
