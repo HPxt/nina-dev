@@ -1,4 +1,3 @@
-
 "use client";
 
 import type { Employee, Role, Interaction, PDIAction } from "@/lib/types";
@@ -48,6 +47,7 @@ import { CsvUploadDialog } from "@/components/csv-upload-dialog";
 import { useState, useMemo, useEffect, useCallback } from "react";
 import { useCollection, useFirestore, useMemoFirebase, useUser } from "@/firebase";
 import { collection, doc, deleteDoc, updateDoc, getDocs, query } from "firebase/firestore";
+import { setDocumentNonBlocking } from "@/firebase/non-blocking-updates";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -318,21 +318,38 @@ export default function AdminPage() {
     setIsEmployeeFormOpen(true);
   };
 
-  const handleCopyEmployee = (employee: Employee) => {
-    // Create a copy, reset unique fields, and leave the rest
-    const employeeCopy: Partial<Employee> = { 
-        ...employee,
-        id: '', // id is firestore-generated so it's fine to clear
-        id3a: '', // Must be unique, so clear it
-        email: '', // Must be unique, so clear it
-        name: `${employee.name} (Cópia)`,
-        photoURL: '', // Clear photo
-     };
-    // The `undefined` employee tells the form it's a new entry
-    setSelectedEmployee(employeeCopy as Employee); 
-    setIsEmployeeFormOpen(true);
-};
+  const handleCopyAndSaveEmployee = async (employee: Employee) => {
+    if (!firestore) return;
 
+    // Create a deep copy and prepare it for saving as a new document
+    const { id, ...employeeData } = employee;
+    const newId3a = `${employee.id3a}-${Date.now()}`;
+    
+    const employeeCopy: Partial<Employee> = { 
+        ...employeeData,
+        id3a: newId3a,
+        email: '', // Email must be unique and should be manually set
+        name: `${employee.name} (Cópia)`,
+        photoURL: '', 
+     };
+
+    const newDocRef = doc(collection(firestore, "employees"), newId3a);
+
+    try {
+        await setDocumentNonBlocking(newDocRef, employeeCopy);
+        toast({
+            title: "Funcionário Copiado",
+            description: `${employeeCopy.name} foi adicionado à lista.`,
+        });
+    } catch (e) {
+        console.error("Erro ao copiar funcionário:", e);
+        toast({
+            variant: "destructive",
+            title: "Erro ao Copiar",
+            description: "Não foi possível criar uma cópia do funcionário.",
+        });
+    }
+  };
 
   const handleDeleteClick = (employee: Employee) => {
     setEmployeeToDelete(employee);
@@ -740,7 +757,7 @@ export default function AdminPage() {
                                     <Pen className="mr-2 h-4 w-4" />
                                     Editar
                                   </DropdownMenuItem>
-                                  <DropdownMenuItem onClick={() => handleCopyEmployee(employee)}>
+                                  <DropdownMenuItem onClick={() => handleCopyAndSaveEmployee(employee)}>
                                       <Copy className="mr-2 h-4 w-4" />
                                       Copiar
                                   </DropdownMenuItem>
@@ -1012,11 +1029,3 @@ export default function AdminPage() {
     </>
   );
 }
-
-    
-
-    
-
-    
-
-    
