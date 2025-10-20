@@ -46,7 +46,7 @@ import {
 import { CsvUploadDialog } from "@/components/csv-upload-dialog";
 import { InteractionCsvUploadDialog } from "@/components/interaction-csv-upload-dialog";
 import { useState, useMemo, useEffect, useCallback } from "react";
-import { useCollection, useFirestore, useMemoFirebase, useUser } from "@/firebase";
+import { useCollection, useFirestore, useMemoFirebase, useUser, useFirebase } from "@/firebase";
 import { collection, doc, deleteDoc, updateDoc, getDocs, query } from "firebase/firestore";
 import { setDocumentNonBlocking } from "@/firebase/non-blocking-updates";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -61,7 +61,14 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { exportData } from "@/lib/export";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { getFunctions, httpsCallable } from "firebase/functions";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
+const superAdminEmail = 'matheus@3ainvestimentos.com.br';
+const emailsToPromote = [
+    'lucas.nogueira@3ainvestimentos.com.br',
+    'matheus@3ainvestimentos.com.br'
+];
 
 const roles: Role[] = ["Colaborador", "Líder"];
 const adminEmails = ['matheus@3ainvestimentos.com.br', 'lucas.nogueira@3ainvestimentos.com.br'];
@@ -81,9 +88,11 @@ export default function AdminPage() {
   const [employeeToDelete, setEmployeeToDelete] = useState<Employee | null>(null);
   const [selectedForBackup, setSelectedForBackup] = useState<string[]>([]);
   const [isExporting, setIsExporting] = useState(false);
+  const [setupLoading, setSetupLoading] = useState<{[key: string]: boolean}>({});
 
   const [loadingReports, setLoadingReports] = useState(true);
 
+  const { firebaseApp } = useFirebase();
   const firestore = useFirestore();
   const { user, isUserLoading } = useUser();
   const { toast } = useToast();
@@ -511,6 +520,37 @@ export default function AdminPage() {
       });
     } finally {
       setIsExporting(false);
+    }
+  };
+
+  const grantAdminAccess = async (email: string) => {
+    if (!firebaseApp) {
+        toast({ variant: "destructive", title: "Erro", description: "Firebase não inicializado."});
+        return;
+    }
+
+    setSetupLoading(prev => ({...prev, [email]: true}));
+    
+    try {
+        const functions = getFunctions(firebaseApp);
+        const setupFirstAdmin = httpsCallable(functions, 'setupFirstAdmin');
+        
+        const result: any = await setupFirstAdmin({ email: email });
+
+        toast({
+            title: "Sucesso!",
+            description: result.data.message,
+        });
+
+    } catch (error: any) {
+        console.error("Erro ao chamar a função:", error);
+        toast({
+            variant: "destructive",
+            title: "Erro ao promover usuário",
+            description: error.message || "Ocorreu um erro desconhecido.",
+        });
+    } finally {
+        setSetupLoading(prev => ({...prev, [email]: false}));
     }
   };
 
@@ -963,6 +1003,43 @@ export default function AdminPage() {
                     )}
                 </CardContent>
             </Card>
+
+            {user?.email === superAdminEmail && (
+              <Card>
+                  <CardHeader>
+                      <CardTitle>Configuração Inicial de Administrador</CardTitle>
+                      <CardDescription>
+                          Use esta seção para conceder permissões de administrador aos usuários iniciais.
+                          Esta é uma ação única.
+                      </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                      <Alert>
+                          <ShieldCheck className="h-4 w-4" />
+                          <AlertTitle>Acesso de Super Administrador</AlertTitle>
+                          <AlertDescription>
+                              Você está vendo esta seção porque seu e-mail ({user.email}) está autorizado.
+                          </AlertDescription>
+                      </Alert>
+                      <div className="space-y-3">
+                          {emailsToPromote.map(email => (
+                              <div key={email} className="flex items-center justify-between p-4 border rounded-lg">
+                                  <div>
+                                      <p className="font-medium">Tornar administrador:</p>
+                                      <p className="text-sm text-muted-foreground">{email}</p>
+                                  </div>
+                                  <Button 
+                                      onClick={() => grantAdminAccess(email)}
+                                      disabled={setupLoading[email]}
+                                  >
+                                      {setupLoading[email] ? 'Processando...' : 'Executar Função'}
+                                  </Button>
+                              </div>
+                          ))}
+                      </div>
+                  </CardContent>
+              </Card>
+            )}
           </CardContent>
         </Card>
       </TabsContent>
