@@ -120,10 +120,9 @@ service cloud.firestore {
   }
 
   function isLeaderOf(employeeId) {
-    // TODO: Implement logic to check if the current user is the leader of the given employee.
-    // This will likely involve a `get()` call to the employee document to check the `leaderId` field.
-    return false; // Placeholder
-  }
+  return isSignedIn() && 
+         get(/databases/$(database)/documents/employees/$(employeeId)).data.leaderEmail == request.auth.token.email;
+}
 
   function isAdmin() {
     return isSignedIn() && request.auth.token.isAdmin == true;
