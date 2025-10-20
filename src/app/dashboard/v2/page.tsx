@@ -78,6 +78,8 @@ const n3IndividualSchedule = {
     'Senior': 1, // 1 por mês
 };
 
+const adminEmails = ['matheus@3ainvestimentos.com.br', 'lucas.nogueira@3ainvestimentos.com.br'];
+
 
 export default function LeadershipDashboardV2() {
   const firestore = useFirestore();
@@ -108,7 +110,7 @@ export default function LeadershipDashboardV2() {
   const currentUserEmployee = useMemo(() => {
     if (!user || !employees) return null;
 
-    if (user.email === 'matheus@3ainvestimentos.com.br') {
+    if (user.email && adminEmails.includes(user.email)) {
         const employeeData = employees.find(e => e.email === user.email) || {};
         return {
             ...employeeData,
@@ -175,10 +177,10 @@ export default function LeadershipDashboardV2() {
         getDocs(pdiActionsQuery)
       ]);
 
-      const employeeInteractions = interactionsSnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }) as Interaction);
+      const employeeInteractions = interactionsSnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Interaction));
       interactionsMap.set(id, employeeInteractions);
 
-      const employeePdiActions = pdiActionsSnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }) as PDIAction);
+      const employeePdiActions = pdiActionsSnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as PDIAction));
       pdiActionsMap.set(id, employeePdiActions);
     }
     

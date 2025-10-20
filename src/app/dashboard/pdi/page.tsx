@@ -28,6 +28,8 @@ import { collection } from "firebase/firestore";
 import { Skeleton } from "@/components/ui/skeleton";
 import { DiagnosisFormDialog } from "@/components/diagnosis-form-dialog";
 
+const adminEmails = ['matheus@3ainvestimentos.com.br', 'lucas.nogueira@3ainvestimentos.com.br'];
+
 export default function PdiPage() {
   const [selectedEmployeeId, setSelectedEmployeeId] = useState<string | null>(null);
   const [isDiagnosisFormOpen, setIsDiagnosisFormOpen] = useState(false);
@@ -49,8 +51,8 @@ export default function PdiPage() {
   
   const currentUserEmployee = useMemo(() => {
     if (!user || !employees) return null;
-    // Special override for the admin user
-    if (user.email === 'matheus@3ainvestimentos.com.br') {
+    
+    if (user.email && adminEmails.includes(user.email)) {
         const employeeData = employees.find(e => e.email === user.email) || {};
         return {
             ...employeeData,
