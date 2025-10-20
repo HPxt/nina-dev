@@ -44,6 +44,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { CsvUploadDialog } from "@/components/csv-upload-dialog";
+import { InteractionCsvUploadDialog } from "@/components/interaction-csv-upload-dialog";
 import { useState, useMemo, useEffect, useCallback } from "react";
 import { useCollection, useFirestore, useMemoFirebase, useUser } from "@/firebase";
 import { collection, doc, deleteDoc, updateDoc, getDocs, query } from "firebase/firestore";
@@ -73,6 +74,7 @@ type SortConfig = {
 
 export default function AdminPage() {
   const [isCsvDialogOpen, setIsCsvDialogOpen] = useState(false);
+  const [isInteractionCsvDialogOpen, setIsInteractionCsvDialogOpen] = useState(false);
   const [isEmployeeFormOpen, setIsEmployeeFormOpen] = useState(false);
   const [isConfirmDeleteDialogOpen, setIsConfirmDeleteDialogOpen] = useState(false);
   const [selectedEmployee, setSelectedEmployee] = useState<Employee | undefined>(undefined);
@@ -605,7 +607,7 @@ export default function AdminPage() {
         <TabsTrigger value="teams">Equipes</TabsTrigger>
         <TabsTrigger value="reports">Relatórios</TabsTrigger>
         <TabsTrigger value="settings">Geral</TabsTrigger>
-        <TabsTrigger value="backup">Backup</TabsTrigger>
+        <TabsTrigger value="backup">Backup & Import</TabsTrigger>
       </TabsList>
       <TabsContent value="employees">
         <Card>
@@ -626,7 +628,7 @@ export default function AdminPage() {
                     )}
                     <Button variant="outline" size="sm" onClick={() => setIsCsvDialogOpen(true)}>
                         <Upload className="mr-2 h-4 w-4" />
-                        Upload CSV
+                        Upload Funcionários
                     </Button>
                     <Button size="sm" onClick={handleAddEmployee}>
                         <PlusCircle className="mr-2 h-4 w-4" />
@@ -967,12 +969,17 @@ export default function AdminPage() {
       <TabsContent value="backup">
         <Card>
             <CardHeader>
-                <CardTitle>Backup de Dados de Colaboradores</CardTitle>
+                <CardTitle>Backup e Importação</CardTitle>
                 <CardDescription>
-                    Selecione os colaboradores para exportar o histórico completo de interações e PDI.
+                    Exporte o histórico de colaboradores ou importe interações de um arquivo CSV.
                 </CardDescription>
             </CardHeader>
             <CardContent>
+                <div className="mb-6">
+                    <Button variant="outline" onClick={() => setIsInteractionCsvDialogOpen(true)}>
+                        <Upload className="mr-2 h-4 w-4" /> Importar Interações
+                    </Button>
+                </div>
                 <div className="border rounded-md">
                     <Table>
                         <TableHeader>
@@ -1029,6 +1036,7 @@ export default function AdminPage() {
       </TabsContent>
     </Tabs>
     <CsvUploadDialog open={isCsvDialogOpen} onOpenChange={setIsCsvDialogOpen} />
+    <InteractionCsvUploadDialog open={isInteractionCsvDialogOpen} onOpenChange={setIsInteractionCsvDialogOpen} />
     <EmployeeFormDialog 
         open={isEmployeeFormOpen} 
         onOpenChange={setIsEmployeeFormOpen}
