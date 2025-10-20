@@ -63,6 +63,8 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 
 
 const roles: Role[] = ["Colaborador", "Líder"];
+const adminEmails = ['matheus@3ainvestimentos.com.br', 'lucas.nogueira@3ainvestimentos.com.br'];
+
 
 type SortConfig = {
   key: keyof Employee;
@@ -134,7 +136,32 @@ export default function AdminPage() {
 
         const leaders = employees.filter(e => e.role === 'Líder');
         const directors = employees.filter(e => e.isDirector).sort((a,b) => a.name.localeCompare(b.name));
-        const admins = employees.filter(e => e.isAdmin).sort((a,b) => a.name.localeCompare(b.name));
+        
+        // 1. Get admins from DB
+        const adminsFromDb = employees.filter(e => e.isAdmin);
+        const adminMap = new Map(adminsFromDb.map(a => [a.email, a]));
+
+        // 2. Add hardcoded admins if they aren't in the DB list yet
+        adminEmails.forEach(email => {
+            if (!adminMap.has(email)) {
+                const employeeData = employees.find(e => e.email === email);
+                if (employeeData) {
+                    adminMap.set(email, { ...employeeData, isAdmin: true });
+                } else {
+                    // Create a placeholder if the user is not in the employees list at all
+                     adminMap.set(email, {
+                        id: email,
+                        id3a: email,
+                        name: email.split('@')[0],
+                        email: email,
+                        isAdmin: true,
+                     } as Employee);
+                }
+            }
+        });
+        
+        const admins = Array.from(adminMap.values()).sort((a,b) => a.name.localeCompare(b.name));
+
 
         const employeesWithoutDiagnosis = employees.filter(emp => emp.isUnderManagement && !emp.diagnosis);
 
