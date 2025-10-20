@@ -1,3 +1,4 @@
+
 "use client";
 
 import {
@@ -183,7 +184,7 @@ export function InteractionCsvUploadDialog({ open, onOpenChange }: { open: boole
         <DialogHeader>
           <DialogTitle>Upload de Interações Históricas via CSV</DialogTitle>
           <DialogDescription>
-            O CSV deve conter as colunas: {EXPECTED_COLUMNS.join(', ')}. Outras colunas como 'riskScore' e 'nextInteractionDate' são opcionais.
+            O CSV deve conter as colunas: {EXPECTED_COLUMNS.join(', ')}. Colunas como 'riskScore' e 'nextInteractionDate' são opcionais. A origem será automaticamente marcada como "Pipedrive".
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-6 py-4">
