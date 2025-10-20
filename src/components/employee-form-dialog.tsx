@@ -26,7 +26,7 @@ import {
   } from "@/components/ui/select";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
-import { useEffect } from "react";
+import { useEffect, useCallback } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -69,8 +69,6 @@ export function EmployeeFormDialog({
 }: EmployeeFormDialogProps) {
   const firestore = useFirestore();
   const { toast } = useToast();
-  // An employee is being edited if it has a valid `id` from firestore.
-  // A copied employee will have an empty `id`.
   const isEditMode = !!employee?.id;
 
   const form = useForm<EmployeeFormData>({
@@ -90,9 +88,14 @@ export function EmployeeFormDialog({
     },
   });
 
+  const getStorageKey = useCallback(() => `employee-form-data-${employee?.id || 'new'}`, [employee]);
+
   useEffect(() => {
-    if (open) { // Only reset form when dialog opens
-      if (employee) {
+    if (open) {
+      const savedData = localStorage.getItem(getStorageKey());
+      if (savedData) {
+        form.reset(JSON.parse(savedData));
+      } else if (employee) {
         form.reset({
           id3a: employee.id3a || "",
           name: employee.name || "",
@@ -107,22 +110,20 @@ export function EmployeeFormDialog({
           photoURL: employee.photoURL || "",
         });
       } else {
-        form.reset({
-          id3a: "",
-          name: "",
-          email: "",
-          position: "",
-          axis: "",
-          area: "",
-          segment: "",
-          leaderId: "no-leader",
-          city: "",
-          role: "Colaborador",
-          photoURL: "",
-        });
+        form.reset(form.formState.defaultValues);
       }
     }
-  }, [employee, open, form]);
+  }, [employee, open, form, getStorageKey]);
+
+  useEffect(() => {
+    if (open) {
+      const subscription = form.watch((value) => {
+        localStorage.setItem(getStorageKey(), JSON.stringify(value));
+      });
+      return () => subscription.unsubscribe();
+    }
+  }, [open, form, getStorageKey]);
+
 
   const onSubmit = async (data: EmployeeFormData) => {
     if (!firestore) return;
@@ -141,12 +142,12 @@ export function EmployeeFormDialog({
     };
     
     try {
-      // Use merge only when editing, not when creating/copying
-      await setDocumentNonBlocking(docRef, dataToSave, { merge: isEditMode });
+      await setDocumentNonBlocking(docRef, dataToSave, isEditMode ? { merge: true } : {});
       toast({
         title: isEditMode ? "Funcionário Atualizado" : "Funcionário Adicionado",
         description: `Os dados de ${data.name} foram salvos com sucesso.`,
       });
+      localStorage.removeItem(getStorageKey());
       onOpenChange(false);
     } catch (e) {
       console.error("Erro ao salvar funcionário:", e);
@@ -158,13 +159,20 @@ export function EmployeeFormDialog({
       });
     }
   };
+  
+  const handleOpenChange = (isOpen: boolean) => {
+    if (!isOpen) {
+        localStorage.removeItem(getStorageKey());
+    }
+    onOpenChange(isOpen);
+  }
 
   const dialogTitle = isEditMode ? "Editar Funcionário" : "Adicionar Funcionário";
   const dialogDescription = `Preencha os campos abaixo para ${isEditMode ? "atualizar os dados do" : "adicionar um novo"} funcionário.`;
 
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{dialogTitle}</DialogTitle>
@@ -345,7 +353,7 @@ export function EmployeeFormDialog({
               )}
             />
             <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+              <Button type="button" variant="outline" onClick={() => handleOpenChange(false)}>
                 Cancelar
               </Button>
               <Button type="submit" disabled={form.formState.isSubmitting}>
@@ -358,7 +366,3 @@ export function EmployeeFormDialog({
     </Dialog>
   );
 }
-
-    
-
-    

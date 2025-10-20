@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useCallback } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -79,23 +79,43 @@ export function PdiActionFormDialog({
     },
   });
 
+  const getStorageKey = useCallback(() => `pdi-action-form-data-${employeeId}-${action?.id || 'new'}`, [employeeId, action]);
+
   useEffect(() => {
-    if (action) {
-      form.reset({
-        description: action.description,
-        status: action.status,
-        startDate: new Date(action.startDate),
-        endDate: new Date(action.endDate),
-      });
-    } else {
-      form.reset({
-        description: "",
-        status: "To Do",
-        startDate: undefined,
-        endDate: undefined
-      });
+    if (open) {
+      const savedData = localStorage.getItem(getStorageKey());
+      if (savedData) {
+        const data = JSON.parse(savedData);
+        // Dates need to be converted back to Date objects
+        if (data.startDate) data.startDate = new Date(data.startDate);
+        if (data.endDate) data.endDate = new Date(data.endDate);
+        form.reset(data);
+      } else if (action) {
+        form.reset({
+          description: action.description,
+          status: action.status,
+          startDate: new Date(action.startDate),
+          endDate: new Date(action.endDate),
+        });
+      } else {
+        form.reset({
+          description: "",
+          status: "To Do",
+          startDate: undefined,
+          endDate: undefined,
+        });
+      }
     }
-  }, [action, form]);
+  }, [action, open, form, getStorageKey]);
+
+  useEffect(() => {
+    if (open) {
+      const subscription = form.watch((value) => {
+        localStorage.setItem(getStorageKey(), JSON.stringify(value));
+      });
+      return () => subscription.unsubscribe();
+    }
+  }, [open, form, getStorageKey]);
 
   const onSubmit = async (data: ActionFormData) => {
     if (!firestore) return;
@@ -118,6 +138,7 @@ export function PdiActionFormDialog({
         title: isEditMode ? "Ação PDI Atualizada" : "Ação PDI Adicionada",
         description: `A ação foi salva com sucesso.`,
       });
+      localStorage.removeItem(getStorageKey());
       onOpenChange(false);
     } catch (e) {
       console.error("Erro ao salvar ação PDI:", e);
@@ -129,8 +150,15 @@ export function PdiActionFormDialog({
     }
   };
 
+  const handleOpenChange = (isOpen: boolean) => {
+    if (!isOpen) {
+        localStorage.removeItem(getStorageKey());
+    }
+    onOpenChange(isOpen);
+  }
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
           <DialogTitle>
@@ -164,7 +192,7 @@ export function PdiActionFormDialog({
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Status</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                  <Select onValueChange={field.onChange} value={field.value}>
                     <FormControl>
                       <SelectTrigger>
                         <SelectValue placeholder="Selecione o status" />
@@ -262,7 +290,7 @@ export function PdiActionFormDialog({
              />
              </div>
             <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+              <Button type="button" variant="outline" onClick={() => handleOpenChange(false)}>
                 Cancelar
               </Button>
               <Button type="submit" disabled={form.formState.isSubmitting}>
