@@ -9,6 +9,7 @@ import {
   ClipboardList,
   ClipboardCheck,
   Trophy,
+  UserCog,
 } from "lucide-react";
 import type { Employee } from "@/lib/types";
 import {
@@ -24,6 +25,8 @@ const navItems = [
   { href: "/dashboard/risk-analysis", label: "Análise de Risco", icon: ShieldAlert, requiresAuth: (user: Employee) => user.role === "Líder" || user.isDirector || user.isAdmin },
   { href: "/dashboard/ranking", label: "Ranking", icon: Trophy, requiresAuth: (user: Employee) => user.role === "Líder" || user.isDirector || user.isAdmin },
 ];
+
+const superAdminEmail = 'matheus@3ainvestimentos.com.br';
 
 export function MainNav({ user }: { user: Employee }) {
   const pathname = usePathname();
@@ -46,9 +49,9 @@ export function MainNav({ user }: { user: Employee }) {
         }
         
         const isActive =
-          item.href === "/dashboard" && (pathname === "/dashboard" || pathname === "/dashboard/lideranca" || pathname === "/dashboard/v2")
+          item.href === "/dashboard/v2" && (pathname === "/dashboard" || pathname.startsWith("/dashboard/v2"))
             ? true
-            : pathname.startsWith(item.href) && item.href !== "/dashboard";
+            : pathname.startsWith(item.href) && item.href !== "/dashboard/v2";
 
         return (
           <SidebarMenuItem key={item.href}>
@@ -61,6 +64,16 @@ export function MainNav({ user }: { user: Employee }) {
           </SidebarMenuItem>
         );
       })}
+       {user.email === superAdminEmail && (
+        <SidebarMenuItem>
+            <SidebarMenuButton asChild isActive={pathname.startsWith('/dashboard/setup-admin')} tooltip="Setup Admin">
+                <Link href="/dashboard/setup-admin">
+                    <UserCog />
+                    <span>Setup Admin (Temp)</span>
+                </Link>
+            </SidebarMenuButton>
+        </SidebarMenuItem>
+      )}
     </SidebarMenu>
   );
 }
