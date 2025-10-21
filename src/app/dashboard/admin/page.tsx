@@ -64,7 +64,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { getFunctions, httpsCallable } from "firebase/functions";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
-const superAdminEmail = 'matheus@3ainvestimentos.com.br';
+const superAdminEmails = ['lucas.nogueira@3ainvestimentos.com.br', 'matheus@3ainvestimentos.com.br'];
 const emailsToPromote = [
     'lucas.nogueira@3ainvestimentos.com.br',
     'matheus@3ainvestimentos.com.br'
@@ -106,6 +106,27 @@ export default function AdminPage() {
     leader: new Set<string>(),
     city: new Set<string>(),
     role: new Set<string>(),
+  };
+
+  const checkCustomClaim = async()=>{
+    if (!user) {
+      console.log ('User not logged in');
+      return;
+    }
+  
+    try{
+      const idTokenResult = await user.getIdTokenResult();
+      console.log('isAdmin: ', idTokenResult.claims.isAdmin);
+      console.log('Custom Claims:', idTokenResult.claims);
+  
+  
+      toast({
+        title: 'Custom Claims',
+        description: `isAdmin: ${idTokenResult.claims.isAdmin}`,
+      });
+    } catch (error) {
+      console.error('Erro ao verificar claim:', error);
+    }
   };
 
   const [filters, setFilters] = useState(initialFilters);
@@ -1003,43 +1024,48 @@ export default function AdminPage() {
                     )}
                 </CardContent>
             </Card>
-
-            {user?.email === superAdminEmail && (
-              <Card>
+              {superAdminEmails.includes(user?.email || '') && (
+                <Card>
                   <CardHeader>
-                      <CardTitle>Configuração Inicial de Administrador</CardTitle>
-                      <CardDescription>
-                          Use esta seção para conceder permissões de administrador aos usuários iniciais.
-                          Esta é uma ação única.
-                      </CardDescription>
+                    <CardTitle>Setup de Administrador</CardTitle>
+                    <CardDescription>
+                      Use esta seção para conceder permissões de administrador aos usuários.
+                      Esta função executa a Cloud Function setupFirstAdmin.
+                    </CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-4">
-                      <Alert>
-                          <ShieldCheck className="h-4 w-4" />
-                          <AlertTitle>Acesso de Super Administrador</AlertTitle>
-                          <AlertDescription>
-                              Você está vendo esta seção porque seu e-mail ({user.email}) está autorizado.
-                          </AlertDescription>
-                      </Alert>
-                      <div className="space-y-3">
-                          {emailsToPromote.map(email => (
-                              <div key={email} className="flex items-center justify-between p-4 border rounded-lg">
-                                  <div>
-                                      <p className="font-medium">Tornar administrador:</p>
-                                      <p className="text-sm text-muted-foreground">{email}</p>
-                                  </div>
-                                  <Button 
-                                      onClick={() => grantAdminAccess(email)}
-                                      disabled={setupLoading[email]}
-                                  >
-                                      {setupLoading[email] ? 'Processando...' : 'Executar Função'}
-                                  </Button>
-                              </div>
-                          ))}
-                      </div>
+                    <Alert>
+                      <ShieldCheck className="h-4 w-4" />
+                      <AlertTitle>Configuração de Admin</AlertTitle>
+                      <AlertDescription>
+                        Esta função define o Custom Claim isAdmin para o usuário especificado.
+                      </AlertDescription>
+                    </Alert>
+                    <div className="space-y-3">
+                      {emailsToPromote.map(email => (
+                        <div key={email} className="flex items-center justify-between p-4 border rounded-lg">
+                          <div>
+                            <p className="font-medium">Tornar administrador:</p>
+                            <p className="text-sm text-muted-foreground">{email}</p>
+                          </div>
+                          <Button 
+                            onClick={() => grantAdminAccess(email)}
+                            disabled={setupLoading[email]}
+                          >
+                            {setupLoading[email] ? 'Processando...' : 'Executar Função'}
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
                   </CardContent>
+                </Card>
+              )}
+            
+              <Card>
+                <Button onClick= {checkCustomClaim} variant="outline">
+                  Verificar Custom Claims
+                </Button>
               </Card>
-            )}
           </CardContent>
         </Card>
       </TabsContent>
