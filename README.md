@@ -1,4 +1,4 @@
-# Nina 1.0 - Plataforma de Gestão de Liderança
+# Nina 1.0 - Dev
 
 Bem-vindo à Nina 1.0, uma aplicação web desenvolvida para otimizar a gestão de equipes, o acompanhamento de performance e o desenvolvimento individual dos colaboradores na 3A RIVA Investimentos.
 
