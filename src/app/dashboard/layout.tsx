@@ -23,6 +23,8 @@ import type { Employee } from "@/lib/types";
 import { collection } from "firebase/firestore";
 import { UsageGuideDialog } from "@/components/usage-guide-dialog";
 
+const adminEmails = ['matheus@3ainvestimentos.com.br', 'lucas.nogueira@3ainvestimentos.com.br'];
+
 export default function DashboardLayout({
   children,
 }: {
@@ -40,8 +42,7 @@ export default function DashboardLayout({
   const currentUserEmployee = useMemo(() => {
     if (!user || !employees) return null;
 
-    // Special override for the admin user
-    if (user.email === 'matheus@3ainvestimentos.com.br') {
+    if (user.email && adminEmails.includes(user.email)) {
         const employeeData = employees.find(e => e.email === user.email) || {};
         return {
             ...employeeData,

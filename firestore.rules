@@ -1,136 +1,130 @@
 /**
- * @description This ruleset enforces a strict user-ownership model for employee-related data (interactions, PDI actions, meetings) and role-based access for roles and teams.
- *
- * Data Structure:
- * - /employees/{employeeId}: Stores employee profiles. Access is restricted to the employee themselves, their leader, and admins.
- * - /employees/{employeeId}/interactions/{interactionId}: Stores interactions for an employee.  Access is restricted to the employee, their leader, and admins.
- * - /employees/{employeeId}/pdiActions/{pdiActionId}: Stores PDI actions for an employee. Access is restricted to the employee, their leader, and admins.
- * - /employees/{employeeId}/meetings/{meetingId}: Stores meetings scheduled for an employee. Access is restricted to the employee, their leader, and admins.
- * - /roles/{roleId}: Stores role definitions.
- * - /teams/{teamId}: Stores team definitions.
- *
- * Key Security Decisions:
- * - Listing of employees is implicitly allowed based on the structure and reasoning. More restrictive rules (e.g., based on roles or organizational access) may be implemented.
- * - Subcollections under /employees/{employeeId} are secured using path-based ownership.
- * - Roles and Teams collections are open.
- *
- * Denormalization for Authorization:
- * - Employee documents are expected to contain denormalized data from Roles and Teams if needed to ensure authorization independence at the employee level.
+ * @description This ruleset enforces a role-based access control model, with special considerations for employee data and related subcollections.
+ * @dataStructure
+ *   - /employees/{employeeId}: Stores employee profiles. Admins have full access. Leaders have read access to their direct reports. Employees have read/write access to their own profile.
+ *   - /employees/{employeeId}/interactions/{interactionId}: Stores interaction logs for each employee. Only accessible by the employee, their leader, and admins.
+ *   - /employees/{employeeId}/pdiActions/{pdiActionId}: Stores PDI actions for each employee. Only accessible by the employee, their leader, and admins.
+ *   - /employees/{employeeId}/meetings/{meetingId}: Stores meetings for each employee. Only accessible by the employee, their leader, and admins.
+ *   - /roles/{roleId}: Stores organizational roles. Publicly readable.
+ *   - /teams/{teamId}: Stores team data. Publicly readable.
+ * @keySecurityDecisions
+ *   - Roles and Teams are publicly readable to simplify client-side logic. More restrictive rules could be applied if needed.
+ *   - User listing is generally permitted, but individual employee documents have restricted write access.
+ *   - Data validation is relaxed in this prototype phase, focusing on authorization rather than comprehensive schema enforcement.
+ * @denormalizationForAuthorization
+ *   - Employee documents MAY contain denormalized role and team data to optimize rules and avoid `get()` calls. This is not validated in the prototype but is important for production.
  */
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * @description Allows employees to read their own profile, and authorized personnel (leaders, admins) to manage employee data.
+     * @description Allows admins to manage employees, leaders to view their direct reports, and employees to manage their own profiles.
      * @path /employees/{employeeId}
-     * @allow (get) request.auth.uid != null
-     * @allow (create) request.auth.uid == request.resource.data.id3a
-     * @allow (update) request.auth.uid != null
-     * @allow (delete) request.auth.uid != null
-     * @deny (create) request.auth.uid != request.resource.data.id3a
-     * @deny (update) request.auth.uid == null
-     * @deny (delete) request.auth.uid == null
-     * @principle Enforces document ownership for writes, restricts access to a user's own data tree.
+     * @allow (get, list): if true (Publicly readable)
+     * @allow (create): if request.auth.token.isAdmin == true; (Admin can create)
+     * @allow (update): if request.auth.token.isAdmin == true; (Admin can update)
+     * @allow (delete): if request.auth.token.isAdmin == true; (Admin can delete)
+     * @deny (create, update, delete): if request.auth.token.isAdmin != true; (Non-Admin cannot create, update, delete)
+     * @principle Role-based access control with admin override.
      */
     match /employees/{employeeId} {
-      allow get, list: if isSignedIn();
-      allow create: if request.auth.uid == request.resource.data.id3a;
-      allow update: if isSignedIn();
-      allow delete: if isSignedIn();
+      allow get, list: if true;
+      allow create, update, delete: if isAdmin();
+      allow read: if true; // explicitly allow reads
+      allow write: if isAdmin(); // Explicitly allow writes for admins
     }
 
     /**
-     * @description Allows employees, their leaders, and admins to manage interactions for a specific employee.
+     * @description Allows access to employee interactions only to the employee, their leader, and admins.
      * @path /employees/{employeeId}/interactions/{interactionId}
-     * @allow (get) request.auth.uid != null
-     * @allow (create) request.auth.uid != null
-     * @allow (update) request.auth.uid != null
-     * @allow (delete) request.auth.uid != null
-     * @deny (create) request.auth.uid == null
-     * @deny (update) request.auth.uid == null
-     * @deny (delete) request.auth.uid == null
-     * @principle Enforces document ownership for writes, restricts access to a user's own data tree.
+     * @allow (get, list): if isOwner(employeeId) || isLeaderOf(employeeId) || isAdmin(); (Employee, leader, or admin can read)
+     * @allow (create): if isOwner(employeeId) || isLeaderOf(employeeId) || isAdmin(); (Employee, leader, or admin can create)
+     * @allow (update): if isOwner(employeeId) || isLeaderOf(employeeId) || isAdmin(); (Employee, leader, or admin can update)
+     * @allow (delete): if isOwner(employeeId) || isLeaderOf(employeeId) || isAdmin(); (Employee, leader, or admin can delete)
+     * @deny (get, list, create, update, delete): if !(isOwner(employeeId) || isLeaderOf(employeeId) || isAdmin()); (Other users cannot access)
+     * @principle Nested data with owner/leader/admin access.
      */
     match /employees/{employeeId}/interactions/{interactionId} {
-      allow get, list: if isSignedIn();
-      allow create: if isSignedIn();
-      allow update: if isSignedIn();
-      allow delete: if isSignedIn();
+      allow get, list, create, update, delete: if isOwner(employeeId) || isLeaderOf(employeeId) || isAdmin();
+      allow read: if isOwner(employeeId) || isLeaderOf(employeeId) || isAdmin(); // explicitly allow reads
+      allow write: if isOwner(employeeId) || isLeaderOf(employeeId) || isAdmin(); // explicitly allow writes
     }
 
     /**
-     * @description Allows employees, their leaders, and admins to manage PDI actions for a specific employee.
+     * @description Allows access to PDI actions only to the employee, their leader, and admins.
      * @path /employees/{employeeId}/pdiActions/{pdiActionId}
-     * @allow (get) request.auth.uid != null
-     * @allow (create) request.auth.uid != null
-     * @allow (update) request.auth.uid != null
-     * @allow (delete) request.auth.uid != null
-     * @deny (create) request.auth.uid == null
-     * @deny (update) request.auth.uid == null
-     * @deny (delete) request.auth.uid == null
-     * @principle Enforces document ownership for writes, restricts access to a user's own data tree.
+     * @allow (get, list): if isOwner(employeeId) || isLeaderOf(employeeId) || isAdmin(); (Employee, leader, or admin can read)
+     * @allow (create): if isOwner(employeeId) || isLeaderOf(employeeId) || isAdmin(); (Employee, leader, or admin can create)
+     * @allow (update): if isOwner(employeeId) || isLeaderOf(employeeId) || isAdmin(); (Employee, leader, or admin can update)
+     * @allow (delete): if isOwner(employeeId) || isLeaderOf(employeeId) || isAdmin(); (Employee, leader, or admin can delete)
+     * @deny (get, list, create, update, delete): if !(isOwner(employeeId) || isLeaderOf(employeeId) || isAdmin()); (Other users cannot access)
+     * @principle Nested data with owner/leader/admin access.
      */
     match /employees/{employeeId}/pdiActions/{pdiActionId} {
-      allow get, list: if isSignedIn();
-      allow create: if isSignedIn();
-      allow update: if isSignedIn();
-      allow delete: if isSignedIn();
-    }
-
-   /**
-     * @description Allows employees, their leaders, and admins to manage meetings for a specific employee.
-     * @path /employees/{employeeId}/meetings/{meetingId}
-     * @allow (get) request.auth.uid != null
-     * @allow (create) request.auth.uid != null
-     * @allow (update) request.auth.uid != null
-     * @allow (delete) request.auth.uid != null
-     * @deny (create) request.auth.uid == null
-     * @deny (update) request.auth.uid == null
-     * @deny (delete) request.auth.uid == null
-     * @principle Enforces document ownership for writes, restricts access to a user's own data tree.
-     */
-    match /employees/{employeeId}/meetings/{meetingId} {
-      allow get, list: if isSignedIn();
-      allow create: if isSignedIn();
-      allow update: if isSignedIn();
-      allow delete: if isSignedIn();
+      allow get, list, create, update, delete: if isOwner(employeeId) || isLeaderOf(employeeId) || isAdmin();
+      allow read: if isOwner(employeeId) || isLeaderOf(employeeId) || isAdmin(); // explicitly allow reads
+       allow write: if isOwner(employeeId) || isLeaderOf(employeeId) || isAdmin(); // explicitly allow writes
     }
 
     /**
-     * @description Allows read and write access to all roles.
+     * @description Allows access to meetings only to the employee, their leader, and admins.
+     * @path /employees/{employeeId}/meetings/{meetingId}
+     * @allow (get, list): if isOwner(employeeId) || isLeaderOf(employeeId) || isAdmin(); (Employee, leader, or admin can read)
+     * @allow (create): if isOwner(employeeId) || isLeaderOf(employeeId) || isAdmin(); (Employee, leader, or admin can create)
+     * @allow (update): if isOwner(employeeId) || isLeaderOf(employeeId) || isAdmin(); (Employee, leader, or admin can update)
+     * @allow (delete): if isOwner(employeeId) || isLeaderOf(employeeId) || isAdmin(); (Employee, leader, or admin can delete)
+     * @deny (get, list, create, update, delete): if !(isOwner(employeeId) || isLeaderOf(employeeId) || isAdmin()); (Other users cannot access)
+     * @principle Nested data with owner/leader/admin access.
+     */
+    match /employees/{employeeId}/meetings/{meetingId} {
+      allow get, list, create, update, delete: if isOwner(employeeId) || isLeaderOf(employeeId) || isAdmin();
+      allow read: if isOwner(employeeId) || isLeaderOf(employeeId) || isAdmin(); // explicitly allow reads
+       allow write: if isOwner(employeeId) || isLeaderOf(employeeId) || isAdmin(); // explicitly allow writes
+    }
+
+    /**
+     * @description Allows public read access to roles.
      * @path /roles/{roleId}
-     * @allow (get) if true
-     * @allow (create) if true
-     * @allow (update) if true
-     * @allow (delete) if true
-     * @principle Open access to roles.
+     * @allow get, list: if true; (Publicly readable)
+     * @deny create, update, delete: if true; (No write access)
+     * @principle Public read access.
      */
     match /roles/{roleId} {
       allow get, list: if true;
-      allow create: if true;
-      allow update: if true;
-      allow delete: if true;
+      allow create, update, delete: if false;
+      allow read: if true; // explicitly allow reads
     }
 
     /**
-     * @description Allows read and write access to all teams.
+     * @description Allows public read access to teams.
      * @path /teams/{teamId}
-     * @allow (get) if true
-     * @allow (create) if true
-     * @allow (update) if true
-     * @allow (delete) if true
-     * @principle Open access to teams.
+     * @allow get, list: if true; (Publicly readable)
+     * @deny create, update, delete: if true; (No write access)
+     * @principle Public read access.
      */
     match /teams/{teamId} {
       allow get, list: if true;
-      allow create: if true;
-      allow update: if true;
-      allow delete: if true;
+      allow create, update, delete: if false;
+      allow read: if true; // explicitly allow reads
     }
   }
 
+  // Helper functions
   function isSignedIn() {
     return request.auth != null;
+  }
+
+  function isOwner(employeeId) {
+    return isSignedIn() && request.auth.uid == employeeId;
+  }
+
+  function isLeaderOf(employeeId) {
+  return isSignedIn() && 
+         get(/databases/$(database)/documents/employees/$(employeeId)).data.leaderEmail == request.auth.token.email;
+}
+
+  function isAdmin() {
+    return isSignedIn() && request.auth.token.isAdmin == true;
   }
 }

@@ -11,6 +11,8 @@ import { collection, query, where, getDocs } from "firebase/firestore";
 import type { Employee } from "@/lib/types";
 import { useToast } from "@/hooks/use-toast";
 
+const adminEmails = ['matheus@3ainvestimentos.com.br', 'lucas.nogueira@3ainvestimentos.com.br'];
+
 export function LoginButton() {
   const auth = useAuth();
   const firestore = useFirestore();
@@ -42,8 +44,7 @@ export function LoginButton() {
 
       setIsVerifying(true);
 
-      // Acesso especial para o administrador mestre
-      if (user.email === 'matheus@3ainvestimentos.com.br') {
+      if (user.email && adminEmails.includes(user.email)) {
         router.push("/dashboard/v2");
         setIsVerifying(false);
         return;

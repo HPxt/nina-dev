@@ -59,6 +59,8 @@ const initialN3Notes: N3IndividualNotes = {
     planoAcao: ""
 };
 
+const adminEmails = ['matheus@3ainvestimentos.com.br', 'lucas.nogueira@3ainvestimentos.com.br'];
+
 
 export default function IndividualTrackingPage() {
   const [selectedEmployeeId, setSelectedEmployeeId] = useState<string | null>(null);
@@ -95,8 +97,8 @@ export default function IndividualTrackingPage() {
   
   const currentUserEmployee = useMemo(() => {
     if (!user || !employees) return null;
-    // Special override for the admin user
-    if (user.email === 'matheus@3ainvestimentos.com.br') {
+    
+    if (user.email && adminEmails.includes(user.email)) {
         const employeeData = employees.find(e => e.email === user.email) || {};
         return {
             ...employeeData,

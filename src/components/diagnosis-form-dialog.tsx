@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useCallback } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -66,19 +66,36 @@ export function DiagnosisFormDialog({
     },
   });
 
+  const getStorageKey = useCallback(() => `diagnosis-form-data-${employee.id}`, [employee.id]);
+
   useEffect(() => {
-    if (employee.diagnosis) {
-      form.reset({
-        status: employee.diagnosis.status,
-        details: employee.diagnosis.details || "",
-      });
-    } else {
-      form.reset({
-        status: "Pendente",
-        details: "",
-      });
+    if (open) {
+      const savedData = localStorage.getItem(getStorageKey());
+      if (savedData) {
+        const data = JSON.parse(savedData);
+        form.reset(data);
+      } else if (employee.diagnosis) {
+        form.reset({
+          status: employee.diagnosis.status,
+          details: employee.diagnosis.details || "",
+        });
+      } else {
+        form.reset({
+          status: "Pendente",
+          details: "",
+        });
+      }
     }
-  }, [employee, form]);
+  }, [employee, open, form, getStorageKey]);
+
+  useEffect(() => {
+    if (open) {
+      const subscription = form.watch((value) => {
+        localStorage.setItem(getStorageKey(), JSON.stringify(value));
+      });
+      return () => subscription.unsubscribe();
+    }
+  }, [open, form, getStorageKey]);
 
   const onSubmit = async (data: DiagnosisFormData) => {
     if (!firestore) return;
@@ -95,6 +112,7 @@ export function DiagnosisFormDialog({
         title: isEditMode ? "Diagnóstico Atualizado" : "Diagnóstico Adicionado",
         description: `O diagnóstico de ${employee.name} foi salvo com sucesso.`,
       });
+      localStorage.removeItem(getStorageKey());
       onOpenChange(false);
     } catch (e) {
       console.error("Erro ao salvar diagnóstico:", e);
@@ -105,9 +123,21 @@ export function DiagnosisFormDialog({
       });
     }
   };
+  
+  const handleOpenChange = (isOpen: boolean) => {
+      if (!isOpen) {
+          const savedData = localStorage.getItem(getStorageKey());
+          if (savedData) {
+              const confirmClose = window.confirm("Você tem dados não salvos. Deseja realmente fechar?");
+              if (!confirmClose) return;
+          }
+          localStorage.removeItem(getStorageKey());
+      }
+      onOpenChange(isOpen);
+  }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
           <DialogTitle>
@@ -125,7 +155,7 @@ export function DiagnosisFormDialog({
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Status</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                  <Select onValueChange={field.onChange} value={field.value}>
                     <FormControl>
                       <SelectTrigger>
                         <SelectValue placeholder="Selecione um status" />
@@ -159,7 +189,7 @@ export function DiagnosisFormDialog({
               )}
             />
             <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+              <Button type="button" variant="outline" onClick={() => handleOpenChange(false)}>
                 Cancelar
               </Button>
               <Button type="submit" disabled={form.formState.isSubmitting}>

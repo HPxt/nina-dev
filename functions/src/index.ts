@@ -61,3 +61,7 @@ export const setAdminClaim = functions.https.onCall(async (data, context) => {
     );
   }
 });
+
+
+// functions/src/index.ts - Adicionar no final
+export { setupFirstAdmin } from './setup-admin';

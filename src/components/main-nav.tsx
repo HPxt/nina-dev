@@ -46,9 +46,9 @@ export function MainNav({ user }: { user: Employee }) {
         }
         
         const isActive =
-          item.href === "/dashboard" && (pathname === "/dashboard" || pathname === "/dashboard/lideranca" || pathname === "/dashboard/v2")
+          item.href === "/dashboard/v2" && (pathname === "/dashboard" || pathname.startsWith("/dashboard/v2"))
             ? true
-            : pathname.startsWith(item.href) && item.href !== "/dashboard";
+            : pathname.startsWith(item.href) && item.href !== "/dashboard/v2";
 
         return (
           <SidebarMenuItem key={item.href}>

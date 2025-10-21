@@ -38,6 +38,8 @@ type ChartConfig = {
   };
 };
 
+const adminEmails = ['matheus@3ainvestimentos.com.br', 'lucas.nogueira@3ainvestimentos.com.br'];
+
 export default function RiskAnalysisPage() {
   const [selectedEmployeeIds, setSelectedEmployeeIds] = useState<string[]>([]);
   const [isSelectionDialogOpen, setIsSelectionDialogOpen] = useState(false);
@@ -53,7 +55,7 @@ export default function RiskAnalysisPage() {
 
   const currentUserEmployee = useMemo(() => {
     if (!user || !employees) return null;
-    if (user.email === 'matheus@3ainvestimentos.com.br') {
+    if (user.email && adminEmails.includes(user.email)) {
         const employeeData = employees.find(e => e.email === user.email) || {};
         return {
             ...employeeData,

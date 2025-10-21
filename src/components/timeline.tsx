@@ -138,7 +138,15 @@ export function Timeline({ interactions, isLoading }: { interactions: Interactio
                 </p>
               )}
             </div>
-            <p className="text-xs text-muted-foreground">{item.date ? formatDate(item.date) : 'Data indisponível'}</p>
+            <div className="flex items-center text-xs text-muted-foreground gap-2">
+                <span>{item.date ? formatDate(item.date) : 'Data indisponível'}</span>
+                {item.source && (
+                    <>
+                        <span className="text-muted-foreground/50">|</span>
+                        <span>Origem: {item.source}</span>
+                    </>
+                )}
+            </div>
             <div className="mt-2 text-sm">
                 {typeof item.notes === 'string' && item.type === 'Feedback' ? (
                      <p className="whitespace-pre-wrap">{item.notes}</p>

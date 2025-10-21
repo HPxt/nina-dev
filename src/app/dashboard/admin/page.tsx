@@ -1,4 +1,3 @@
-
 "use client";
 
 import type { Employee, Role, Interaction, PDIAction } from "@/lib/types";
@@ -26,7 +25,7 @@ import {
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
-import { MoreHorizontal, PlusCircle, Upload, ArrowUpDown, X, Filter, User, ShieldCheck, FileDown, HelpCircle } from "lucide-react";
+import { MoreHorizontal, PlusCircle, Upload, ArrowUpDown, X, Filter, User, ShieldCheck, FileDown, HelpCircle, Copy, Pen, Trash } from "lucide-react";
 import { 
   DropdownMenu, 
   DropdownMenuContent, 
@@ -45,9 +44,11 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { CsvUploadDialog } from "@/components/csv-upload-dialog";
+import { InteractionCsvUploadDialog } from "@/components/interaction-csv-upload-dialog";
 import { useState, useMemo, useEffect, useCallback } from "react";
-import { useCollection, useFirestore, useMemoFirebase, useUser } from "@/firebase";
+import { useCollection, useFirestore, useMemoFirebase, useUser, useFirebase } from "@/firebase";
 import { collection, doc, deleteDoc, updateDoc, getDocs, query } from "firebase/firestore";
+import { setDocumentNonBlocking } from "@/firebase/non-blocking-updates";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -60,9 +61,18 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { exportData } from "@/lib/export";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { getFunctions, httpsCallable } from "firebase/functions";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
+const superAdminEmail = 'matheus@3ainvestimentos.com.br';
+const emailsToPromote = [
+    'lucas.nogueira@3ainvestimentos.com.br',
+    'matheus@3ainvestimentos.com.br'
+];
 
 const roles: Role[] = ["Colaborador", "Líder"];
+const adminEmails = ['matheus@3ainvestimentos.com.br', 'lucas.nogueira@3ainvestimentos.com.br'];
+
 
 type SortConfig = {
   key: keyof Employee;
@@ -71,15 +81,18 @@ type SortConfig = {
 
 export default function AdminPage() {
   const [isCsvDialogOpen, setIsCsvDialogOpen] = useState(false);
+  const [isInteractionCsvDialogOpen, setIsInteractionCsvDialogOpen] = useState(false);
   const [isEmployeeFormOpen, setIsEmployeeFormOpen] = useState(false);
   const [isConfirmDeleteDialogOpen, setIsConfirmDeleteDialogOpen] = useState(false);
   const [selectedEmployee, setSelectedEmployee] = useState<Employee | undefined>(undefined);
   const [employeeToDelete, setEmployeeToDelete] = useState<Employee | null>(null);
   const [selectedForBackup, setSelectedForBackup] = useState<string[]>([]);
   const [isExporting, setIsExporting] = useState(false);
+  const [setupLoading, setSetupLoading] = useState<{[key: string]: boolean}>({});
 
   const [loadingReports, setLoadingReports] = useState(true);
 
+  const { firebaseApp } = useFirebase();
   const firestore = useFirestore();
   const { user, isUserLoading } = useUser();
   const { toast } = useToast();
@@ -134,7 +147,32 @@ export default function AdminPage() {
 
         const leaders = employees.filter(e => e.role === 'Líder');
         const directors = employees.filter(e => e.isDirector).sort((a,b) => a.name.localeCompare(b.name));
-        const admins = employees.filter(e => e.isAdmin).sort((a,b) => a.name.localeCompare(b.name));
+        
+        // 1. Get admins from DB
+        const adminsFromDb = employees.filter(e => e.isAdmin);
+        const adminMap = new Map(adminsFromDb.map(a => [a.email, a]));
+
+        // 2. Add hardcoded admins if they aren't in the DB list yet
+        adminEmails.forEach(email => {
+            if (!adminMap.has(email)) {
+                const employeeData = employees.find(e => e.email === email);
+                if (employeeData) {
+                    adminMap.set(email, { ...employeeData, isAdmin: true });
+                } else {
+                    // Create a placeholder if the user is not in the employees list at all
+                     adminMap.set(email, {
+                        id: email,
+                        id3a: email,
+                        name: email.split('@')[0],
+                        email: email,
+                        isAdmin: true,
+                     } as Employee);
+                }
+            }
+        });
+        
+        const admins = Array.from(adminMap.values()).sort((a,b) => a.name.localeCompare(b.name));
+
 
         const employeesWithoutDiagnosis = employees.filter(emp => emp.isUnderManagement && !emp.diagnosis);
 
@@ -318,6 +356,39 @@ export default function AdminPage() {
     setIsEmployeeFormOpen(true);
   };
 
+  const handleCopyAndSaveEmployee = async (employee: Employee) => {
+    if (!firestore) return;
+
+    // Create a deep copy and prepare it for saving as a new document
+    const { id, ...employeeData } = employee;
+    const newId3a = `${employee.id3a}-${Date.now()}`;
+    
+    const employeeCopy: Partial<Employee> = { 
+        ...employeeData,
+        id3a: newId3a,
+        email: '', // Email must be unique and should be manually set
+        name: `${employee.name} (Cópia)`,
+        photoURL: '', 
+     };
+
+    const newDocRef = doc(collection(firestore, "employees"), newId3a);
+
+    try {
+        await setDocumentNonBlocking(newDocRef, employeeCopy);
+        toast({
+            title: "Funcionário Copiado",
+            description: `${employeeCopy.name} foi adicionado à lista.`,
+        });
+    } catch (e) {
+        console.error("Erro ao copiar funcionário:", e);
+        toast({
+            variant: "destructive",
+            title: "Erro ao Copiar",
+            description: "Não foi possível criar uma cópia do funcionário.",
+        });
+    }
+  };
+
   const handleDeleteClick = (employee: Employee) => {
     setEmployeeToDelete(employee);
     setIsConfirmDeleteDialogOpen(true);
@@ -452,6 +523,37 @@ export default function AdminPage() {
     }
   };
 
+  const grantAdminAccess = async (email: string) => {
+    if (!firebaseApp) {
+        toast({ variant: "destructive", title: "Erro", description: "Firebase não inicializado."});
+        return;
+    }
+
+    setSetupLoading(prev => ({...prev, [email]: true}));
+    
+    try {
+        const functions = getFunctions(firebaseApp);
+        const setupFirstAdmin = httpsCallable(functions, 'setupFirstAdmin');
+        
+        const result: any = await setupFirstAdmin({ email: email });
+
+        toast({
+            title: "Sucesso!",
+            description: result.data.message,
+        });
+
+    } catch (error: any) {
+        console.error("Erro ao chamar a função:", error);
+        toast({
+            variant: "destructive",
+            title: "Erro ao promover usuário",
+            description: error.message || "Ocorreu um erro desconhecido.",
+        });
+    } finally {
+        setSetupLoading(prev => ({...prev, [email]: false}));
+    }
+  };
+
 
   const isLoading = isUserLoading || areEmployeesLoading || loadingReports;
 
@@ -545,7 +647,7 @@ export default function AdminPage() {
         <TabsTrigger value="teams">Equipes</TabsTrigger>
         <TabsTrigger value="reports">Relatórios</TabsTrigger>
         <TabsTrigger value="settings">Geral</TabsTrigger>
-        <TabsTrigger value="backup">Backup</TabsTrigger>
+        <TabsTrigger value="backup">Backup & Import</TabsTrigger>
       </TabsList>
       <TabsContent value="employees">
         <Card>
@@ -566,7 +668,7 @@ export default function AdminPage() {
                     )}
                     <Button variant="outline" size="sm" onClick={() => setIsCsvDialogOpen(true)}>
                         <Upload className="mr-2 h-4 w-4" />
-                        Upload CSV
+                        Upload Funcionários
                     </Button>
                     <Button size="sm" onClick={handleAddEmployee}>
                         <PlusCircle className="mr-2 h-4 w-4" />
@@ -720,8 +822,18 @@ export default function AdminPage() {
                                   </Button>
                               </DropdownMenuTrigger>
                               <DropdownMenuContent>
-                                  <DropdownMenuItem onClick={() => handleEditEmployee(employee)}>Editar</DropdownMenuItem>
-                                  <DropdownMenuItem className="text-destructive" onClick={() => handleDeleteClick(employee)}>Remover</DropdownMenuItem>
+                                  <DropdownMenuItem onClick={() => handleEditEmployee(employee)}>
+                                    <Pen className="mr-2 h-4 w-4" />
+                                    Editar
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem onClick={() => handleCopyAndSaveEmployee(employee)}>
+                                      <Copy className="mr-2 h-4 w-4" />
+                                      Copiar
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem className="text-destructive" onClick={() => handleDeleteClick(employee)}>
+                                    <Trash className="mr-2 h-4 w-4" />
+                                    Remover
+                                  </DropdownMenuItem>
                               </DropdownMenuContent>
                           </DropdownMenu>
                       </TableCell>
@@ -891,18 +1003,60 @@ export default function AdminPage() {
                     )}
                 </CardContent>
             </Card>
+
+            {user?.email === superAdminEmail && (
+              <Card>
+                  <CardHeader>
+                      <CardTitle>Configuração Inicial de Administrador</CardTitle>
+                      <CardDescription>
+                          Use esta seção para conceder permissões de administrador aos usuários iniciais.
+                          Esta é uma ação única.
+                      </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                      <Alert>
+                          <ShieldCheck className="h-4 w-4" />
+                          <AlertTitle>Acesso de Super Administrador</AlertTitle>
+                          <AlertDescription>
+                              Você está vendo esta seção porque seu e-mail ({user.email}) está autorizado.
+                          </AlertDescription>
+                      </Alert>
+                      <div className="space-y-3">
+                          {emailsToPromote.map(email => (
+                              <div key={email} className="flex items-center justify-between p-4 border rounded-lg">
+                                  <div>
+                                      <p className="font-medium">Tornar administrador:</p>
+                                      <p className="text-sm text-muted-foreground">{email}</p>
+                                  </div>
+                                  <Button 
+                                      onClick={() => grantAdminAccess(email)}
+                                      disabled={setupLoading[email]}
+                                  >
+                                      {setupLoading[email] ? 'Processando...' : 'Executar Função'}
+                                  </Button>
+                              </div>
+                          ))}
+                      </div>
+                  </CardContent>
+              </Card>
+            )}
           </CardContent>
         </Card>
       </TabsContent>
       <TabsContent value="backup">
         <Card>
             <CardHeader>
-                <CardTitle>Backup de Dados de Colaboradores</CardTitle>
+                <CardTitle>Backup e Importação</CardTitle>
                 <CardDescription>
-                    Selecione os colaboradores para exportar o histórico completo de interações e PDI.
+                    Exporte o histórico de colaboradores ou importe interações de um arquivo CSV.
                 </CardDescription>
             </CardHeader>
             <CardContent>
+                <div className="mb-6">
+                    <Button variant="outline" onClick={() => setIsInteractionCsvDialogOpen(true)}>
+                        <Upload className="mr-2 h-4 w-4" /> Importar Interações
+                    </Button>
+                </div>
                 <div className="border rounded-md">
                     <Table>
                         <TableHeader>
@@ -959,6 +1113,7 @@ export default function AdminPage() {
       </TabsContent>
     </Tabs>
     <CsvUploadDialog open={isCsvDialogOpen} onOpenChange={setIsCsvDialogOpen} />
+    <InteractionCsvUploadDialog open={isInteractionCsvDialogOpen} onOpenChange={setIsInteractionCsvDialogOpen} />
     <EmployeeFormDialog 
         open={isEmployeeFormOpen} 
         onOpenChange={setIsEmployeeFormOpen}
@@ -986,7 +1141,3 @@ export default function AdminPage() {
     </>
   );
 }
-
-    
-
-    

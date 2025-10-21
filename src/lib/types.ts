@@ -63,6 +63,7 @@ export interface Interaction {
   authorId: string;
   riskScore?: number; // Add riskScore to interaction
   nextInteractionDate?: string; // ISO 8601 string
+  source?: string; // To identify the origin of the interaction (e.g., 'Pipedrive')
 }
 
 export interface PDIAction {
